@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>LlamaIndex on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/llamaindex/</link>
+    <description>Recent content in LlamaIndex on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:14:13 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/llamaindex/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>2.2.LlamaIndex中使用Agents</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/2.2.llamaindex%E4%B8%AD%E4%BD%BF%E7%94%A8agents/</link>
+      <pubDate>Sun, 31 Aug 2025 12:14:13 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/2.2.llamaindex%E4%B8%AD%E4%BD%BF%E7%94%A8agents/</guid>
+      <description>&lt;h2 id=&#34;llamaindex-支持的-agents&#34;&gt;LlamaIndex 支持的 Agents&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Function Calling Agents - 这些适用于可以调用特定功能的 AI 模型。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;ReAct Agents - 这些可以与任何进行聊天或文本端点的 AI 配合使用，并处理复杂的推理任务。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Advanced Custom Agents - 这些使用更复杂的方法来处理更复杂的任务和工作流程。比如 LLMCompiler 或 Chain-of-abstraction&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;初始化-agents&#34;&gt;初始化 Agents&lt;/h2&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;!pip install llama-index llama-index-vector-stores-chroma llama-index-llms-huggingface-api llama-index-embeddings-huggingface -U -q
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;使用 &lt;code&gt;AgentWorkflow&lt;/code&gt; 初始化一个 Agent。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 登陆使用serverless API&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; huggingface_hub &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; login
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;login()
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; llama_index.llms.huggingface_api &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; HuggingFaceInferenceAPI
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; llama_index.core.agent.workflow &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; AgentWorkflow, ToolCallResult, AgentStream
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;add&lt;/span&gt;(a: int, b: int) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Add two numbers&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; a &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; b
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;subtract&lt;/span&gt;(a: int, b: int) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Subtract two numbers&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; a &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; b
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;multiply&lt;/span&gt;(a: int, b: int) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Multiply two numbers&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; a &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; b
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;divide&lt;/span&gt;(a: int, b: int) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Divide two numbers&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; a &lt;span style=&#34;color:#f92672&#34;&gt;/&lt;/span&gt; b
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;llm &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; HuggingFaceInferenceAPI(model_name&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Qwen/Qwen2.5-Coder-32B-Instruct&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;agent &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; AgentWorkflow&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_tools_or_functions(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    tools_or_functions&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[subtract, multiply, divide, add],
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    llm&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;llm,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    system_prompt&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;You are a math agent that can add, subtract, multiply, and divide numbers using provided tools.&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;然后就可以执行推理了：&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>2.0.LlamaIndex</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/2.0.llamaindex/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:28 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/2.0.llamaindex/</guid>
+      <description>&lt;p&gt;LlamaIndex 是一个用于连接自定义数据源到 LLM 的框架。 简单来说，它可以让你用你自己的数据来增强 LLM，让 LLM 能够回答关于这些数据的更具体、更准确的问题。它被设计为实现 RAG（Retrieval-Augmented Generation）的 Agent。&lt;/p&gt;
+&lt;h2 id=&#34;llamaindex-核心功能和作用&#34;&gt;LlamaIndex 核心功能和作用&lt;/h2&gt;
+&lt;h3 id=&#34;1-数据连接&#34;&gt;1. 数据连接：&lt;/h3&gt;
+&lt;p&gt;LlamaIndex 提供了各种数据连接器 (Data Connectors)，可以从不同的数据源加载数据，例如：文档 (PDF, Word, Text, Markdown 等)，网站，数据库，知识图谱，API。这些连接器负责将数据转换为 LlamaIndex 可以处理的文档格式。&lt;/p&gt;
+&lt;h3 id=&#34;2-数据索引&#34;&gt;2. 数据索引：&lt;/h3&gt;
+&lt;p&gt;LlamaIndex 将加载的数据构建成索引 (Index)，以便 LLM 可以高效地查询和检索相关信息。LlamaIndex 提供了多种索引类型，例如：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;列表索引 (List Index): 简单地将文档列表存储起来。&lt;/li&gt;
+&lt;li&gt;向量索引 (Vector Store Index): 将文档嵌入到向量空间中，以便进行语义搜索。&lt;/li&gt;
+&lt;li&gt;树索引 (Tree Index): 将文档组织成树状结构，以便进行分层搜索。&lt;/li&gt;
+&lt;li&gt;关键词表索引 (Keyword Table Index): 使用关键词来索引文档。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;你可以根据你的数据和查询需求选择合适的索引类型&lt;/p&gt;
+&lt;h3 id=&#34;3-查询引擎&#34;&gt;3. 查询引擎：&lt;/h3&gt;
+&lt;p&gt;LlamaIndex 提供了查询引擎 (Query Engine)，用于&lt;strong&gt;接收用户的查询&lt;/strong&gt;，&lt;strong&gt;并从索引中检索&lt;/strong&gt;相关信息。查询引擎使用 LLM 来理解用户的查询，并生成合适的查询语句。查询引擎还可以对检索到的信息进行排序、过滤和聚合，以便提供更准确的答案。&lt;/p&gt;
+&lt;h3 id=&#34;4-数据代理-data-agents&#34;&gt;4. 数据代理 (Data Agents):&lt;/h3&gt;
+&lt;p&gt;LlamaIndex 允许你创建数据代理，这些代理可以自动执行各种任务，例如：回答问题，生成文本，总结文档，等等。数据代理可以根据你的需求进行定制，以便更好地完成特定任务。&lt;/p&gt;
+&lt;h2 id=&#34;3个重要部分&#34;&gt;3个重要部分&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Components&lt;/strong&gt;： 最基本的构建块。这些包括提示、模型和数据库等。组件通常有助于将 LlamaIndex 与其他工具和库连接起来。比如指定模型。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Agents and Tools&lt;/strong&gt;：让 Agent 执行动作的组件，如搜索、计算或访问外部服务；Agent 是能够使用工具并做出决策的自主组件。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Workflows&lt;/strong&gt;：是逐步处理逻辑的过程。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;llamahub&#34;&gt;LlamaHub&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;LlamaHub&lt;/strong&gt; 是一个包含数百个 &lt;strong&gt;integrations&lt;/strong&gt;、Agents 和 Tools 的注册中心，属于 LlamaIndex。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>2.1.将query Engine作为tool</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/2.1.%E5%B0%86query-engine%E4%BD%9C%E4%B8%BAtool/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:28 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/2.1.%E5%B0%86query-engine%E4%BD%9C%E4%B8%BAtool/</guid>
+      <description>&lt;p&gt;使用 QueryEngineTool 转换 query engine 为 tool。&lt;/p&gt;
+&lt;h2 id=&#34;llamaindex-有4类tools&#34;&gt;LlamaIndex 有4类tools：&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;FunctionTool&lt;/code&gt; ：将任何 Python 函数转换为 Agents 可以使用的工具。它自动推断出函数的工作原理。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;QueryEngineTool&lt;/code&gt; ：一个允许 Agents 使用 queryEngine 的工具。由于 Agents 是基于 queryEngine 构建的，它们也可以将其他 Agents 作为工具使用。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;Toolspecs&lt;/code&gt; ：由社区创建的工具集，通常包含针对特定服务的工具，如 Gmail。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;Utility Tools&lt;/code&gt;: 帮助处理 &lt;strong&gt;large amounts of data&lt;/strong&gt; from other tools. 特指 &lt;code&gt;OnDemandToolLoader&lt;/code&gt; &amp;amp; &lt;code&gt;LoadAndSearchToolSpec&lt;/code&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;functional-tool&#34;&gt;Functional Tool&lt;/h2&gt;
+&lt;p&gt;给出工具的 name 和 description 尤其重要，因为它有助于 Agent 理解什么时候应该使用该工具。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; llama_index.core.tools &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; FunctionTool
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;get_weather&lt;/span&gt;(location: str) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; str:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Useful for getting the weather for a given location.&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    print(&lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Getting weather for &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;location&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;The weather in &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;location&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt; is sunny&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;tool &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; FunctionTool&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_defaults(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    get_weather,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    name&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;my_weather_tool&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    description&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Useful for getting the weather for a given location.&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;tool&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;call(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Shanghai&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;queryengine-tool&#34;&gt;QueryEngine Tool&lt;/h2&gt;
+&lt;p&gt;使用 &lt;code&gt;QueryEngineTool&lt;/code&gt; 转换 &lt;code&gt;QueryEngine&lt;/code&gt; 为 tool：&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

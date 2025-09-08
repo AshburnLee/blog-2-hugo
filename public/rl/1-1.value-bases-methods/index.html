@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>1.1.Value Bases Methods | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="Reinforcement Learning, Value-Based Methods">
+<meta name="description" content="
+Learn about value-based methods.
+Learn about the differences between Monte Carlo and Temporal Difference Learning.
+Study and implement our first RL algorithm: Q-Learning.
+
+Value-Based Methods
+先给出一个例子：假设你正在玩一个走迷宫的游戏。
+
+状态 (State): 你当前在迷宫中的位置。
+策略 (Policy): 你决定如何走迷宫 (例如，总是选择离终点最近的方向)。
+价值函数 (Value Function): 对于迷宫中的每个位置，价值函数会告诉你，如果你从这个位置开始，按照你的策略走，最终到达终点的可能性有多大 (或者说，你期望获得多少奖励，例如到达终点奖励 &#43;1，每走一步奖励 -0.1)。
+
+Value-based methods 的目标就是学习这个价值函数。一旦你学会了价值函数，你就可以根据价值函数来选择行动，从而更快地到达终点。例如，如果你发现某个位置的价值很高，那么你就应该尽量走到那个位置。
+理解它的核心是理解 Value-based method 和 Policy-based method的区别。
+你先要有一个 Policy
+
+
+Value-based 是先给出一个 Policy，我们自己定义的（比如 Greedy Policy），来学习一个价值函数。实践中，通常会使用一个Epsilon-Greedy policy，它的另一个优势是处理 探索/利用的权衡。
+
+
+Policy-based 是直接学习一个 Policy， $\pi(a | s) = P(a | s)$，它不需要一个价值函数。所以我们不会定义Policy 的行为，是训练的过程定义的这个 Policy。">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/rl/1-1.value-bases-methods/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/rl/1-1.value-bases-methods/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/rl/1-1.value-bases-methods/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="1.1.Value Bases Methods">
+  <meta property="og:description" content=" Learn about value-based methods. Learn about the differences between Monte Carlo and Temporal Difference Learning. Study and implement our first RL algorithm: Q-Learning. Value-Based Methods 先给出一个例子：假设你正在玩一个走迷宫的游戏。
+状态 (State): 你当前在迷宫中的位置。 策略 (Policy): 你决定如何走迷宫 (例如，总是选择离终点最近的方向)。 价值函数 (Value Function): 对于迷宫中的每个位置，价值函数会告诉你，如果你从这个位置开始，按照你的策略走，最终到达终点的可能性有多大 (或者说，你期望获得多少奖励，例如到达终点奖励 &#43;1，每走一步奖励 -0.1)。 Value-based methods 的目标就是学习这个价值函数。一旦你学会了价值函数，你就可以根据价值函数来选择行动，从而更快地到达终点。例如，如果你发现某个位置的价值很高，那么你就应该尽量走到那个位置。
+理解它的核心是理解 Value-based method 和 Policy-based method的区别。
+你先要有一个 Policy Value-based 是先给出一个 Policy，我们自己定义的（比如 Greedy Policy），来学习一个价值函数。实践中，通常会使用一个Epsilon-Greedy policy，它的另一个优势是处理 探索/利用的权衡。
+Policy-based 是直接学习一个 Policy， $\pi(a | s) = P(a | s)$，它不需要一个价值函数。所以我们不会定义Policy 的行为，是训练的过程定义的这个 Policy。">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="rl">
+    <meta property="article:published_time" content="2025-08-31T12:52:02+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:52:02+08:00">
+    <meta property="article:tag" content="Reinforcement Learning">
+    <meta property="article:tag" content="Value-Based Methods">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="1.1.Value Bases Methods">
+<meta name="twitter:description" content="
+Learn about value-based methods.
+Learn about the differences between Monte Carlo and Temporal Difference Learning.
+Study and implement our first RL algorithm: Q-Learning.
+
+Value-Based Methods
+先给出一个例子：假设你正在玩一个走迷宫的游戏。
+
+状态 (State): 你当前在迷宫中的位置。
+策略 (Policy): 你决定如何走迷宫 (例如，总是选择离终点最近的方向)。
+价值函数 (Value Function): 对于迷宫中的每个位置，价值函数会告诉你，如果你从这个位置开始，按照你的策略走，最终到达终点的可能性有多大 (或者说，你期望获得多少奖励，例如到达终点奖励 &#43;1，每走一步奖励 -0.1)。
+
+Value-based methods 的目标就是学习这个价值函数。一旦你学会了价值函数，你就可以根据价值函数来选择行动，从而更快地到达终点。例如，如果你发现某个位置的价值很高，那么你就应该尽量走到那个位置。
+理解它的核心是理解 Value-based method 和 Policy-based method的区别。
+你先要有一个 Policy
+
+
+Value-based 是先给出一个 Policy，我们自己定义的（比如 Greedy Policy），来学习一个价值函数。实践中，通常会使用一个Epsilon-Greedy policy，它的另一个优势是处理 探索/利用的权衡。
+
+
+Policy-based 是直接学习一个 Policy， $\pi(a | s) = P(a | s)$，它不需要一个价值函数。所以我们不会定义Policy 的行为，是训练的过程定义的这个 Policy。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "RL",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/rl/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "1.1.Value Bases Methods",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/rl/1-1.value-bases-methods/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "1.1.Value Bases Methods",
+  "name": "1.1.Value Bases Methods",
+  "description": " Learn about value-based methods. Learn about the differences between Monte Carlo and Temporal Difference Learning. Study and implement our first RL algorithm: Q-Learning. Value-Based Methods 先给出一个例子：假设你正在玩一个走迷宫的游戏。\n状态 (State): 你当前在迷宫中的位置。 策略 (Policy): 你决定如何走迷宫 (例如，总是选择离终点最近的方向)。 价值函数 (Value Function): 对于迷宫中的每个位置，价值函数会告诉你，如果你从这个位置开始，按照你的策略走，最终到达终点的可能性有多大 (或者说，你期望获得多少奖励，例如到达终点奖励 +1，每走一步奖励 -0.1)。 Value-based methods 的目标就是学习这个价值函数。一旦你学会了价值函数，你就可以根据价值函数来选择行动，从而更快地到达终点。例如，如果你发现某个位置的价值很高，那么你就应该尽量走到那个位置。\n理解它的核心是理解 Value-based method 和 Policy-based method的区别。\n你先要有一个 Policy Value-based 是先给出一个 Policy，我们自己定义的（比如 Greedy Policy），来学习一个价值函数。实践中，通常会使用一个Epsilon-Greedy policy，它的另一个优势是处理 探索/利用的权衡。\nPolicy-based 是直接学习一个 Policy， $\\pi(a | s) = P(a | s)$，它不需要一个价值函数。所以我们不会定义Policy 的行为，是训练的过程定义的这个 Policy。\n",
+  "keywords": [
+    "Reinforcement Learning", "Value-Based Methods"
+  ],
+  "articleBody": " Learn about value-based methods. Learn about the differences between Monte Carlo and Temporal Difference Learning. Study and implement our first RL algorithm: Q-Learning. Value-Based Methods 先给出一个例子：假设你正在玩一个走迷宫的游戏。\n状态 (State): 你当前在迷宫中的位置。 策略 (Policy): 你决定如何走迷宫 (例如，总是选择离终点最近的方向)。 价值函数 (Value Function): 对于迷宫中的每个位置，价值函数会告诉你，如果你从这个位置开始，按照你的策略走，最终到达终点的可能性有多大 (或者说，你期望获得多少奖励，例如到达终点奖励 +1，每走一步奖励 -0.1)。 Value-based methods 的目标就是学习这个价值函数。一旦你学会了价值函数，你就可以根据价值函数来选择行动，从而更快地到达终点。例如，如果你发现某个位置的价值很高，那么你就应该尽量走到那个位置。\n理解它的核心是理解 Value-based method 和 Policy-based method的区别。\n你先要有一个 Policy Value-based 是先给出一个 Policy，我们自己定义的（比如 Greedy Policy），来学习一个价值函数。实践中，通常会使用一个Epsilon-Greedy policy，它的另一个优势是处理 探索/利用的权衡。\nPolicy-based 是直接学习一个 Policy， $\\pi(a | s) = P(a | s)$，它不需要一个价值函数。所以我们不会定义Policy 的行为，是训练的过程定义的这个 Policy。\n所以，value-based 是 找到一个最优的 Value Function（$ Q^* $ 或 $ V^* $，后续有这两者的不同）通过这个过程间接找到一个 最优的Policy；而 policy-based 是 finding an optimal policy Directly。\n注意：\n如果我学习到了这个价值函数，这个价值函数与我先前的 Policy 是绑定的。也就是说如果我换一个 Policy，我需要重新训练价值函数。 对于 Value-based 方法，选择一个好的 Policy (策略) 对价值函数和 Agent 最终的性能有着直接且显著的影响。 一个好的 Policy 需要在探索 (Exploration) 和利用 (Exploitation) 之间取得平衡。 学习到的价值函数和 Policy 一起代表了最终的目的：一个好的 Policy。 在 Value-based 方法中，学习到的价值函数会反过来修改我们之前设定的 Policy。这个过程是 Value-based 方法的核心机制之一，也是强化学习能够不断改进策略的关键所在。 所以更确切的讲，“先给出一个 Policy” 只是一个初始化的 Policy。过不断地学习价值函数和改进 Policy，Agent 最终可以找到最优的 Policy。\n你需要训练一个价值函数 Value function 有两种价值函数：State value function 和 Action value function。\nState value function： calculate the value of a state St\nAction value function： calculate the value of the state-action pair (St, At) hence the value of taking that action at that state.\n这个示意图展示了这两种价值函数的不同：\n这两种价值函数的输出即 expected return。\n问题是： 计算状态价值的一种直接方法是，计算从当前状态开始的所有可能的未来状态序列，以及每个状态序列对应的回报。然后，对所有可能的状态序列的回报进行加权平均，得到期望回报。由于未来状态序列的数量可能非常庞大 (特别是当状态空间和动作空间很大时)，因此直接计算期望回报的总和会非常耗时，甚至不可行。\n两种价值函数的计算量都很大。所以引入了 Bellman 方程。\nBellman 方程 贝尔曼方程的核心思想, 它将当前状态的价值分解为两部分：\n【在当前状态下采取某个动作后，立即获得的奖励】 + 【在采取动作后，到达的下一个状态的价值。由于未来的奖励不如当前的奖励那么确定，因此我们需要对后续状态的价值进行“打折”】，这是一种递归的方式计算价值。\n贝尔曼方程是 Value-based 方法的核心公式，也是强化学习能够不断改进策略的关键所在。\n一般形式，以状态价值函数为例，基于策略 $\\pi$）\n$$ V^\\pi(s) = E_\\pi \\left[ R(s, a) + \\gamma \\sum_{s’ \\in S} P(s’|s, a) V^\\pi(s’) \\right] $$\n$V^\\pi(s)$：状态 $s$ 的价值（期望累计奖励）。 $R(s, a)$：即时奖励。 $\\gamma$：折扣因子。 $P(s’|s, a)$：状态转移概率。即采取动作 $a$ 后转移到下一状态 $s’$ 的概率 $\\mathbb{E}_\\pi$：基于策略 $\\pi$ 的期望。 Gamma ($\\gamma$) 是一个介于 0 和 1 之间的折扣因子，它决定了我们对未来奖励的重视程度。\n$\\gamma$ 非常低, Agent 会非常重视当前的奖励，而几乎忽略未来的奖励。 Agent 可能会在一个小区域内来回移动，而无法找到出口。\n$\\gamma$ 非常高，Agent 会完全重视未来的奖励，认为未来的奖励和当前的奖励一样重要。它可能会为了获得未来的高分而牺牲当前的分数，最终导致总分降低。\n所以：\nBellman 方程并不是一个确定的方程，而是一种计算模式。它提供了一种计算状态价值的理论基础，它定义了状态价值与立即奖励和后续状态价值之间的关系。蒙特卡洛方法（Monte Carlo）和时序差分学习（Temporal Difference Learning）方法是两种不同的实现贝尔曼方程的方式。\nMonte Carlo \u0026\u0026 Temporal Difference Learning（TD） 他们是两种训练价值函数的方法。都是运用经验来解决问题。\nMonte Carlo 在更新学习前要应用整个Episode 的经验，它学习的是状态的价值；TD 在每一步都更新学习：\nMC和TD的对比 MC 方法 公式: $$V(s) \\leftarrow V(s) + \\alpha \\left[ G_t - V(s) \\right]$$\n其中 $ G_t = R_{t+1} + \\gamma R_{t+2} + \\dots + \\gamma^{T-1} R_T $ 表示从时间步 $ t $ 到 Episode 结束时的实际累计回报。从当前位置到游戏结束能拿多少分。（需要完整轨迹，因为 $ G_t $ 要求直到回合结束。）\n特点: 用完整轨迹的回报 $G_t$ 更新，需回合结束，无偏高方差。\nMC 更新的是 State value function，即 State 的价值。MC 更新的 State 是这个Episode中出现过的状态，没有出现过的状态不更新。所以为了覆盖所有 State，MC 需要很多 Episode 学习。\nMC的价值函数是一个映射，它将每个状态 $ s $ 映射到一个价值估计值 $ V(s) $。\nTD 方法 公式: $$V(s_t) \\leftarrow V(s_t) + \\alpha \\left[ R_{t+1} + \\gamma V(s_{t+1}) - V(s_t) \\right]$$\n其中 $ R_{t+1} + \\gamma V(s_{t+1}) $ 表示单步及时奖励 + 下一状态估计价值（Bootstrap）。它被称作 TD-target。（适合连续，非回合制任务，复杂实时场景（如机器人控制），可每步更新，无需完整轨迹）。\n特点: 每步更新，实时，低方差但有偏。\n在 TD Learning 中，目标价值是基于当前状态的立即奖励和下一个状态的价值估计来计算的。TD 是一种 Bootstrapping\n注意，Value-based method 中我们的目标是学习 $V(s_t)$. 它需要被初始化为合理的值，然后根据 MC 或 TD 更新这个值。\nMC 实例： Policy： Agent 遵循一个给定的 Policy。奖励：从 s1 到 s2 获得奖励 $ r_1 $。从 s2 到 s3 获得奖励 $ r_2 $。到达 s3 (Episode 结束) 获得奖励 $r_3$。折扣因子 (gamma)： $ \\gamma $。学习率 (alpha)：$\\alpha$。初始价值函数： $V(s_1)$, $V(s_2)$, $V(s_3)$ (初始值可以为 0 或其他任意值)。\n步骤：\nEpisode 开始： Agent 从初始状态 s1 开始，根据 Policy 与环境交互，直到 Episode 结束。 收集 Episode 数据： 假设 Agent 按照 s1 -\u003e s2 -\u003e s3 的顺序访问了这三个 State，并获得了相应的奖励 $ r_1 $, $ r_2 $, $r_3$。 计算回报 (Return)： 从 Episode 的最后一个 State 开始，反向计算每个 State 的回报： $G(s_3)$： 从 s3 开始的回报 = $r_3$ $G(s_2)$： 从 s2 开始的回报 = $ r_2 $ + $ \\gamma $ * $G(s_3)$ = $ r_2 $ + $ \\gamma $ * $r_3$ $G(s_1)$： 从 s1 开始的回报 = $ r_1 $ + $ \\gamma $ * $G(s_2)$ = $ r_1 $ + $ \\gamma $ * ($ r_2 $ + $ \\gamma $ * $r_3$) = $ r_1 $ + $ \\gamma $ * $ r_2 $ + $ \\gamma^2 $ * $r_3$ 更新价值函数： 使用计算得到的回报来更新每个 State 的价值： $V(s_3)$： $V(s_3)$ = $V(s_3)$ + $\\alpha$ * ($G(s_3)$ - $V(s_3)$) = $V(s_3)$ + $\\alpha$ * ($r_3$ - $V(s_3)$) $V(s_2)$： $V(s_2)$ = $V(s_2)$ + $\\alpha$ * ($G(s_2)$ - $V(s_2)$) = $V(s_2)$ + $\\alpha$ * ($ r_2 $ + $ \\gamma $ * $r_3$ - $V(s_2)$) $V(s_1)$： $V(s_1)$ = $V(s_1)$ + $\\alpha$ * ($G(s_1)$ - $V(s_1)$) = $V(s_1)$ + $\\alpha$ * ($ r_1 $ + $ \\gamma $ * $ r_2 $ + $ \\gamma^2 $ * $r_3$ - $V(s_1)$) KAQ：每个state的回报为什么反向计算？\n答：因为公式中的 reward 其实是 cumulative reward，即从当前状态到最终状态的累计reward，同时为了避免重复计算，所以反向计算G(s)。\nTD 实例 假设：\n状态空间： S = {s1, s2, s3} 动作空间： 为了简化，我们不考虑动作，假设 Agent 只能被动地从一个 State 转移到另一个 State。 奖励： 从 s1 到 s2 获得奖励 r1 = 1。 从 s2 到 s3 获得奖励 r2 = 2。 到达 s3 (Episode 结束) 获得奖励 r3 = 0 (Episode 结束时没有额外奖励)。 折扣因子 (gamma)： γ = 0.9。 学习率 (alpha)： α = 0.1。 初始价值函数： V(s1) = 0, V(s2) = 0, V(s3) = 0。 Episode： 假设 Agent 经历了一个 Episode：s1 -\u003e s2 -\u003e s3。 步骤：\n初始化：\nV(s1) = 0 V(s2) = 0 V(s3) = 0 Step 1：从 s1 到 s2\nS = s1 R = r1 = 1 S’ = s2 TD Target = R + γ * V(S’) = 1 + 0.9 * 0 = 1 TD Error = TD Target - V(S) = 1 - 0 = 1 V(s1) = V(s1) + α * TD Error = 0 + 0.1 * 1 = 0.1 Step 2：从 s2 到 s3\nS = s2 R = r2 = 2 S’ = s3 TD Target = R + γ * V(S’) = 2 + 0.9 * 0 = 2 TD Error = TD Target - V(S) = 2 - 0 = 2 V(s2) = V(s2) + α * TD Error = 0 + 0.1 * 2 = 0.2 Step 3：到达 s3 (Episode 结束)\nS = s3 R = r3 = 0 S’ = None (Episode 结束，没有下一个状态) TD Target = R + γ * 0 = 0 + 0.9 * 0 = 0 (通常 Episode 结束时，下一个状态的价值为 0) TD Error = TD Target - V(S) = 0 - 0 = 0 V(s3) = V(s3) + α * TD Error = 0 + 0.1 * 0 = 0 更新后的价值函数：\nV(s1) = 0.1 V(s2) = 0.2 V(s3) = 0 总结 在value-based methods ，我们不是学习Policy，而是手动定义Policy并学习一个价值函数。如果我们有一个最优的价值函数，那么我们将得到一个最优的Policy（目的也是学习一个Policy，只不过不是直接的）。\n间接得到最优的 policy 补充 on-policy on-policy: agent 使用相同的策略来选择动作（与环境交互）和评估/改进该策略。 即，agent 使用当前的策略来生成经验，并使用这些经验来改进相同的策略。\n实现：actor-critic，SARSA\noff-policy off-policy: agent 可以使用一个策略（行为策略）来生成经验，然后使用这些经验来学习另一个策略（目标策略）。\n实现有 Q-learning、DQN，\n比如 Q-learning 直接学习最优 Q 函数 (Q*(s, a))，而不依赖于 agent 当前的策略。\n",
+  "wordCount" : "920",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:52:02+08:00",
+  "dateModified": "2025-08-31T12:52:02+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/rl/1-1.value-bases-methods/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      1.1.Value Bases Methods
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:52:02 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><ol>
+<li>Learn about value-based methods.</li>
+<li>Learn about the differences between Monte Carlo and Temporal Difference Learning.</li>
+<li>Study and implement our first RL algorithm: Q-Learning.</li>
+</ol>
+<h1 id="value-based-methods">Value-Based Methods<a hidden class="anchor" aria-hidden="true" href="#value-based-methods">#</a></h1>
+<p>先给出一个例子：假设你正在玩一个走迷宫的游戏。</p>
+<ul>
+<li>状态 (State): 你当前在迷宫中的位置。</li>
+<li>策略 (Policy): 你决定如何走迷宫 (例如，总是选择离终点最近的方向)。</li>
+<li>价值函数 (Value Function): 对于迷宫中的每个位置，价值函数会告诉你，如果你从这个位置开始，按照你的策略走，最终到达终点的可能性有多大 (或者说，你期望获得多少奖励，例如到达终点奖励 +1，每走一步奖励 -0.1)。</li>
+</ul>
+<p>Value-based methods 的目标就是学习这个价值函数。一旦你学会了价值函数，你就可以根据价值函数来选择行动，从而更快地到达终点。例如，如果你发现某个位置的价值很高，那么你就应该尽量走到那个位置。</p>
+<p>理解它的核心是理解 Value-based method 和 Policy-based method的区别。</p>
+<h2 id="你先要有一个-policy">你先要有一个 Policy<a hidden class="anchor" aria-hidden="true" href="#你先要有一个-policy">#</a></h2>
+<ul>
+<li>
+<p>Value-based 是先给出一个 Policy，我们自己定义的（比如 Greedy Policy），来学习一个价值函数。实践中，通常会使用一个Epsilon-Greedy policy，它的另一个优势是处理 探索/利用的权衡。</p>
+</li>
+<li>
+<p>Policy-based 是直接学习一个 Policy， $\pi(a | s) = P(a | s)$，它不需要一个价值函数。所以我们不会定义Policy 的行为，是训练的过程定义的这个 Policy。</p>
+</li>
+</ul>
+<p>所以，value-based 是 找到一个最优的 Value Function（$ Q^* $ 或 $ V^* $，后续有这两者的不同）通过这个过程间接找到一个 最优的Policy；而 policy-based 是 finding an optimal policy <strong>Directly</strong>。</p>
+<p>注意：</p>
+<ul>
+<li>如果我学习到了这个价值函数，这个价值函数与我先前的 Policy 是绑定的。也就是说如果我换一个 Policy，我需要重新训练价值函数。</li>
+<li>对于 Value-based 方法，选择一个好的 Policy (策略) 对价值函数和 Agent 最终的性能有着直接且显著的影响。</li>
+<li>一个好的 Policy 需要在探索 (Exploration) 和利用 (Exploitation) 之间取得平衡。</li>
+<li>学习到的价值函数和 Policy 一起代表了最终的目的：一个好的 Policy。</li>
+<li>在 Value-based 方法中，学习到的价值函数会反过来修改我们之前设定的 Policy。这个过程是 Value-based 方法的核心机制之一，也是强化学习能够不断改进策略的关键所在。</li>
+</ul>
+<p>所以更确切的讲，“先给出一个 Policy” 只是一个初始化的 Policy。过不断地学习价值函数和改进 Policy，Agent 最终可以找到最优的 Policy。</p>
+<h2 id="你需要训练一个价值函数-value-function">你需要训练一个价值函数 Value function<a hidden class="anchor" aria-hidden="true" href="#你需要训练一个价值函数-value-function">#</a></h2>
+<p>有两种价值函数：<code>State value function</code> 和 <code>Action value function</code>。</p>
+<ul>
+<li>
+<p><strong>State value function</strong>： calculate the value of a state <code>St</code></p>
+</li>
+<li>
+<p><strong>Action value function</strong>： calculate the value of the state-action pair <code>(St, At)</code> hence the value of taking that action at that state.</p>
+</li>
+</ul>
+<p>这个示意图展示了这两种价值函数的不同：</p>
+<p><img alt="价值函数的区别" loading="lazy" src="/pics/two-types.jpg"></p>
+<p>这两种价值函数的输出即 expected return。</p>
+<h2 id="问题是">问题是：<a hidden class="anchor" aria-hidden="true" href="#问题是">#</a></h2>
+<p>计算状态价值的一种直接方法是，计算从当前状态开始的所有可能的未来状态序列，以及每个状态序列对应的回报。然后，对所有可能的状态序列的回报进行加权平均，得到期望回报。由于未来状态序列的数量可能非常庞大 (特别是当状态空间和动作空间很大时)，因此直接计算期望回报的总和会非常耗时，甚至不可行。</p>
+<p>两种价值函数的计算量都很大。所以引入了 <strong>Bellman 方程</strong>。</p>
+<h2 id="bellman-方程">Bellman 方程<a hidden class="anchor" aria-hidden="true" href="#bellman-方程">#</a></h2>
+<p>贝尔曼方程的核心思想, 它将当前状态的价值分解为两部分：</p>
+<p>【在当前状态下采取某个动作后，立即获得的奖励】 + 【在采取动作后，到达的下一个状态的价值。由于未来的奖励不如当前的奖励那么确定，因此我们需要对后续状态的价值进行“打折”】，这是一种<strong>递归的方式</strong>计算价值。</p>
+<p>贝尔曼方程是 Value-based 方法的核心公式，也是强化学习能够不断改进策略的关键所在。</p>
+<p>一般形式，以状态价值函数为例，基于策略 $\pi$）</p>
+<p>$$
+V^\pi(s) = E_\pi \left[ R(s, a) + \gamma \sum_{s&rsquo; \in S} P(s&rsquo;|s, a) V^\pi(s&rsquo;) \right]
+$$</p>
+<ul>
+<li>$V^\pi(s)$：状态 $s$ 的价值（期望累计奖励）。</li>
+<li>$R(s, a)$：即时奖励。</li>
+<li>$\gamma$：折扣因子。</li>
+<li>$P(s&rsquo;|s, a)$：状态转移概率。即采取动作 $a$ 后转移到下一状态 $s&rsquo;$ 的概率</li>
+<li>$\mathbb{E}_\pi$：基于策略 $\pi$ 的期望。</li>
+</ul>
+<p>Gamma ($\gamma$) 是一个介于 0 和 1 之间的折扣因子，它决定了我们对未来奖励的重视程度。</p>
+<ol>
+<li>
+<p>$\gamma$ 非常低, Agent 会非常重视当前的奖励，而几乎忽略未来的奖励。 Agent 可能会在一个小区域内来回移动，而无法找到出口。</p>
+</li>
+<li>
+<p>$\gamma$ 非常高，Agent 会完全重视未来的奖励，认为未来的奖励和当前的奖励一样重要。它可能会为了获得未来的高分而牺牲当前的分数，最终导致总分降低。</p>
+</li>
+</ol>
+<p>所以：</p>
+<p>Bellman 方程并不是一个确定的方程，而是一种<strong>计算模式</strong>。它提供了一种计算状态价值的理论基础，它定义了状态价值与立即奖励和后续状态价值之间的关系。蒙特卡洛方法（<strong>Monte Carlo</strong>）和时序差分学习（<strong>Temporal Difference Learning</strong>）方法是两种不同的<strong>实现贝尔曼方程的方式</strong>。</p>
+<h2 id="monte-carlo--temporal-difference-learningtd">Monte Carlo &amp;&amp; Temporal Difference Learning（TD）<a hidden class="anchor" aria-hidden="true" href="#monte-carlo--temporal-difference-learningtd">#</a></h2>
+<p>他们是两种<strong>训练价值函数的方法</strong>。都是运用经验来解决问题。</p>
+<p>Monte Carlo 在更新学习前要应用整个Episode 的经验，它学习的是状态的价值；TD 在每一步都更新学习：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: center"><img alt="图片描述" loading="lazy" src="/pics/Summary.png"></th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: center"><em>MC和TD的对比</em></td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="mc-方法">MC 方法<a hidden class="anchor" aria-hidden="true" href="#mc-方法">#</a></h3>
+<p>公式: $$V(s) \leftarrow V(s) + \alpha \left[ G_t - V(s) \right]$$</p>
+<p>其中 $ G_t = R_{t+1} + \gamma R_{t+2} + \dots + \gamma^{T-1} R_T $ 表示从时间步 $ t $ 到 <strong>Episode 结束时</strong>的实际累计回报。从当前位置到游戏结束能拿多少分。（需要完整轨迹，因为 $ G_t $ 要求直到回合结束。）</p>
+<p>特点: 用完整轨迹的回报 $G_t$ 更新，需回合结束，无偏高方差。</p>
+<p>MC 更新的是 State value function，即 State 的价值。MC 更新的 State 是这个Episode中出现过的状态，没有出现过的状态不更新。所以为了覆盖所有 State，MC 需要很多 Episode 学习。</p>
+<p>MC的价值函数是一个映射，它将每个状态 $ s $ 映射到一个<strong>价值估计值</strong> $ V(s) $。</p>
+<h3 id="td-方法">TD 方法<a hidden class="anchor" aria-hidden="true" href="#td-方法">#</a></h3>
+<p>公式:
+$$V(s_t) \leftarrow V(s_t) + \alpha \left[ R_{t+1} + \gamma V(s_{t+1}) - V(s_t) \right]$$</p>
+<p>其中 $ R_{t+1} + \gamma V(s_{t+1}) $ 表示单步<strong>及时奖励</strong> + 下一状态估计价值（Bootstrap）。它被称作 <strong>TD-target</strong>。（适合连续，非回合制任务，复杂实时场景（如机器人控制），可每步更新，无需完整轨迹）。</p>
+<p>特点: 每步更新，实时，低方差但有偏。</p>
+<p>在 TD Learning 中，目标价值是基于当前状态的立即奖励和下一个状态的价值估计来计算的。TD 是一种 Bootstrapping</p>
+<p>注意，Value-based method 中我们的目标是学习 $V(s_t)$. 它需要被初始化为合理的值，然后根据 MC 或 TD 更新这个值。</p>
+<h3 id="mc-实例">MC 实例：<a hidden class="anchor" aria-hidden="true" href="#mc-实例">#</a></h3>
+<p>Policy： Agent 遵循一个给定的 Policy。奖励：从 s1 到 s2 获得奖励 $ r_1 $。从 s2 到 s3 获得奖励 $ r_2 $。到达 s3 (Episode 结束) 获得奖励 $r_3$。折扣因子 (gamma)： $ \gamma $。学习率 (alpha)：$\alpha$。初始价值函数： $V(s_1)$, $V(s_2)$, $V(s_3)$ (初始值可以为 0 或其他任意值)。</p>
+<p>步骤：</p>
+<ol>
+<li>Episode 开始： Agent 从初始状态 s1 开始，根据 Policy 与环境交互，直到 Episode 结束。</li>
+<li>收集 Episode 数据： 假设 Agent 按照 s1 -&gt; s2 -&gt; s3 的顺序访问了这三个 State，并获得了相应的奖励 $ r_1 $, $ r_2 $, $r_3$。</li>
+<li>计算回报 (Return)： 从 Episode 的最后一个 State 开始，<strong>反向计算每个 State 的回报</strong>：
+<ul>
+<li>$G(s_3)$： 从 s3 开始的回报 = $r_3$</li>
+<li>$G(s_2)$： 从 s2 开始的回报 = $ r_2 $ + $ \gamma $ * $G(s_3)$ = $ r_2 $ + $ \gamma $ * $r_3$</li>
+<li>$G(s_1)$： 从 s1 开始的回报 = $ r_1 $ + $ \gamma $ * $G(s_2)$ = $ r_1 $ + $ \gamma $ * ($ r_2 $ + $ \gamma $ * $r_3$) = $ r_1 $ + $ \gamma $ * $ r_2 $ + $ \gamma^2 $ * $r_3$</li>
+</ul>
+</li>
+<li>更新价值函数： 使用计算得到的回报来更新每个 State 的价值：
+<ul>
+<li>$V(s_3)$： $V(s_3)$ = $V(s_3)$ + $\alpha$ * ($G(s_3)$ - $V(s_3)$) = $V(s_3)$ + $\alpha$ * ($r_3$ - $V(s_3)$)</li>
+<li>$V(s_2)$： $V(s_2)$ = $V(s_2)$ + $\alpha$ * ($G(s_2)$ - $V(s_2)$) = $V(s_2)$ + $\alpha$ * ($ r_2 $ + $ \gamma $ * $r_3$ - $V(s_2)$)</li>
+<li>$V(s_1)$： $V(s_1)$ = $V(s_1)$ + $\alpha$ * ($G(s_1)$ - $V(s_1)$) = $V(s_1)$ + $\alpha$ * ($ r_1 $ + $ \gamma $ * $ r_2 $ + $ \gamma^2 $ * $r_3$ - $V(s_1)$)</li>
+</ul>
+</li>
+</ol>
+<p>KAQ：每个state的回报为什么反向计算？</p>
+<p>答：因为公式中的 reward 其实是 cumulative reward，即从当前状态到最终状态的累计reward，同时为了避免重复计算，所以反向计算G(s)。</p>
+<h3 id="td-实例">TD 实例<a hidden class="anchor" aria-hidden="true" href="#td-实例">#</a></h3>
+<p>假设：</p>
+<pre><code>状态空间： S = {s1, s2, s3}
+动作空间： 为了简化，我们不考虑动作，假设 Agent 只能被动地从一个 State 转移到另一个 State。
+奖励：
+    从 s1 到 s2 获得奖励 r1 = 1。
+    从 s2 到 s3 获得奖励 r2 = 2。
+    到达 s3 (Episode 结束) 获得奖励 r3 = 0 (Episode 结束时没有额外奖励)。
+折扣因子 (gamma)： γ = 0.9。
+学习率 (alpha)： α = 0.1。
+初始价值函数： V(s1) = 0, V(s2) = 0, V(s3) = 0。
+Episode： 假设 Agent 经历了一个 Episode：s1 -&gt; s2 -&gt; s3。
+</code></pre>
+<p>步骤：</p>
+<ol>
+<li>
+<p>初始化：</p>
+<ul>
+<li>V(s1) = 0</li>
+<li>V(s2) = 0</li>
+<li>V(s3) = 0</li>
+</ul>
+</li>
+<li>
+<p>Step 1：从 s1 到 s2</p>
+<ul>
+<li>S = s1</li>
+<li>R = r1 = 1</li>
+<li>S&rsquo; = s2</li>
+<li>TD Target = R + γ * V(S&rsquo;) = 1 + 0.9 * 0 = 1</li>
+<li>TD Error = TD Target - V(S) = 1 - 0 = 1</li>
+<li>V(s1) = V(s1) + α * TD Error = 0 + 0.1 * 1 = 0.1</li>
+</ul>
+</li>
+<li>
+<p>Step 2：从 s2 到 s3</p>
+<ul>
+<li>S = s2</li>
+<li>R = r2 = 2</li>
+<li>S&rsquo; = s3</li>
+<li>TD Target = R + γ * V(S&rsquo;) = 2 + 0.9 * 0 = 2</li>
+<li>TD Error = TD Target - V(S) = 2 - 0 = 2</li>
+<li>V(s2) = V(s2) + α * TD Error = 0 + 0.1 * 2 = 0.2</li>
+</ul>
+</li>
+<li>
+<p>Step 3：到达 s3 (Episode 结束)</p>
+<ul>
+<li>S = s3</li>
+<li>R = r3 = 0</li>
+<li>S&rsquo; = None (Episode 结束，没有下一个状态)</li>
+<li>TD Target = R + γ * 0 = 0 + 0.9 * 0 = 0 (通常 Episode 结束时，下一个状态的价值为 0)</li>
+<li>TD Error = TD Target - V(S) = 0 - 0 = 0</li>
+<li>V(s3) = V(s3) + α * TD Error = 0 + 0.1 * 0 = 0</li>
+</ul>
+</li>
+<li>
+<p>更新后的价值函数：</p>
+<ul>
+<li>V(s1) = 0.1</li>
+<li>V(s2) = 0.2</li>
+<li>V(s3) = 0</li>
+</ul>
+</li>
+</ol>
+<h1 id="总结">总结<a hidden class="anchor" aria-hidden="true" href="#总结">#</a></h1>
+<p>在value-based methods ，我们不是学习Policy，而是手动定义Policy并学习一个价值函数。如果我们有一个最优的价值函数，那么我们将得到一个最优的Policy（目的也是学习一个Policy，只不过不是直接的）。</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: center"><img alt="图片描述" loading="lazy" src="/pics/link-value-policy.png"></th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: center"><em>间接得到最优的 policy</em></td>
+      </tr>
+  </tbody>
+</table>
+<h1 id="补充">补充<a hidden class="anchor" aria-hidden="true" href="#补充">#</a></h1>
+<h2 id="on-policy">on-policy<a hidden class="anchor" aria-hidden="true" href="#on-policy">#</a></h2>
+<p>on-policy: agent 使用<strong>相同的策略</strong>来选择动作（与环境交互）和评估/改进该策略。 即，agent 使用当前的策略来生成经验，并使用这些经验来改进<strong>相同的策略</strong>。</p>
+<p>实现：actor-critic，SARSA</p>
+<h2 id="off-policy">off-policy<a hidden class="anchor" aria-hidden="true" href="#off-policy">#</a></h2>
+<p>off-policy: agent 可以使用一个策略（行为策略）来生成经验，然后使用这些经验来学习另一个策略（目标策略）。</p>
+<p>实现有 Q-learning、DQN，</p>
+<p>比如 Q-learning 直接学习最优 Q 函数 <code>(Q*(s, a))</code>，而不依赖于 agent 当前的策略。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/reinforcement-learning/">Reinforcement Learning</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/value-based-methods/">Value-Based Methods</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

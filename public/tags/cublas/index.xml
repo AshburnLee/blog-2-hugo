@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>CuBLAS on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/cublas/</link>
+    <description>Recent content in CuBLAS on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:45:50 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/cublas/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Cublas Mma</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/cuda-notes/cublas-mma/</link>
+      <pubDate>Sun, 31 Aug 2025 12:45:50 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/cuda-notes/cublas-mma/</guid>
+      <description>&lt;p&gt;cuBLAS 也会利用 tensor core，其性能比简单的手工写的 wmma 更优。&lt;/p&gt;
+&lt;p&gt;&lt;a href=&#34;https://0mean1sigma.com/tgemm/&#34;&gt;https://0mean1sigma.com/tgemm/&lt;/a&gt;  这篇文章中的 benchmark 展示了不同方式的性能。可以把最高性能的作为标杆，自己动手优化，这里的性能指标是吞吐，还可以有其他指标 ***&lt;/p&gt;
+&lt;h2 id=&#34;什么是-leading-demension&#34;&gt;什么是 leading demension&lt;/h2&gt;
+&lt;p&gt;内存中连续存储元素的个数。&lt;/p&gt;
+&lt;p&gt;给定一个形状为 MxN 的矩阵 ，如果它按 Row-major 存储，其 leading dimension 是 N，如果它按 Col-major 存储，其 leading dimention 是 M。&lt;/p&gt;
+&lt;h2 id=&#34;什么是-row-major-和-col-major&#34;&gt;什么是 row-major 和 col-major&lt;/h2&gt;
+&lt;p&gt;row-major 指的是按行存储，即每一行中元素是连续存储的。
+col-major 指的是按列存储，即每一列中元素是连续存储的。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-txt&#34; data-lang=&#34;txt&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;A = 1 2 3
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    4 5 6
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;在 row-major order 中，内存中的存储顺序是：1 2 3 4 5 6, leading dimension 是 3.
+在 col-major order 中，内存中的存储顺序是：1 4 2 5 3 6, leading dimension 是 2.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

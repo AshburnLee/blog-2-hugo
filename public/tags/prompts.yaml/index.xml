@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Prompts.yaml on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/prompts.yaml/</link>
+    <description>Recent content in Prompts.yaml on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:13:26 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/prompts.yaml/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>1.2.why Smolagents</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/1.2.why-smolagents/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:26 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/1.2.why-smolagents/</guid>
+      <description>&lt;p&gt;&lt;code&gt;Smolagents&lt;/code&gt; 是一个框架，用户通过它构建自己的agents。其他的框架包括 &lt;code&gt;LlamaIndex&lt;/code&gt; 和 &lt;code&gt;LangGraph&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;它专注于 CodeAgent&lt;/strong&gt;，就是通过 code 块执行 Actions，并且 Observe 结果。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Smolagents&lt;/code&gt; 会执行 TAO cycle 来回应给他打指令。&lt;/p&gt;
+&lt;h1 id=&#34;first-glance&#34;&gt;First glance&lt;/h1&gt;
+&lt;p&gt;在 HF 自己的空间中，创建一个 &lt;code&gt;HF_TOKEN&lt;/code&gt;，确保有 inference 权限。&lt;/p&gt;
+&lt;p&gt;HF 中的 workspace 称作 &lt;code&gt;Space&lt;/code&gt;，进入自己的 &lt;code&gt;&amp;lt;USERNAME&amp;gt;/First_agent_template&lt;/code&gt; 的 &lt;code&gt;Space&lt;/code&gt;。查看 &lt;code&gt;Files&lt;/code&gt;，其中的&lt;code&gt;app.y&lt;/code&gt; 是 main 文件。&lt;/p&gt;
+&lt;p&gt;比如，Smolagents &lt;a href=&#34;https://huggingface.co/spaces/agents-course/First_agent_template/blob/main/app.py&#34;&gt;CodeAgent 模版&lt;/a&gt;&lt;/p&gt;
+&lt;h2 id=&#34;apppy-中有什么&#34;&gt;&lt;code&gt;app.py&lt;/code&gt; 中有什么&lt;/h2&gt;
+&lt;ol&gt;
+&lt;li&gt;import 了 Smolagents&lt;/li&gt;
+&lt;li&gt;定义了两个 tools，一个是计算当前时间，另一个是空的，由自己发挥&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;model = HfApiModel()&lt;/code&gt; 中给出来使用到了LLM模型：&lt;code&gt;Qwen/Qwen2.5-Coder-32B-Instruct&lt;/code&gt; 。这个就是前文提到的 serveless API。使用托管的LLM，而非本地部署的LLM。&lt;/li&gt;
+&lt;li&gt;让模型可见自定义的工具，通过在 CodeAgent 中添加 自定义工具列表即可。而且不需要给 tool 参数，LLM会自行传入。&lt;/li&gt;
+&lt;li&gt;特殊工具 &lt;code&gt;FinalAnswerTool&lt;/code&gt; 的作用是 终止 &lt;strong&gt;TAO 循环&lt;/strong&gt;并提供最终答案，表示 Agent 任务完成。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&#34;kaqsmolagents-如何体现-tao-循环&#34;&gt;KAQ：Smolagents 如何体现 TAO 循环？&lt;/h2&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;agent &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; CodeAgent(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    model&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;model,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    tools&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[final_answer], &lt;span style=&#34;color:#75715e&#34;&gt;# tools 列表&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    max_steps&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;6&lt;/span&gt;,  &lt;span style=&#34;color:#75715e&#34;&gt;# 参数限制了 TAO/ReAct 循环的迭代次数，避免无限循环。&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    verbosity_level&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    grammar&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;None&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    planning_interval&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;None&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    name&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;None&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    description&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;None&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    prompt_templates&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;prompt_templates  &lt;span style=&#34;color:#75715e&#34;&gt;# ！&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;strong&gt;TAO 循环&lt;/strong&gt;不是用户定义的，而是 Smolagents 框架内部架构的核心部分，通过 ReAct 框架实现。上述CodeAgent 的参数 &lt;code&gt;max_steps=6 &lt;/code&gt;限制了 TAO/ReAct 循环的迭代次数。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

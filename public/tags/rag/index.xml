@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>RAG on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/rag/</link>
+    <description>Recent content in RAG on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:14:13 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/rag/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>2.2.LlamaIndex中使用Agents</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/2.2.llamaindex%E4%B8%AD%E4%BD%BF%E7%94%A8agents/</link>
+      <pubDate>Sun, 31 Aug 2025 12:14:13 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/2.2.llamaindex%E4%B8%AD%E4%BD%BF%E7%94%A8agents/</guid>
+      <description>&lt;h2 id=&#34;llamaindex-支持的-agents&#34;&gt;LlamaIndex 支持的 Agents&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Function Calling Agents - 这些适用于可以调用特定功能的 AI 模型。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;ReAct Agents - 这些可以与任何进行聊天或文本端点的 AI 配合使用，并处理复杂的推理任务。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Advanced Custom Agents - 这些使用更复杂的方法来处理更复杂的任务和工作流程。比如 LLMCompiler 或 Chain-of-abstraction&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;初始化-agents&#34;&gt;初始化 Agents&lt;/h2&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;!pip install llama-index llama-index-vector-stores-chroma llama-index-llms-huggingface-api llama-index-embeddings-huggingface -U -q
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;使用 &lt;code&gt;AgentWorkflow&lt;/code&gt; 初始化一个 Agent。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 登陆使用serverless API&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; huggingface_hub &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; login
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;login()
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; llama_index.llms.huggingface_api &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; HuggingFaceInferenceAPI
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; llama_index.core.agent.workflow &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; AgentWorkflow, ToolCallResult, AgentStream
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;add&lt;/span&gt;(a: int, b: int) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Add two numbers&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; a &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; b
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;subtract&lt;/span&gt;(a: int, b: int) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Subtract two numbers&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; a &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; b
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;multiply&lt;/span&gt;(a: int, b: int) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Multiply two numbers&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; a &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; b
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;divide&lt;/span&gt;(a: int, b: int) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Divide two numbers&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; a &lt;span style=&#34;color:#f92672&#34;&gt;/&lt;/span&gt; b
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;llm &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; HuggingFaceInferenceAPI(model_name&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Qwen/Qwen2.5-Coder-32B-Instruct&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;agent &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; AgentWorkflow&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_tools_or_functions(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    tools_or_functions&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[subtract, multiply, divide, add],
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    llm&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;llm,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    system_prompt&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;You are a math agent that can add, subtract, multiply, and divide numbers using provided tools.&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;然后就可以执行推理了：&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>2.1.将query Engine作为tool</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/2.1.%E5%B0%86query-engine%E4%BD%9C%E4%B8%BAtool/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:28 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/2.1.%E5%B0%86query-engine%E4%BD%9C%E4%B8%BAtool/</guid>
+      <description>&lt;p&gt;使用 QueryEngineTool 转换 query engine 为 tool。&lt;/p&gt;
+&lt;h2 id=&#34;llamaindex-有4类tools&#34;&gt;LlamaIndex 有4类tools：&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;FunctionTool&lt;/code&gt; ：将任何 Python 函数转换为 Agents 可以使用的工具。它自动推断出函数的工作原理。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;QueryEngineTool&lt;/code&gt; ：一个允许 Agents 使用 queryEngine 的工具。由于 Agents 是基于 queryEngine 构建的，它们也可以将其他 Agents 作为工具使用。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;Toolspecs&lt;/code&gt; ：由社区创建的工具集，通常包含针对特定服务的工具，如 Gmail。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;Utility Tools&lt;/code&gt;: 帮助处理 &lt;strong&gt;large amounts of data&lt;/strong&gt; from other tools. 特指 &lt;code&gt;OnDemandToolLoader&lt;/code&gt; &amp;amp; &lt;code&gt;LoadAndSearchToolSpec&lt;/code&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;functional-tool&#34;&gt;Functional Tool&lt;/h2&gt;
+&lt;p&gt;给出工具的 name 和 description 尤其重要，因为它有助于 Agent 理解什么时候应该使用该工具。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; llama_index.core.tools &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; FunctionTool
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;get_weather&lt;/span&gt;(location: str) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; str:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Useful for getting the weather for a given location.&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    print(&lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Getting weather for &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;location&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;The weather in &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;location&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt; is sunny&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;tool &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; FunctionTool&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_defaults(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    get_weather,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    name&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;my_weather_tool&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    description&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Useful for getting the weather for a given location.&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;tool&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;call(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Shanghai&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;queryengine-tool&#34;&gt;QueryEngine Tool&lt;/h2&gt;
+&lt;p&gt;使用 &lt;code&gt;QueryEngineTool&lt;/code&gt; 转换 &lt;code&gt;QueryEngine&lt;/code&gt; 为 tool：&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>0.5.Agentic RAG</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/0.5.agentic-rag/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:26 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/0.5.agentic-rag/</guid>
+      <description>&lt;h2 id=&#34;什么是-rag&#34;&gt;什么是 RAG&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Retrieval-Augmented Generation&lt;/strong&gt; 增强 AI 模型能力的技术框架。它通过以下方式提升 AI 的表现：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;检索阶段：从&lt;strong&gt;外部知识库&lt;/strong&gt;中检索与当前问题或上下文相关的文档或段落。&lt;/li&gt;
+&lt;li&gt;生成阶段：将检索到的信息与 AI 模型结合，生成更准确、更相关的输出。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;RAG 技术框架实现的 AI 的作用是：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;减少幻觉（Hallucination） ：通过检索外部知识，确保生成内容基于真实信息。&lt;/li&gt;
+&lt;li&gt;提升上下文理解：结合外部知识，使生成内容更符合上下文。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;RAG 是一种系统。LLMs 是在庞大的数据集上进行训练以学习一般知识的。然而，它们可能没有在相关和最新的数据上进行训练。RAG 通过从您的数据中查找和检索相关信息，并将其提供给 LLM 来解决这个问题。&lt;/p&gt;
+&lt;h2 id=&#34;rag-5个关键阶段&#34;&gt;RAG 5个关键阶段&lt;/h2&gt;
+&lt;p&gt;&lt;a href=&#34;&#34;&gt;RAG in LlamaIndex&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;5阶段构成了构建的大多数更大型应用程序。&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Loading:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;指的是从数据所在的位置获取数据——无论是文本文件、PDF 文件、另一个网站、数据库还是 API，并将其导入到你的工作流程中。LlamaHub 提供了数百种可选择的集成。&lt;/p&gt;
+&lt;p&gt;【你应该熟悉 LlamaHub 加载器和 LlamaParse 解析器（来源于LlamaIndex 框架），以处理更复杂的数据源。】&lt;/p&gt;
+&lt;ol start=&#34;2&#34;&gt;
+&lt;li&gt;Indexing:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;创建一个允许查询数据的数据结构。对于 LLMs，这几乎总是意味着创建向量嵌入(vector embeddings)。&lt;/p&gt;
+&lt;ol start=&#34;3&#34;&gt;
+&lt;li&gt;Storing：&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;一旦你的数据被索引，你将想要存储你的索引，以及其他元数据，以避免重新索引它。&lt;/p&gt;
+&lt;ol start=&#34;4&#34;&gt;
+&lt;li&gt;Querying：&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;对于任何给定的索引策略，你可以利用 LLMs 和 LlamaIndex 数据结构以多种方式查询，包括子查询、多步骤查询和混合策略。&lt;/p&gt;
+&lt;ol start=&#34;5&#34;&gt;
+&lt;li&gt;Evaluation：&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&#34;什么是-agentic-rag&#34;&gt;什么是 Agentic RAG&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Agentic RAG&lt;/strong&gt; 是 RAG 的一种扩展形式，是进化版本，它在 RAG 的基础上引入了 AI Agent。 RAG 本身并不具备 AI Agent 的自主决策能力。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Mlir Basis | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="Compiler">
+<meta name="description" content=":sweat_drops: :sweat_drops: :sweat_drops: :sweat_drops: :sweat_drops:
+Learn &amp; reflect
+部分来自：https://github.com/KEKE046/mlir-tutorial
+1. 多层Dialect 理解到了什么？
+MLIR 编译从高层 的IR到底层的IR，每个阶段都是多个Dialect的混合。
+每次Lowering 都往往针对一个dialect 进行。
+Dialect是独立的。例如，在做循环展开等优化的时候，我不需要关心加法和减法可以合并；而在做算数表达式优化的时候，也不需要关心当前在哪个函数里边。
+MLIR 可以从各个层次优化 IR：例如：
+在 affine 层面，可以根据循环大小做展开，向量化；
+在 scf 层面，可以发现循环不变量；
+在 arith 层面，可以用算数恒等式优化代码。
+比如在 linalg 层，我们很容易发现矩阵被转置了两次，但一旦 lower 到 scf，所有转置操作都变成循环，优化就很难进行了。所以从high level IR 到 low level IR 要及时做优化。
+MLIR用处是：
+复用已有的 Dialect；扩展已有的 Dialect；复用已有的 Pass。常见 Pass 直接复用（CSE DCE）
+一般讲 high level 的 IR 是与硬件无关的，low level 的 IR是与硬件有关的。
+2. MLIR的结构
+MLIR 结构是树形的，Region 包含Block，Block 包含 Operation，Operation 包含其他的 Region，&hellip;。">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/compiler/mlir-basis/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/compiler/mlir-basis/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/compiler/mlir-basis/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="Mlir Basis">
+  <meta property="og:description" content=":sweat_drops: :sweat_drops: :sweat_drops: :sweat_drops: :sweat_drops:
+Learn &amp; reflect 部分来自：https://github.com/KEKE046/mlir-tutorial
+1. 多层Dialect 理解到了什么？ MLIR 编译从高层 的IR到底层的IR，每个阶段都是多个Dialect的混合。 每次Lowering 都往往针对一个dialect 进行。
+Dialect是独立的。例如，在做循环展开等优化的时候，我不需要关心加法和减法可以合并；而在做算数表达式优化的时候，也不需要关心当前在哪个函数里边。
+MLIR 可以从各个层次优化 IR：例如：
+在 affine 层面，可以根据循环大小做展开，向量化；
+在 scf 层面，可以发现循环不变量；
+在 arith 层面，可以用算数恒等式优化代码。
+比如在 linalg 层，我们很容易发现矩阵被转置了两次，但一旦 lower 到 scf，所有转置操作都变成循环，优化就很难进行了。所以从high level IR 到 low level IR 要及时做优化。
+MLIR用处是：
+复用已有的 Dialect；扩展已有的 Dialect；复用已有的 Pass。常见 Pass 直接复用（CSE DCE）
+一般讲 high level 的 IR 是与硬件无关的，low level 的 IR是与硬件有关的。
+2. MLIR的结构 MLIR 结构是树形的，Region 包含Block，Block 包含 Operation，Operation 包含其他的 Region，…。">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="compiler">
+    <meta property="article:published_time" content="2025-08-31T12:15:30+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:15:30+08:00">
+    <meta property="article:tag" content="Compiler">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Mlir Basis">
+<meta name="twitter:description" content=":sweat_drops: :sweat_drops: :sweat_drops: :sweat_drops: :sweat_drops:
+Learn &amp; reflect
+部分来自：https://github.com/KEKE046/mlir-tutorial
+1. 多层Dialect 理解到了什么？
+MLIR 编译从高层 的IR到底层的IR，每个阶段都是多个Dialect的混合。
+每次Lowering 都往往针对一个dialect 进行。
+Dialect是独立的。例如，在做循环展开等优化的时候，我不需要关心加法和减法可以合并；而在做算数表达式优化的时候，也不需要关心当前在哪个函数里边。
+MLIR 可以从各个层次优化 IR：例如：
+在 affine 层面，可以根据循环大小做展开，向量化；
+在 scf 层面，可以发现循环不变量；
+在 arith 层面，可以用算数恒等式优化代码。
+比如在 linalg 层，我们很容易发现矩阵被转置了两次，但一旦 lower 到 scf，所有转置操作都变成循环，优化就很难进行了。所以从high level IR 到 low level IR 要及时做优化。
+MLIR用处是：
+复用已有的 Dialect；扩展已有的 Dialect；复用已有的 Pass。常见 Pass 直接复用（CSE DCE）
+一般讲 high level 的 IR 是与硬件无关的，low level 的 IR是与硬件有关的。
+2. MLIR的结构
+MLIR 结构是树形的，Region 包含Block，Block 包含 Operation，Operation 包含其他的 Region，&hellip;。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Compiler",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/compiler/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Mlir Basis",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/compiler/mlir-basis/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Mlir Basis",
+  "name": "Mlir Basis",
+  "description": ":sweat_drops: :sweat_drops: :sweat_drops: :sweat_drops: :sweat_drops:\nLearn \u0026amp; reflect 部分来自：https://github.com/KEKE046/mlir-tutorial\n1. 多层Dialect 理解到了什么？ MLIR 编译从高层 的IR到底层的IR，每个阶段都是多个Dialect的混合。 每次Lowering 都往往针对一个dialect 进行。\nDialect是独立的。例如，在做循环展开等优化的时候，我不需要关心加法和减法可以合并；而在做算数表达式优化的时候，也不需要关心当前在哪个函数里边。\nMLIR 可以从各个层次优化 IR：例如：\n在 affine 层面，可以根据循环大小做展开，向量化；\n在 scf 层面，可以发现循环不变量；\n在 arith 层面，可以用算数恒等式优化代码。\n比如在 linalg 层，我们很容易发现矩阵被转置了两次，但一旦 lower 到 scf，所有转置操作都变成循环，优化就很难进行了。所以从high level IR 到 low level IR 要及时做优化。\nMLIR用处是：\n复用已有的 Dialect；扩展已有的 Dialect；复用已有的 Pass。常见 Pass 直接复用（CSE DCE）\n一般讲 high level 的 IR 是与硬件无关的，low level 的 IR是与硬件有关的。\n2. MLIR的结构 MLIR 结构是树形的，Region 包含Block，Block 包含 Operation，Operation 包含其他的 Region，\u0026hellip;。\n",
+  "keywords": [
+    "Compiler"
+  ],
+  "articleBody": ":sweat_drops: :sweat_drops: :sweat_drops: :sweat_drops: :sweat_drops:\nLearn \u0026 reflect 部分来自：https://github.com/KEKE046/mlir-tutorial\n1. 多层Dialect 理解到了什么？ MLIR 编译从高层 的IR到底层的IR，每个阶段都是多个Dialect的混合。 每次Lowering 都往往针对一个dialect 进行。\nDialect是独立的。例如，在做循环展开等优化的时候，我不需要关心加法和减法可以合并；而在做算数表达式优化的时候，也不需要关心当前在哪个函数里边。\nMLIR 可以从各个层次优化 IR：例如：\n在 affine 层面，可以根据循环大小做展开，向量化；\n在 scf 层面，可以发现循环不变量；\n在 arith 层面，可以用算数恒等式优化代码。\n比如在 linalg 层，我们很容易发现矩阵被转置了两次，但一旦 lower 到 scf，所有转置操作都变成循环，优化就很难进行了。所以从high level IR 到 low level IR 要及时做优化。\nMLIR用处是：\n复用已有的 Dialect；扩展已有的 Dialect；复用已有的 Pass。常见 Pass 直接复用（CSE DCE）\n一般讲 high level 的 IR 是与硬件无关的，low level 的 IR是与硬件有关的。\n2. MLIR的结构 MLIR 结构是树形的，Region 包含Block，Block 包含 Operation，Operation 包含其他的 Region，…。\n【done】Repo 从另一个角度，其实是基本角度，理解MLIR，动手试试这个repo中的 基本用法。\n3. MLIR Op的结构 Op 的Attribute 指的编译器已知的量，而 Operand 指只有运行时才能知道的量。\n%c0 = arith.constant 0 : i32\n上述0 是属性，而不是操作数。\n4. MLIR Op的存储格式 MLIR 的所有 Op 都有一个统一的储存格式，叫 Operation。Operation 里面存了 OpName 和所有的 operands, results, attributes 和其它的东西。\n5. MLIR的图结构 MLIR 里，有两个层次的图：\n第一个是 Region 嵌套构成的树，这个图表示 控制流 第二个是 Op/Value 构成的图，这个图表示 数据流\n数据流的遍历很修改： Op的 getOperands、getResults、getOpOperands 非常常用。 Value 的 getDefiningOp、getUses、getUsers\n控制流的遍历和修改： op.getParentOp, op.getParentOfType：获取父亲Op op.getBlock：注意是返回父亲block，而不是函数block op.getBody：这个才是返回内部 block / region\nop.walk：递归地遍历所有子孙 op block：直接就是一个 iterator，可以直接遍历\n控制流图的修改主要用 OpBuilder 完成。强烈建议把找到 OpBuilder 的代码，把里面有什么函数都看一看，常见的：\nbuilder.create：创建op builder.insert：插入remove的op op-\u003eremove()：从当前块移除，但不删除，可以插入到其他块内 op-\u003eerase()：从当前块移除，并且删除\n6. Basic Dialect project Tablegen Language Server vscode 提供 mlir 扩展，可以为我们写 tablegen 文件提供帮助：找到你编译好的 llvm-install/bin/mlir-lsp-server， 在 vscode 的设置里找到 mlir-lsp-server 的设置，设好绝对路径，还有 database 的路径。 同理，找到 mlir-pdll-lsp-server tblgen-lsp-server\n分别设置\ntoy-opt 可执行文件可以添加 --canonicalize --cse 做这两个优化，凡是Op中标记了 Pure，它会帮助我们注册对应Op 的 CSE DCE。\n7. LogicalResult MLIR 用 LogicalResult 用来表示类似 bool 的值，它的特点是：\nmlir的一些其他类型可以自动转换为 LogicalResult，如上面 emitError 就可以自动转换 用 success(), failure() 生成 true 和 false 用 succeed(x), failed(x) 来判读是否为 true, false\n8. Op 声明时： Variadic 来描述可变参数：let arguments = (ins Variadic:$inputs); Optional 来描述可选参数：let arguments = (ins Optional:$data);\n9. AssemblyFormat 常用关键字：\n$xxx 用来表示 operand 或者 attribute type($xxx) 用来表示 xxx 的类型。 keyword： 插入 keyword functional-type($inputs, results)，生成形如 (i32, i32) -\u003e i32 的函数类型 attr-dict：表示额外的 attr 字典。 10. 为 Op 添加自定义函数 tablegen 允许用户为 Op 添加自定义函数，例如，我想直接获取 ConstantOp 的类型的位宽：\ndef ConstantOp : ToyOp\u003c...\u003e { let extraClassDeclaration = [{ int64_t getBitWidth() { return getResult().getType().getWidth(); } }]; } 这样，之后想要获取位宽的时候，就可以更简洁了：\nauto w = op.getResult().getType().getWidth(); auto w = op.getBitWidth(); 可以只在 tablegen 里写一个方法定义，然后在 toy.cpp 里面写实现（使用 ninja MLIRToyIncGen 生成头文件 就可以在.cpp 中include了）\n11. 构建, 找到了 函数 add_mlir_dialect 的定义： # Declare a dialect in the include directory function(add_mlir_dialect dialect dialect_namespace) set(LLVM_TARGET_DEFINITIONS ${dialect}.td) mlir_tablegen(${dialect}.h.inc -gen-op-decls) mlir_tablegen(${dialect}.cpp.inc -gen-op-defs) mlir_tablegen(${dialect}Types.h.inc -gen-typedef-decls -typedefs-dialect=${dialect_namespace}) mlir_tablegen(${dialect}Types.cpp.inc -gen-typedef-defs -typedefs-dialect=${dialect_namespace}) mlir_tablegen(${dialect}Dialect.h.inc -gen-dialect-decls -dialect=${dialect_namespace}) mlir_tablegen(${dialect}Dialect.cpp.inc -gen-dialect-defs -dialect=${dialect_namespace}) add_public_tablegen_target(MLIR${dialect}IncGen) # 这里是得到的target的名字 add_dependencies(mlir-headers MLIR${dialect}IncGen) endfunction() 12. ninja MLIR${dialect}IncGen 指定build 哪个target\n13. Traits MLIR 提供了很多好用的 Traits，被 Pure 标记的 Op 会自动注册 CSE，DCE Pass。\n使用 Traits 注意：\nInterface 可能会要求用户实现一些固定的接口 在 td 里要 include trait 的 td 文件，在 h 里也要 include 对应的 h 文件 其他Traits： SideEffectInterfaces InferTypeOpInterface SameOperandsAndResultType InferTypeOpAdaptor 推荐使用\n# td中 def ConstantOp : ToyOp\u003c\"const\", [Pure, InferTypeOpAdaptor]\u003e { let summary = \"const operation\"; let arguments = (ins APIntAttr:$value); let results = (outs AnyInteger:$result); let assemblyFormat = \"$value attr-dict\"; // 这里不需要写 type($result) 了 } 14. TableGen 定义函数，FunctionOpTrait 定义Dialect 中的函数比如 FuncOp、CallOp、ReturnOp 相关的操作是为了让方言能够完整地表达程序的控制流和函数调用机制。这些定义使得 MLIR 能够支持高级编程语言的特性，如函数抽象、调用和返回机制，同时也为优化和转换提供了基础。\n方言不仅限于定义特定领域的操作和类型，还可以定义与控制流相关的基本构建块，如 func、call 和 return。这些构建块是许多编译器和转换工具的核心部分，它们使得 MLIR 能够作为一个多层次、可扩展的编译器基础设施。\n虽然许多方言可能会定义自己的 func、call 和 return 操作，但 MLIR 的标准方言（Standard Dialect）已经提供了这些操作的通用实现。如果你的方言需要特定的行为，你可以选择扩展或重新定义这些操作以满足你的需求。\n实战：ex4-beautiful-dialect 函数的这一套代码非常固定，每次照搬就好，没有太多的解释 (暗指了，mlir只是一个框架，主要的是用它做什么而不是mlir本身)\n15. 添加Pass 定义了一个Dialect和Op，即定义了一个IR，但只有IR没有啥意义，需要有在IR上运行的Pass。Pass 通过tablegen来定义。\n两类Pass 指定Op的 + 用相同Interface实现的一类Op\n其中还可以指定带参数的Pass。\n:brain: Pass 的实现，就是灵活使用 IR 的遍历与修改 :brain:\n16. Patter rewrite Pattern 会匹配 IR 的一个子图，然后将其更改为新的格式。\nex6-opt 可以用 --debug 来启动程序，程序会打印出转换的详细过程。\nLowering 可以通过 OpConversionPattern 或 OpRewritePattern 实现。\n实例：\nstruct ConvertToyToArithPass : toy::impl::ConvertToyToArithBase\u003cConvertToyToArithPass\u003e { void runOnOperation() final { // 1 ConversionTarget target(getContext()); target.addLegalDialect\u003carith::ArithDialect\u003e(); // 2 RewritePatternSet patterns(\u0026getContext()); patterns.add\u003cAddOpPat, SubOpPat, ConstantOpPat\u003e(\u0026getContext()); // 3 if (failed(applyPartialConversion(getOperation(), target, std::move(patterns)))) signalPassFailure(); } } 这里我们使用了 applyPartialConversion，MLIR 支持三种 Conversion 模式：\npartialConversion：如果 Pattern 转换结果是 Legal，则保留转换结果。如果输入存在 IllegalOp 或 IllegalDialect，立刻报错。 fullConversion：开始时可能是 Illegal 的。调用 Pattern 将其转换，直到全部 Legal 为止。 greedyPatternRewrite：不需要提供 Target，贪心地尝试尽量多次修改。 前两个常用于 Dialect Lowering 之中。而 geedyPatternRewrie 很适合用来写优化，比如我可以写一个把形如 toy.sub %a, %a 替换为 const 0: i32 的 pattern，希望 MLIR 尽量多优化它。\n17. Type conversion 上文道：OpConversionPattern 特别用于Op lowering，它会把Type进行转换 addConversion：添加一个 Type 的转换规则 addTargetMaterialization：生成将 SourceType 转换为 TargetType 的代码块\n18 Tips MLIR 为我们写好了大量的 Dialect，我们想要的功能，那些 dialect 多半都已经实现过了。\n可以用 mlir-opt --help，mlir-opt --help-hidden 看看有那些 dialect 哪些选项，找到可能是和自己想要做的相似的，然后过去看代码，边看边抄大概就能实现好了。\n19 Vscode 中跳转到函数类的定义 在 .vscode/ 下添加 c_cpp_properties.json\n{ \"configurations\": [ { \"name\": \"Linux\", \"includePath\": [ \"${workspaceFolder}/**\", \"/home/junhui/workspace/llvm-project/llvm-install/include/**\", \"${workspaceFolder}/include/**\", \"/home/junhui/workspace/llvm-project/mlir/include/**\", \"/home/junhui/workspace/llvm-project/build/tools/mlir/include/mlir/IR/**\", \"/home/junhui/workspace/llvm-project/mlir/include/mlir/**\" ], \"defines\": [], \"compilerPath\": \"/usr/bin/clang\", \"cStandard\": \"c17\", \"cppStandard\": \"c++17\", \"intelliSenseMode\": \"linux-clang-x64\" } ], \"version\": 4 } 20. addNestedPass 和 addPass addNestedPass 当你使用 addNestedPass 时，你需要指定操作的类型，这个 Pass 将只会在这些操作的上下文中运行。如\npm.addNestedPass(createDecomposeAggregatedOps());\n在这个例子中，createDecomposeAggregatedOps 创建的 Pass 将作为嵌套 Pass 添加到所有 func::FuncOp 操作中。这意味着，只有当 Pass 管理器遍历到 func::FuncOp 操作时，createDecomposeAggregatedOps 创建的 Pass 才会执行。\naddPass addPass 方法用于向 Pass 管理器添加一个全局 Pass，这种 Pass 作用于整个 IR 或 Pass 管理器当前管理的 IR 层次。如：\npm.addPass(createFoldTensorOperation());\n在这个例子中，createFoldTensorOperation 创建的 Pass 将作为全局 Pass 添加到 Pass 管理器中。这个 Pass 将作用于整个模块或当前 Pass 管理器正在处理的 IR 层次，而不局限于特定类型的操作。\n总结： addNestedPass 通常用于那些需要在特定操作的上下文中进行优化或变换的场景，例如在函数操作内部进行局部优化； addPass 通常用于那些需要在更广泛范围内进行优化或变换的场景，例如跨多个函数或整个模块的优化。\n什么情况下，需要给我的 Dialect 的某个Op 指定 let hasCustomAssemblyFormat = 1 来指示该操作有一个自定义的汇编格式。这意味着你需要为这个操作提供自定义的打印（printer）和解析（parser）逻辑，而不是使用 MLIR 默认生成的逻辑。\n需要自定义的情况： 复杂的操作数或属性，特殊的语法要求，性能优化，与现有格式兼容\nmlir 我的td文件中含有这两个声明： def MithSwitchBarFoo: Pass\u003c\"mith-switch-bar-foo\", \"::mlir::ModuleOp\"\u003e {} def ShapeInferenceOpInterface : OpInterface\u003c\"ShapeInference\"\u003e {} 这两者的区别是什么？可以放在同一个文件中吗？\n一个Pass可以作用于不同的IR层次，例如模块级别、函数级别或者更细粒度的操作级别。\nPass 默认是关于IR的所有Op的，它定义了编译器的一个阶段，用于分析和修改IR。 OpInterface 是应用于都使用 OpInterface 定义的Op的。 Pass有OperationPass 和 InterfacePass， 这里两种Pass 的区别是什么？AI compiler过程中为什么需要这两种 Pass？ Operation Pass： Operation Pass 是针对特定 MLIR 操作类型的 Pass。它通常用于对特定类型的操作或操作的集合进行变换和优化。例如，你可以有一个 OperationPass 专门用于优化所有的 AffineForOp 操作。OperationPass 可以在操作的粒度上进行细粒度的变换。 在 AI 编译器过程中，Operation Pass 可以用于执行特定操作的优化，如循环展开、常量传播、死代码消除等。\nInterfacePass： Interface Pass（在 MLIR 中通常称为 OpInterface Pass）是针对实现了特定接口的所有操作的 Pass。这种类型的 Pass 不是针对特定的操作类型，而是针对实现了特定接口的所有操作。例如，你可以有一个 OpInterface Pass 用于优化所有实现了 MemoryEffectOpInterface 的操作。 在 AI 编译器过程中，OpInterface Pass 可以用于跨不同操作类型的优化，如内存访问优化、数据流分析等，这些优化依赖于操作的接口而不是操作的具体类型。\n两种Pass 它们提供了不同层次的优化能力。\nPass 和 PatternRewrite 区别和侧重点 Pass 通常有更广泛的视野，可以访问和修改整个 IR 结构。它可以对整个模块、函数或特定类型的操作进行变换和优化。可以是模块级别的，也可以是操作级别的。Pass 通常由 Pass 管理器管理，并按照特定的顺序执行。\nPattern Rewrite 是 MLIR 中的一种局部变换机制，它使用模式匹配和替换来优化和变换操作。每个模式定义了一个特定的匹配规则和相应的替换规则。当一个操作与模式匹配时，它会被替换为模式指定的新操作或操作序列。Pattern Rewrite 提供了一种局部的、基于规则的变换机制。Pattern Rewrite 通常在 Dialect Conversion Framework 中使用，该框架允许将一种方言的操作转换为另一种方言的操作。\n关系是，通过 PatternRewrite 来实现一个Pass\nOpConversionPattern VS OpRewritePattern OpConversionPattern: 特指Lowering，将一个IR的Op转换为另一个IR的Op， OpRewritePattern: 用于更一般的场景，但是不涉及类型转换，对Op进行匹配和重写，专注于Op的结构。比如 transpose(transpose(x)) -\u003e x 的匹配和重写。当然也可以是Op的lowering 功能包含关系，都可以实现Lowering Op，如下两个Lowering 分别继承了 上述两者： struct PrintOpLowering : public OpConversionPattern\u003ctoy::PrintOp\u003e { using OpConversionPattern\u003ctoy::PrintOp\u003e::OpConversionPattern; LogicalResult matchAndRewrite(toy::PrintOp op, OpAdaptor adaptor, ConversionPatternRewriter \u0026rewriter) const final { // We don't lower \"toy.print\" in this pass, but we need to update its // operands. rewriter.modifyOpInPlace(op, [\u0026] { op-\u003esetOperands(adaptor.getOperands()); }); return success(); } }; struct ReturnOpLowering : public OpRewritePattern\u003ctoy::ReturnOp\u003e { using OpRewritePattern\u003ctoy::ReturnOp\u003e::OpRewritePattern; LogicalResult matchAndRewrite(toy::ReturnOp op, PatternRewriter \u0026rewriter) const final { // During this lowering, we expect that all function calls have been // inlined. if (op.hasOperand()) return failure(); // We lower \"toy.return\" directly to \"func.return\". rewriter.replaceOpWithNewOp\u003cfunc::ReturnOp\u003e(op); return success(); } }; 使用td文件定义Pass时，是否给出 constructor 构造函数（constructor）用于初始化 Pass 的实例。在 .td 文件中，你可以指定 Pass 的构造函数，以便在创建 Pass 实例时传递参数或执行初始化代码。\n如果你在 .td 文件中为 Pass 提供了构造函数，那么当 Pass 被创建时，这个构造函数将被调用。这允许你传递配置选项或其他参数给 Pass。\ndef MyPass : Pass\u003c\"my-pass\"\u003e { let constructor = \"createMyPass(OptionType option)\"; let options = (ins Option\u003c\"option\", \"OptionType\", \"default_value\", \"Description of the option\"\u003e:$option); } 如果你没有在 .td 文件中指定构造函数，MLIR 的 TableGen 将使用默认的无参数构造函数来创建 Pass 的实例。在这种情况下，你的 Pass 应该有一个无参数的构造函数，或者你需要在 C++ 代码中定义一个显式的构造函数。进而，如果你需要在 Pass 中使用参数或配置选项，但 .td 文件中没有定义构造函数，你可以在 C++ 代码中手动添加构造函数和相应的创建函数。例如：\nstruct MyPass : public PassWrapper\u003cMyPass, OperationPass\u003cModuleOp\u003e\u003e { MyPass(OptionType option) : optionValue(option) {} OptionType optionValue; }; std::unique_ptr\u003cPass\u003e createMyPass(OptionType option) { return std::make_unique\u003cMyPass\u003e(option); } 如何执行mlir文件得到计算结果？ 搜索 mlir-cpu-runner, 这个文件可以及时执行得到结果\nmlir-opt /home/junhui/workspace/graph-compiler/llvm-project/mlir/test/Integration/Dialect/ControlFlow/assert.mlir -test-cf-assert -convert-func-to-llvm | mlir-cpu-runner -e main -entry-point-result=void mlir-opt /home/junhui/workspace/graph-compiler/llvm-project/mlir/test/Integration/Dialect/Linalg/CPU/runtime-verification.mlir \\ -generate-runtime-verification \\ -one-shot-bufferize=\"bufferize-function-boundaries\" \\ -convert-linalg-to-loops \\ -expand-strided-metadata \\ -lower-affine \\ -convert-scf-to-cf \\ -test-cf-assert \\ -convert-index-to-llvm \\ -finalize-memref-to-llvm \\ -convert-func-to-llvm \\ -reconcile-unrealized-casts | \\ mlir-cpu-runner -e main -entry-point-result=void \\ -shared-libs=./llvm-project/build/lib/libmlir_runner_utils.so,./llvm-project/build/lib/libmlir_c_runner_utils.so \\ 2\u003e\u00261 | FileCheck /home/junhui/workspace/graph-compiler/llvm-project/mlir/test/Integration/Dialect/Linalg/CPU/runtime-verification.mlir mlir-opt /home/junhui/workspace/graph-compiler/llvm-project/mlir/test/Integration/Dialect/Linalg/CPU/test-collapse-tensor.mlir \\ -one-shot-bufferize=\"bufferize-function-boundaries\" \\ -finalizing-bufferize -buffer-deallocation-pipeline -convert-bufferization-to-memref \\ -convert-scf-to-cf -expand-strided-metadata -lower-affine -convert-cf-to-llvm -convert-arith-to-llvm \\ -finalize-memref-to-llvm -convert-func-to-llvm -reconcile-unrealized-casts | \\ mlir-cpu-runner -e main -entry-point-result=void \\ -shared-libs=./llvm-project/build/lib/libmlir_runner_utils.so,./llvm-project/build/lib/libmlir_c_runner_utils.so mlir-opt /home/junhui/workspace/graph-compiler/llvm-project/mlir/test/Integration/Dialect/Linalg/CPU/test-conv-1d-call.mlir \\ -test-transform-dialect-erase-schedule \\ -convert-linalg-to-loops \\ -convert-scf-to-cf \\ -expand-strided-metadata \\ -lower-affine \\ -convert-arith-to-llvm \\ -convert-scf-to-cf \\ --finalize-memref-to-llvm \\ -convert-func-to-llvm \\ -reconcile-unrealized-casts | mlir-cpu-runner -e main \\ -entry-point-result=void \\ -shared-libs=./llvm-project/build/lib/libmlir_runner_utils.so,./llvm-project/build/lib/libmlir_c_runner_utils.so mlir-cpu-runner 是MLIR项目提供的一个工具，它用于直接执行MLIR文件中定义的函数，而不是生成可执行文件。当你使用 mlir-cpu-runner 时，它会在运行时编译MLIR代码并执行指定的函数。这个过程通常涉及将MLIR代码转换为LLVM IR，然后使用即时编译（JIT）技术执行生成的代码。使用-e选项后跟函数名（如main）可以指定要执行的函数。mlir-cpu-runner会查找MLIR文件中名为main的函数，并执行它。这个工具主要用于测试和调试MLIR代码，它允许开发者快速运行和验证MLIR函数的行为，而无需经过完整的编译链接生成可执行文件的过程。\n",
+  "wordCount" : "1060",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:15:30+08:00",
+  "dateModified": "2025-08-31T12:15:30+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/compiler/mlir-basis/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      Mlir Basis
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:15:30 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><p>:sweat_drops: :sweat_drops: :sweat_drops: :sweat_drops: :sweat_drops:</p>
+<h1 id="learn--reflect">Learn &amp; reflect<a hidden class="anchor" aria-hidden="true" href="#learn--reflect">#</a></h1>
+<p>部分来自：https://github.com/KEKE046/mlir-tutorial</p>
+<h2 id="1-多层dialect-理解到了什么">1. 多层Dialect 理解到了什么？<a hidden class="anchor" aria-hidden="true" href="#1-多层dialect-理解到了什么">#</a></h2>
+<p>MLIR 编译从高层 的IR到底层的IR，每个阶段都是多个Dialect的混合。
+每次Lowering 都往往针对一个dialect 进行。</p>
+<p>Dialect是独立的。例如，在做循环展开等优化的时候，我不需要关心加法和减法可以合并；而在做算数表达式优化的时候，也不需要关心当前在哪个函数里边。</p>
+<p>MLIR 可以从各个层次优化 IR：例如：</p>
+<p>在 affine 层面，可以根据循环大小做展开，向量化；</p>
+<p>在 scf 层面，可以发现循环不变量；</p>
+<p>在 arith 层面，可以用算数恒等式优化代码。</p>
+<p>比如在 linalg 层，我们很容易发现矩阵被转置了两次，但一旦 lower 到 scf，所有转置操作都变成循环，优化就很难进行了。所以从high level IR 到 low level IR 要及时做优化。</p>
+<p>MLIR用处是：</p>
+<p>复用已有的 Dialect；扩展已有的 Dialect；复用已有的 Pass。常见 Pass 直接复用（CSE DCE）</p>
+<p>一般讲 high level 的 IR 是与硬件无关的，low level 的 IR是与硬件有关的。</p>
+<h2 id="2-mlir的结构">2. MLIR的结构<a hidden class="anchor" aria-hidden="true" href="#2-mlir的结构">#</a></h2>
+<p>MLIR 结构是树形的，Region 包含Block，Block 包含 Operation，Operation 包含其他的 Region，&hellip;。</p>
+<p><del>【done】Repo 从另一个角度，其实是基本角度，理解MLIR，动手试试这个repo中的 基本用法。</del></p>
+<h2 id="3-mlir-op的结构">3. MLIR Op的结构<a hidden class="anchor" aria-hidden="true" href="#3-mlir-op的结构">#</a></h2>
+<p>Op 的Attribute 指的编译器已知的量，而 Operand 指只有运行时才能知道的量。</p>
+<p><code>%c0 = arith.constant 0 : i32</code></p>
+<p>上述0 是属性，而不是操作数。</p>
+<h2 id="4-mlir-op的存储格式">4. MLIR Op的存储格式<a hidden class="anchor" aria-hidden="true" href="#4-mlir-op的存储格式">#</a></h2>
+<p>MLIR 的所有 Op 都有一个统一的储存格式，叫 Operation。Operation 里面存了 OpName 和所有的 operands, results, attributes 和其它的东西。</p>
+<h2 id="5-mlir的图结构">5. MLIR的图结构<a hidden class="anchor" aria-hidden="true" href="#5-mlir的图结构">#</a></h2>
+<p>MLIR 里，有两个层次的图：</p>
+<p>第一个是 Region 嵌套构成的树，这个图表示 <strong>控制流</strong>
+第二个是 Op/Value 构成的图，这个图表示 <strong>数据流</strong></p>
+<ul>
+<li>
+<p>数据流的遍历很修改：
+Op的 <code>getOperands、getResults、getOpOperands</code> 非常常用。
+Value 的 <code>getDefiningOp、getUses、getUsers</code></p>
+</li>
+<li>
+<p>控制流的遍历和修改：
+<code>op.getParentOp, op.getParentOfType</code>：获取父亲Op
+<code>op.getBlock</code>：注意是返回父亲block，而不是函数block
+<code>op.getBody</code>：这个才是返回内部 block / region</p>
+</li>
+</ul>
+<p><code>op.walk</code>：递归地遍历所有子孙 op
+<code>block</code>：直接就是一个 iterator，可以直接遍历</p>
+<p>控制流图的修改主要用 OpBuilder 完成。强烈建议把找到 OpBuilder 的代码，把里面有什么函数都看一看，常见的：</p>
+<p><code>builder.create</code>：创建op
+<code>builder.insert</code>：插入remove的op
+<code>op-&gt;remove()</code>：从当前块移除，但不删除，可以插入到其他块内
+<code>op-&gt;erase()</code>：从当前块移除，并且删除</p>
+<h2 id="6-basic-dialect-project">6. Basic Dialect project<a hidden class="anchor" aria-hidden="true" href="#6-basic-dialect-project">#</a></h2>
+<ul>
+<li>Tablegen Language Server
+vscode 提供 mlir 扩展，可以为我们写 tablegen 文件提供帮助：找到你编译好的 <code>llvm-install/bin/mlir-lsp-server</code>，
+在 vscode 的设置里找到 <code>mlir-lsp-server</code> 的设置，设好绝对路径，还有 database 的路径。</li>
+</ul>
+<p>同理，找到
+<code>mlir-pdll-lsp-server</code>
+<code>tblgen-lsp-server</code></p>
+<p>分别设置</p>
+<p>toy-opt 可执行文件可以添加 <code>--canonicalize</code> <code>--cse</code> 做这两个优化，凡是Op中标记了 Pure，它会帮助我们注册对应Op 的 CSE DCE。</p>
+<h2 id="7-logicalresult">7. <code>LogicalResult</code><a hidden class="anchor" aria-hidden="true" href="#7-logicalresult">#</a></h2>
+<p>MLIR 用 <code>LogicalResult</code> 用来表示类似 bool 的值，它的特点是：</p>
+<p>mlir的一些其他类型可以自动转换为 LogicalResult，如上面 emitError 就可以自动转换
+用 success(), failure() 生成 true 和 false
+用 succeed(x), failed(x) 来判读是否为 true, false</p>
+<h2 id="8-op-声明时">8. Op 声明时：<a hidden class="anchor" aria-hidden="true" href="#8-op-声明时">#</a></h2>
+<p><code>Variadic&lt;Type&gt;</code> 来描述可变参数：<code>let arguments = (ins Variadic&lt;AnyInteger&gt;:$inputs);</code>
+<code>Optional&lt;AnyInteger&gt;</code> 来描述可选参数：<code>let arguments = (ins Optional&lt;AnyInteger&gt;:$data);</code></p>
+<h2 id="9-assemblyformat">9. AssemblyFormat<a hidden class="anchor" aria-hidden="true" href="#9-assemblyformat">#</a></h2>
+<p>常用关键字：</p>
+<ul>
+<li><code>$xxx</code> 用来表示 operand 或者 attribute</li>
+<li><code>type($xxx)</code> 用来表示 xxx 的类型。</li>
+<li><code>keyword</code>： 插入 keyword</li>
+<li><code>functional-type($inputs, results)</code>，生成形如 (i32, i32) -&gt; i32 的函数类型</li>
+<li><code>attr-dict</code>：表示额外的 attr 字典。</li>
+</ul>
+<h2 id="10-为-op-添加自定义函数">10. 为 Op 添加自定义函数<a hidden class="anchor" aria-hidden="true" href="#10-为-op-添加自定义函数">#</a></h2>
+<p>tablegen 允许用户为 Op 添加自定义函数，例如，我想直接获取 ConstantOp 的类型的位宽：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-mlir" data-lang="mlir"><span style="display:flex;"><span>def ConstantOp : ToyOp&lt;...&gt; {
+</span></span><span style="display:flex;"><span>  let extraClassDeclaration = [{
+</span></span><span style="display:flex;"><span>    int64_t getBitWidth() {
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">return</span> getResult().getType().getWidth()<span style="color:#960050;background-color:#1e0010">;</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  }]<span style="color:#960050;background-color:#1e0010">;</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>这样，之后想要获取位宽的时候，就可以更简洁了：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-mlir" data-lang="mlir"><span style="display:flex;"><span>auto w = op.getResult().getType().getWidth()<span style="color:#960050;background-color:#1e0010">;</span>
+</span></span><span style="display:flex;"><span>auto w = op.getBitWidth()<span style="color:#960050;background-color:#1e0010">;</span>
+</span></span></code></pre></div><p>可以只在 tablegen 里写一个方法定义，然后在 toy.cpp 里面写实现（<strong>使用 ninja MLIRToyIncGen 生成头文件</strong> 就可以在.cpp 中include了）</p>
+<h2 id="11-构建-找到了-函数-add_mlir_dialect-的定义">11. 构建, 找到了 函数 <code>add_mlir_dialect</code> 的定义：<a hidden class="anchor" aria-hidden="true" href="#11-构建-找到了-函数-add_mlir_dialect-的定义">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span><span style="color:#75715e"># Declare a dialect in the include directory</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">function</span><span style="color:#f92672">(</span>add_mlir_dialect dialect dialect_namespace<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>  set<span style="color:#f92672">(</span>LLVM_TARGET_DEFINITIONS <span style="color:#e6db74">${</span>dialect<span style="color:#e6db74">}</span>.td<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>  mlir_tablegen<span style="color:#f92672">(</span><span style="color:#e6db74">${</span>dialect<span style="color:#e6db74">}</span>.h.inc -gen-op-decls<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>  mlir_tablegen<span style="color:#f92672">(</span><span style="color:#e6db74">${</span>dialect<span style="color:#e6db74">}</span>.cpp.inc -gen-op-defs<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>  mlir_tablegen<span style="color:#f92672">(</span><span style="color:#e6db74">${</span>dialect<span style="color:#e6db74">}</span>Types.h.inc -gen-typedef-decls -typedefs-dialect<span style="color:#f92672">=</span><span style="color:#e6db74">${</span>dialect_namespace<span style="color:#e6db74">}</span><span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>  mlir_tablegen<span style="color:#f92672">(</span><span style="color:#e6db74">${</span>dialect<span style="color:#e6db74">}</span>Types.cpp.inc -gen-typedef-defs -typedefs-dialect<span style="color:#f92672">=</span><span style="color:#e6db74">${</span>dialect_namespace<span style="color:#e6db74">}</span><span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>  mlir_tablegen<span style="color:#f92672">(</span><span style="color:#e6db74">${</span>dialect<span style="color:#e6db74">}</span>Dialect.h.inc -gen-dialect-decls -dialect<span style="color:#f92672">=</span><span style="color:#e6db74">${</span>dialect_namespace<span style="color:#e6db74">}</span><span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>  mlir_tablegen<span style="color:#f92672">(</span><span style="color:#e6db74">${</span>dialect<span style="color:#e6db74">}</span>Dialect.cpp.inc -gen-dialect-defs -dialect<span style="color:#f92672">=</span><span style="color:#e6db74">${</span>dialect_namespace<span style="color:#e6db74">}</span><span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>  add_public_tablegen_target<span style="color:#f92672">(</span>MLIR<span style="color:#e6db74">${</span>dialect<span style="color:#e6db74">}</span>IncGen<span style="color:#f92672">)</span>   <span style="color:#75715e"># 这里是得到的target的名字</span>
+</span></span><span style="display:flex;"><span>  add_dependencies<span style="color:#f92672">(</span>mlir-headers MLIR<span style="color:#e6db74">${</span>dialect<span style="color:#e6db74">}</span>IncGen<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>endfunction<span style="color:#f92672">()</span>
+</span></span></code></pre></div><h2 id="12-ninja-mlirdialectincgen">12. ninja MLIR${dialect}IncGen<a hidden class="anchor" aria-hidden="true" href="#12-ninja-mlirdialectincgen">#</a></h2>
+<p>指定build 哪个target</p>
+<h2 id="13-traits">13. Traits<a hidden class="anchor" aria-hidden="true" href="#13-traits">#</a></h2>
+<p>MLIR 提供了很多好用的 Traits，被 Pure 标记的 Op 会自动注册 CSE，DCE Pass。</p>
+<p>使用 Traits 注意：</p>
+<ul>
+<li>Interface 可能会要求用户实现一些固定的接口</li>
+<li>在 td 里要 include trait 的 td 文件，在 h 里也要 include 对应的 h 文件</li>
+</ul>
+<p>其他Traits：
+<code>SideEffectInterfaces</code>
+<code>InferTypeOpInterface</code>
+<code>SameOperandsAndResultType</code>
+<code>InferTypeOpAdaptor</code>   推荐使用</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span><span style="color:#75715e"># td中</span>
+</span></span><span style="display:flex;"><span>def ConstantOp : ToyOp&lt;<span style="color:#e6db74">&#34;const&#34;</span>, <span style="color:#f92672">[</span>Pure, InferTypeOpAdaptor<span style="color:#f92672">]</span>&gt; <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>  let summary <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;const operation&#34;</span>;
+</span></span><span style="display:flex;"><span>  let arguments <span style="color:#f92672">=</span> <span style="color:#f92672">(</span>ins APIntAttr:$value<span style="color:#f92672">)</span>;
+</span></span><span style="display:flex;"><span>  let results <span style="color:#f92672">=</span> <span style="color:#f92672">(</span>outs AnyInteger:$result<span style="color:#f92672">)</span>;
+</span></span><span style="display:flex;"><span>  let assemblyFormat <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;</span>$value<span style="color:#e6db74"> attr-dict&#34;</span>; // 这里不需要写 type<span style="color:#f92672">(</span>$result<span style="color:#f92672">)</span> 了
+</span></span><span style="display:flex;"><span><span style="color:#f92672">}</span>
+</span></span></code></pre></div><h2 id="14-tablegen-定义函数functionoptrait">14. TableGen 定义函数，FunctionOpTrait<a hidden class="anchor" aria-hidden="true" href="#14-tablegen-定义函数functionoptrait">#</a></h2>
+<p>定义Dialect 中的函数比如 FuncOp、CallOp、ReturnOp 相关的操作是为了让方言能够完整地表达程序的<strong>控制流</strong>和<strong>函数调用机制</strong>。这些定义使得 MLIR 能够<strong>支持高级编程语言的特性</strong>，如函数抽象、调用和返回机制，同时也<strong>为优化和转换</strong>提供了基础。</p>
+<p>方言不仅限于定义特定领域的<strong>操作和类型</strong>，还可以定义与<strong>控制流相关</strong>的基本构建块，如 func、call 和 return。这些构建块是许多编译器和转换工具的核心部分，它们使得 MLIR 能够作为一个多层次、可扩展的编译器基础设施。</p>
+<p>虽然许多方言可能会定义自己的 func、call 和 return 操作，但 MLIR 的标准方言（Standard Dialect）已经提供了这些操作的通用实现。如果你的方言需要特定的行为，你可以选择扩展或重新定义这些操作以满足你的需求。</p>
+<p>实战：ex4-beautiful-dialect  <strong>函数的这一套代码非常固定，每次照搬就好，没有太多的解释</strong> (暗指了，mlir只是一个框架，主要的是用它做什么而不是mlir本身)</p>
+<h2 id="15-添加pass">15. 添加Pass<a hidden class="anchor" aria-hidden="true" href="#15-添加pass">#</a></h2>
+<p>定义了一个Dialect和Op，即定义了一个IR，但只有IR没有啥意义，需要有在IR上运行的Pass。Pass 通过tablegen来定义。</p>
+<p>两类Pass 指定Op的 + 用相同Interface实现的一类Op</p>
+<p>其中还可以指定带参数的Pass。</p>
+<p>:brain:
+<strong>Pass 的实现，就是灵活使用 IR 的遍历与修改</strong>
+:brain:</p>
+<h2 id="16-patter-rewrite">16. Patter rewrite<a hidden class="anchor" aria-hidden="true" href="#16-patter-rewrite">#</a></h2>
+<p>Pattern 会匹配 IR 的一个子图，然后将其更改为新的格式。</p>
+<p><code>ex6-opt</code> 可以用 <code>--debug</code> 来启动程序，程序会打印出转换的详细过程。</p>
+<p>Lowering 可以通过 <code>OpConversionPattern</code> 或 <code>OpRewritePattern</code> 实现。</p>
+<p>实例：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">ConvertToyToArithPass</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">:</span> toy<span style="color:#f92672">::</span>impl<span style="color:#f92672">::</span>ConvertToyToArithBase<span style="color:#f92672">&lt;</span>ConvertToyToArithPass<span style="color:#f92672">&gt;</span> {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">runOnOperation</span>() <span style="color:#66d9ef">final</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 1
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    ConversionTarget target(getContext());
+</span></span><span style="display:flex;"><span>    target.addLegalDialect<span style="color:#f92672">&lt;</span>arith<span style="color:#f92672">::</span>ArithDialect<span style="color:#f92672">&gt;</span>();
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 2
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    RewritePatternSet patterns(<span style="color:#f92672">&amp;</span>getContext());
+</span></span><span style="display:flex;"><span>    patterns.add<span style="color:#f92672">&lt;</span>AddOpPat, SubOpPat, ConstantOpPat<span style="color:#f92672">&gt;</span>(<span style="color:#f92672">&amp;</span>getContext());
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 3
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span> (failed(applyPartialConversion(getOperation(), target,
+</span></span><span style="display:flex;"><span>                                      std<span style="color:#f92672">::</span>move(patterns))))
+</span></span><span style="display:flex;"><span>      signalPassFailure();
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>这里我们使用了 applyPartialConversion，MLIR 支持三种 Conversion 模式：</p>
+<ol>
+<li>partialConversion：如果 Pattern 转换结果是 Legal，则保留转换结果。如果输入存在 IllegalOp 或 IllegalDialect，立刻报错。</li>
+<li>fullConversion：开始时可能是 Illegal 的。调用 Pattern 将其转换，直到全部 Legal 为止。</li>
+<li>greedyPatternRewrite：不需要提供 Target，贪心地尝试尽量多次修改。</li>
+</ol>
+<p>前两个常用于 Dialect Lowering 之中。而 geedyPatternRewrie 很适合用来写优化，比如我可以写一个把形如 toy.sub %a, %a 替换为 const 0: i32 的 pattern，希望 MLIR 尽量多优化它。</p>
+<h2 id="17-type-conversion">17. Type conversion<a hidden class="anchor" aria-hidden="true" href="#17-type-conversion">#</a></h2>
+<p>上文道：<code>OpConversionPattern</code> 特别用于Op lowering，它会把Type进行转换
+<code>addConversion</code>：添加一个 Type 的转换规则
+<code>addTargetMaterialization</code>：生成将 SourceType 转换为 TargetType 的代码块</p>
+<h2 id="18-tips">18 Tips<a hidden class="anchor" aria-hidden="true" href="#18-tips">#</a></h2>
+<p>MLIR 为我们写好了大量的 Dialect，我们想要的功能，那些 dialect 多半都已经实现过了。</p>
+<p>可以用 <code>mlir-opt --help</code>，<code>mlir-opt --help-hidden</code> 看看有那些 dialect 哪些选项，找到可能是和自己想要做的相似的，然后过去看代码，边看边抄大概就能实现好了。</p>
+<h2 id="19-vscode-中跳转到函数类的定义">19 Vscode 中跳转到函数类的定义<a hidden class="anchor" aria-hidden="true" href="#19-vscode-中跳转到函数类的定义">#</a></h2>
+<p>在 .vscode/ 下添加 c_cpp_properties.json</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;configurations&#34;</span>: [
+</span></span><span style="display:flex;"><span>        {
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&#34;name&#34;</span>: <span style="color:#e6db74">&#34;Linux&#34;</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&#34;includePath&#34;</span>: [
+</span></span><span style="display:flex;"><span>                <span style="color:#e6db74">&#34;${workspaceFolder}/**&#34;</span>,
+</span></span><span style="display:flex;"><span>                <span style="color:#e6db74">&#34;/home/junhui/workspace/llvm-project/llvm-install/include/**&#34;</span>,
+</span></span><span style="display:flex;"><span>                <span style="color:#e6db74">&#34;${workspaceFolder}/include/**&#34;</span>,
+</span></span><span style="display:flex;"><span>                <span style="color:#e6db74">&#34;/home/junhui/workspace/llvm-project/mlir/include/**&#34;</span>,
+</span></span><span style="display:flex;"><span>                <span style="color:#e6db74">&#34;/home/junhui/workspace/llvm-project/build/tools/mlir/include/mlir/IR/**&#34;</span>,
+</span></span><span style="display:flex;"><span>                <span style="color:#e6db74">&#34;/home/junhui/workspace/llvm-project/mlir/include/mlir/**&#34;</span>
+</span></span><span style="display:flex;"><span>            ],
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&#34;defines&#34;</span>: [],
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&#34;compilerPath&#34;</span>: <span style="color:#e6db74">&#34;/usr/bin/clang&#34;</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&#34;cStandard&#34;</span>: <span style="color:#e6db74">&#34;c17&#34;</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&#34;cppStandard&#34;</span>: <span style="color:#e6db74">&#34;c++17&#34;</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&#34;intelliSenseMode&#34;</span>: <span style="color:#e6db74">&#34;linux-clang-x64&#34;</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    ],
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;version&#34;</span>: <span style="color:#ae81ff">4</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="20-addnestedpass-和-addpass">20. addNestedPass 和 addPass<a hidden class="anchor" aria-hidden="true" href="#20-addnestedpass-和-addpass">#</a></h2>
+<ol>
+<li>addNestedPass</li>
+</ol>
+<p>当你使用 <code>addNestedPass</code> 时，你需要指定操作的类型，这个 Pass 将只会在这些操作的上下文中运行。如</p>
+<p><code>pm.addNestedPass&lt;func::FuncOp&gt;(createDecomposeAggregatedOps());</code></p>
+<p>在这个例子中，<code>createDecomposeAggregatedOps</code> 创建的 Pass 将作为嵌套 Pass 添加到所有 <code>func::FuncOp</code> 操作中。这意味着，只有当 Pass 管理器遍历到 <code>func::FuncOp</code> 操作时，<code>createDecomposeAggregatedOps</code> 创建的 Pass 才会执行。</p>
+<ol start="2">
+<li>addPass</li>
+</ol>
+<p>addPass 方法用于向 Pass 管理器添加一个全局 Pass，这种 Pass 作用于整个 IR 或 Pass 管理器当前管理的 IR 层次。如：</p>
+<p><code>pm.addPass(createFoldTensorOperation());</code></p>
+<p>在这个例子中，createFoldTensorOperation 创建的 Pass 将作为全局 Pass 添加到 Pass 管理器中。这个 Pass 将作用于整个模块或当前 Pass 管理器正在处理的 IR 层次，而不局限于特定类型的操作。</p>
+<p>总结：
+addNestedPass 通常用于那些需要在特定操作的上下文中进行优化或变换的场景，例如在函数操作内部进行局部优化；
+addPass 通常用于那些需要在更广泛范围内进行优化或变换的场景，例如跨多个函数或整个模块的优化。</p>
+<h2 id="什么情况下需要给我的-dialect-的某个op-指定-let-hascustomassemblyformat--1">什么情况下，需要给我的 Dialect 的某个Op 指定 let hasCustomAssemblyFormat = 1<a hidden class="anchor" aria-hidden="true" href="#什么情况下需要给我的-dialect-的某个op-指定-let-hascustomassemblyformat--1">#</a></h2>
+<p>来指示该操作有一个自定义的汇编格式。这意味着你需要为这个操作提供自定义的打印（printer）和解析（parser）逻辑，而不是使用 MLIR 默认生成的逻辑。</p>
+<p>需要自定义的情况：
+复杂的操作数或属性，特殊的语法要求，性能优化，与现有格式兼容</p>
+<h2 id="mlir-我的td文件中含有这两个声明">mlir 我的td文件中含有这两个声明：<a hidden class="anchor" aria-hidden="true" href="#mlir-我的td文件中含有这两个声明">#</a></h2>
+<p><code>def MithSwitchBarFoo: Pass&lt;&quot;mith-switch-bar-foo&quot;, &quot;::mlir::ModuleOp&quot;&gt; {}</code>
+<code>def ShapeInferenceOpInterface : OpInterface&lt;&quot;ShapeInference&quot;&gt; {}</code>
+这两者的区别是什么？可以放在同一个文件中吗？</p>
+<p>一个Pass可以作用于不同的IR层次，例如模块级别、函数级别或者更细粒度的操作级别。</p>
+<ul>
+<li>Pass 默认是关于IR的所有Op的，它定义了编译器的一个阶段，用于分析和修改IR。</li>
+<li>OpInterface 是应用于都使用 OpInterface 定义的Op的。</li>
+</ul>
+<h2 id="pass有operationpass-和-interfacepass-这里两种pass-的区别是什么ai-compiler过程中为什么需要这两种-pass">Pass有OperationPass 和 InterfacePass， 这里两种Pass 的区别是什么？AI compiler过程中为什么需要这两种 Pass？<a hidden class="anchor" aria-hidden="true" href="#pass有operationpass-和-interfacepass-这里两种pass-的区别是什么ai-compiler过程中为什么需要这两种-pass">#</a></h2>
+<ol>
+<li>
+<p>Operation Pass： Operation Pass 是针对特定 MLIR 操作类型的 Pass。它通常用于对特定类型的操作或操作的集合进行变换和优化。例如，你可以有一个 OperationPass 专门用于优化所有的 AffineForOp 操作。OperationPass 可以在操作的粒度上进行细粒度的变换。
+在 AI 编译器过程中，Operation Pass 可以用于执行特定操作的优化，如循环展开、常量传播、死代码消除等。</p>
+</li>
+<li>
+<p>InterfacePass： Interface Pass（在 MLIR 中通常称为 OpInterface Pass）是针对实现了特定接口的所有操作的 Pass。这种类型的 Pass 不是针对特定的操作类型，而是针对实现了特定接口的所有操作。例如，你可以有一个 OpInterface Pass 用于优化所有实现了 MemoryEffectOpInterface 的操作。
+在 AI 编译器过程中，OpInterface Pass 可以用于跨不同操作类型的优化，如内存访问优化、数据流分析等，这些优化依赖于操作的接口而不是操作的具体类型。</p>
+</li>
+</ol>
+<p>两种Pass 它们提供了不同层次的优化能力。</p>
+<h2 id="pass-和-patternrewrite-区别和侧重点">Pass 和 PatternRewrite 区别和侧重点<a hidden class="anchor" aria-hidden="true" href="#pass-和-patternrewrite-区别和侧重点">#</a></h2>
+<ol>
+<li>
+<p><del>Pass 通常有更广泛的视野，可以访问和修改整个 IR 结构。它可以对整个模块、函数或特定类型的操作进行变换和优化。可以是模块级别的，也可以是操作级别的。Pass 通常由 Pass 管理器管理，并按照特定的顺序执行。</del></p>
+</li>
+<li>
+<p><del>Pattern Rewrite 是 MLIR 中的一种局部变换机制，它使用模式匹配和替换来优化和变换操作。每个模式定义了一个特定的匹配规则和相应的替换规则。当一个操作与模式匹配时，它会被替换为模式指定的新操作或操作序列。Pattern Rewrite 提供了一种局部的、基于规则的变换机制。Pattern Rewrite 通常在 Dialect Conversion Framework 中使用，该框架允许将一种方言的操作转换为另一种方言的操作。</del></p>
+</li>
+</ol>
+<p>关系是，通过 PatternRewrite 来实现一个Pass</p>
+<h2 id="opconversionpattern-vs-oprewritepattern">OpConversionPattern VS OpRewritePattern<a hidden class="anchor" aria-hidden="true" href="#opconversionpattern-vs-oprewritepattern">#</a></h2>
+<ol>
+<li>OpConversionPattern: 特指Lowering，将一个IR的Op转换为另一个IR的Op，</li>
+<li>OpRewritePattern: 用于更一般的场景，但是不涉及类型转换，对Op进行匹配和重写，专注于Op的结构。比如 <code>transpose(transpose(x)) -&gt; x</code> 的匹配和重写。当然也可以是Op的lowering
+功能包含关系，都可以实现Lowering Op，如下两个Lowering 分别继承了 上述两者：</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">PrintOpLowering</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> OpConversionPattern<span style="color:#f92672">&lt;</span>toy<span style="color:#f92672">::</span>PrintOp<span style="color:#f92672">&gt;</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">using</span> OpConversionPattern<span style="color:#f92672">&lt;</span>toy<span style="color:#f92672">::</span>PrintOp<span style="color:#f92672">&gt;::</span>OpConversionPattern;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  LogicalResult
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">matchAndRewrite</span>(toy<span style="color:#f92672">::</span>PrintOp op, OpAdaptor adaptor,
+</span></span><span style="display:flex;"><span>                  ConversionPatternRewriter <span style="color:#f92672">&amp;</span>rewriter) <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">final</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// We don&#39;t lower &#34;toy.print&#34; in this pass, but we need to update its
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// operands.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    rewriter.modifyOpInPlace(op,
+</span></span><span style="display:flex;"><span>                             [<span style="color:#f92672">&amp;</span>] { op<span style="color:#f92672">-&gt;</span>setOperands(adaptor.getOperands()); });
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> success();
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">ReturnOpLowering</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> OpRewritePattern<span style="color:#f92672">&lt;</span>toy<span style="color:#f92672">::</span>ReturnOp<span style="color:#f92672">&gt;</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">using</span> OpRewritePattern<span style="color:#f92672">&lt;</span>toy<span style="color:#f92672">::</span>ReturnOp<span style="color:#f92672">&gt;::</span>OpRewritePattern;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  LogicalResult <span style="color:#a6e22e">matchAndRewrite</span>(toy<span style="color:#f92672">::</span>ReturnOp op,
+</span></span><span style="display:flex;"><span>                                PatternRewriter <span style="color:#f92672">&amp;</span>rewriter) <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">final</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// During this lowering, we expect that all function calls have been
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// inlined.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span> (op.hasOperand())
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">return</span> failure();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// We lower &#34;toy.return&#34; directly to &#34;func.return&#34;.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    rewriter.replaceOpWithNewOp<span style="color:#f92672">&lt;</span>func<span style="color:#f92672">::</span>ReturnOp<span style="color:#f92672">&gt;</span>(op);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> success();
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><h2 id="使用td文件定义pass时是否给出-constructor">使用td文件定义Pass时，是否给出 constructor<a hidden class="anchor" aria-hidden="true" href="#使用td文件定义pass时是否给出-constructor">#</a></h2>
+<p>构造函数（constructor）用于初始化 Pass 的实例。在 .td 文件中，你可以指定 Pass 的构造函数，以便在创建 Pass 实例时传递参数或执行初始化代码。</p>
+<p>如果你在 .td 文件中为 Pass 提供了构造函数，那么当 Pass 被创建时，这个构造函数将被调用。这允许你传递配置选项或其他参数给 Pass。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-tablegen" data-lang="tablegen"><span style="display:flex;"><span><span style="color:#66d9ef">def</span> MyPass : Pass&lt;<span style="color:#e6db74">&#34;my-pass&#34;</span>&gt; {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">let</span> constructor = <span style="color:#e6db74">&#34;createMyPass(OptionType option)&#34;</span>;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">let</span> options = (ins Option&lt;<span style="color:#e6db74">&#34;option&#34;</span>, <span style="color:#e6db74">&#34;OptionType&#34;</span>, <span style="color:#e6db74">&#34;default_value&#34;</span>,
+</span></span><span style="display:flex;"><span>                            <span style="color:#e6db74">&#34;Description of the option&#34;</span>&gt;:$option);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>如果你没有在 .td 文件中指定构造函数，MLIR 的 TableGen 将使用<strong>默认的无参数构造函数</strong>来创建 Pass 的实例。在这种情况下，<strong>你的 Pass 应该有一个无参数的构造函数，或者你需要在 C++ 代码中定义一个显式的构造函数</strong>。进而，如果你需要在 Pass 中使用参数或配置选项，但 .td 文件中没有定义构造函数，你可以在 C++ 代码中手动添加构造函数和相应的创建函数。例如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">MyPass</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> PassWrapper<span style="color:#f92672">&lt;</span>MyPass, OperationPass<span style="color:#f92672">&lt;</span>ModuleOp<span style="color:#f92672">&gt;&gt;</span> {
+</span></span><span style="display:flex;"><span>  MyPass(OptionType option) <span style="color:#f92672">:</span> optionValue(option) {}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  OptionType optionValue;
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>unique_ptr<span style="color:#f92672">&lt;</span>Pass<span style="color:#f92672">&gt;</span> createMyPass(OptionType option) {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> std<span style="color:#f92672">::</span>make_unique<span style="color:#f92672">&lt;</span>MyPass<span style="color:#f92672">&gt;</span>(option);
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="如何执行mlir文件得到计算结果">如何执行mlir文件得到计算结果？<a hidden class="anchor" aria-hidden="true" href="#如何执行mlir文件得到计算结果">#</a></h2>
+<p>搜索 <code>mlir-cpu-runner</code>, 这个文件可以及时执行得到结果</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>mlir-opt /home/junhui/workspace/graph-compiler/llvm-project/mlir/test/Integration/Dialect/ControlFlow/assert.mlir -test-cf-assert -convert-func-to-llvm | mlir-cpu-runner -e main -entry-point-result<span style="color:#f92672">=</span>void
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>mlir-opt /home/junhui/workspace/graph-compiler/llvm-project/mlir/test/Integration/Dialect/Linalg/CPU/runtime-verification.mlir <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> -generate-runtime-verification <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> -one-shot-bufferize<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;bufferize-function-boundaries&#34;</span> <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> -convert-linalg-to-loops <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> -expand-strided-metadata <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> -lower-affine <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> -convert-scf-to-cf <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> -test-cf-assert <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> -convert-index-to-llvm <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> -finalize-memref-to-llvm <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> -convert-func-to-llvm <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> -reconcile-unrealized-casts | <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> mlir-cpu-runner -e main -entry-point-result<span style="color:#f92672">=</span>void <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>     -shared-libs<span style="color:#f92672">=</span>./llvm-project/build/lib/libmlir_runner_utils.so,./llvm-project/build/lib/libmlir_c_runner_utils.so <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>     2&gt;&amp;<span style="color:#ae81ff">1</span> | FileCheck /home/junhui/workspace/graph-compiler/llvm-project/mlir/test/Integration/Dialect/Linalg/CPU/runtime-verification.mlir
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>mlir-opt /home/junhui/workspace/graph-compiler/llvm-project/mlir/test/Integration/Dialect/Linalg/CPU/test-collapse-tensor.mlir <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> -one-shot-bufferize<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;bufferize-function-boundaries&#34;</span> <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> -finalizing-bufferize -buffer-deallocation-pipeline -convert-bufferization-to-memref <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> -convert-scf-to-cf -expand-strided-metadata -lower-affine -convert-cf-to-llvm -convert-arith-to-llvm <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> -finalize-memref-to-llvm -convert-func-to-llvm -reconcile-unrealized-casts | <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span> mlir-cpu-runner -e main -entry-point-result<span style="color:#f92672">=</span>void <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>   -shared-libs<span style="color:#f92672">=</span>./llvm-project/build/lib/libmlir_runner_utils.so,./llvm-project/build/lib/libmlir_c_runner_utils.so
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>mlir-opt /home/junhui/workspace/graph-compiler/llvm-project/mlir/test/Integration/Dialect/Linalg/CPU/test-conv-1d-call.mlir <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>  -test-transform-dialect-erase-schedule <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>  -convert-linalg-to-loops <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>  -convert-scf-to-cf <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>  -expand-strided-metadata <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>  -lower-affine <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>  -convert-arith-to-llvm <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>  -convert-scf-to-cf <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>  --finalize-memref-to-llvm <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>  -convert-func-to-llvm <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>  -reconcile-unrealized-casts | mlir-cpu-runner -e main <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>    -entry-point-result<span style="color:#f92672">=</span>void <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>    -shared-libs<span style="color:#f92672">=</span>./llvm-project/build/lib/libmlir_runner_utils.so,./llvm-project/build/lib/libmlir_c_runner_utils.so
+</span></span></code></pre></div><p><code>mlir-cpu-runner</code> 是MLIR项目提供的一个工具，它用于直接执行MLIR文件中定义的函数，而不是生成可执行文件。当你使用 <code>mlir-cpu-runner</code> 时，它会在运行时编译MLIR代码并执行指定的函数。这个过程通常涉及将MLIR代码转换为LLVM IR，然后使用即时编译（JIT）技术执行生成的代码。使用<code>-e</code>选项后跟函数名（如main）可以指定要执行的函数。<code>mlir-cpu-runner</code>会查找<code>MLIR</code>文件中名为<code>main</code>的函数，并执行它。这个工具主要用于测试和调试MLIR代码，它允许开发者快速运行和验证MLIR函数的行为，而无需经过完整的编译链接生成可执行文件的过程。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/compiler/">Compiler</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

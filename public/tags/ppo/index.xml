@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>PPO on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/ppo/</link>
+    <description>Recent content in PPO on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:52:03 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/ppo/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>1.12.PPO</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/1-12.ppo/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:03 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/1-12.ppo/</guid>
+      <description>&lt;p&gt;&lt;strong&gt;Proximal Policy Optimization&lt;/strong&gt; 是基于 Actor-Critic 的一种算法，它的核&lt;strong&gt;心是通过不让 Policy 更新的太快，进而稳定训练过程&lt;/strong&gt;（与 KL div 所用类似）。&lt;/p&gt;
+&lt;p&gt;为达成以上，使用使用一个比率来表示当前策略和旧策略之间的差异，并将此比率裁剪到特定的范围 $[1-\epsilon, 1+\epsilon]$ 中。&lt;/p&gt;
+&lt;h2 id=&#34;intuition&#34;&gt;Intuition&lt;/h2&gt;
+&lt;p&gt;当前策略（current policy）相对于之前策略（former policy）的变化程度 进行剪裁，这个范围通常是 $[1-\epsilon, 1+\epsilon]$ ，其中 $\epsilon$ 是一个小的超参数（例如0.2）。 如果比例小于 $1 - \epsilon$ ，则将其设置为 $1 - \epsilon$；如果比例大于 $1 + \epsilon$ ，则将其设置为 $1 + \epsilon$。&lt;/p&gt;
+&lt;p&gt;所以 PPO 算法不允许当前策略相对于之前策略发生过大的变化。较之前策略&lt;strong&gt;过大的偏离将会被移除&lt;/strong&gt;，通过上述的 Clip 区间。&lt;/p&gt;
+&lt;h2 id=&#34;举例说明&#34;&gt;举例说明&lt;/h2&gt;
+&lt;p&gt;假设 $\epsilon = 0.2$，当前策略和之前策略在状态 s 下采取动作 a 的概率如下：&lt;/p&gt;
+&lt;p&gt;$π_θ(a|s) = 0.8$（当前策略）, $π_θ^{old}(a|s) = 0.5$（之前策略）&lt;/p&gt;
+&lt;p&gt;则比例为：&lt;code&gt;ratio = 0.8 / 0.5 = 1.6&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;由于 $1.6 &amp;gt; (1 + \epsilon) = 1.2$，因此需要对比例进行裁剪，将其设置为 &lt;code&gt;1.2&lt;/code&gt;。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>1.13.PPO From Scratch</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/1-13.ppo-from-scratch/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:03 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/1-13.ppo-from-scratch/</guid>
+      <description>&lt;h1 id=&#34;工具&#34;&gt;工具&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;MuJoCo&lt;/strong&gt; environments 指的是使用 MuJoCo 物理引擎构建的模拟环境 . MuJoCo (Multi-Joint dynamics with Contact) 是一款用于机器人、生物力学、图形和动画等领域的研究和开发的物理引擎，它能够进行快速而精确的仿真。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;CartPole-v1&lt;/strong&gt; 环境主要存在于 Gymnasium 库中，它是 Gym 库的后继者 。Gym 库已经停止更新，所有开发工作都已转移到 Gymnasium。&lt;/p&gt;
+&lt;h2 id=&#34;cartpole-v1-环境信息&#34;&gt;CartPole-v1 环境信息&lt;/h2&gt;
+&lt;p&gt;首先要知道 CartPole-v1 环境的动作和观测空间：&lt;/p&gt;
+&lt;h3 id=&#34;1-动作空间-action-space&#34;&gt;1. 动作空间 (Action Space):&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;类型: Discrete(2)&lt;/li&gt;
+&lt;li&gt;动作数量: 2&lt;/li&gt;
+&lt;li&gt;取值：
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;0: 将车向左推&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;1: 将车向右推&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;2-观测空间-observation-space&#34;&gt;2. 观测空间 (Observation Space):&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;类型: Box(4,)&lt;/li&gt;
+&lt;li&gt;观测数量: 4&lt;/li&gt;
+&lt;li&gt;取值：
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;0: 车的位置（Cart Position）&lt;/strong&gt;，范围为 &lt;code&gt;[-4.8, 4.8]&lt;/code&gt;，但如果超出 &lt;code&gt;[-2.4, 2.4]&lt;/code&gt; 范围，则 episode 结束&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;1: 车的速度（Cart Velocity）&lt;/strong&gt;，范围为 &lt;code&gt;[-Inf, Inf]&lt;/code&gt;。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;2: 杆的角度（Pole Angle）&lt;/strong&gt;，范围约为 &lt;code&gt;[-0.418 rad (-24°), 0.418 rad (24°)]&lt;/code&gt;，但如果超出 &lt;code&gt;[-0.2095, 0.2095]&lt;/code&gt; (±12°) 范围，则 episode 结束&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;3: 杆的角速度（Pole Angular Velocity）&lt;/strong&gt;，范围为 &lt;code&gt;[-Inf, Inf]&lt;/code&gt;。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;kaq-observation-和-state的区别&#34;&gt;KAQ: Observation 和 State的区别&lt;/h3&gt;
+&lt;p&gt;在完全可观测环境中（如CartPole），&lt;strong&gt;Agent 可以直接获取环境的真实状态，即 observation 等于 state&lt;/strong&gt;。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

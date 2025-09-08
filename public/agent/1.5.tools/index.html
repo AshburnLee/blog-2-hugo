@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>1.5.Tools | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="Agent, Smolagents, MCP">
+<meta name="description" content="定义 Tools
+工具被视为一个 LLM 可以在代理系统中调用的函数。为了使 LLM 与 tools 交互，LLM 需要一个知道这个 Tools 的 interface description，包括：Name，Tool description，Input Type and description，Output Type。
+创建Tools
+在 smolagents 框架中，两种方式创建 Tools：
+
+使用 @tool 装饰器，定义相对简单的工具
+设计 Tool 类 实现相对复杂的工具
+
+两类创建的方式实例见 这里
+其中使用 Python 类定义的 Tools 必须要定义 forward()，它包含推理逻辑以执行的方法。并且是这个工具的交互接口，并且 Agent 无需关心工具的具体实现，只需知道如何调用 forward 函数即可。
+默认工具
+smolagents 附带了一套预构建的工具
+
+PythonInterpreterTool
+FinalAnswerTool
+UserInputTool
+DuckDuckGoSearchTool
+GoogleSearchTool
+VisitWebpageTool
+
+分享工具和导入工具
+通过 load_tool() 功能轻松导入其他用户创建的工具。通过 Tool.from_space() 将一个 HF Space 作为工具导入。甚至可以重用其他框架（非 smolagents）中的 Tools，比如使用 LangChain 框架中的 Tools: Tool.from_langchain()。
+smolagents 也允许从 glama.ai 或 smithery.ai 上可用的数百个 MCP 服务器导入工具。">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/agent/1.5.tools/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/agent/1.5.tools/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/agent/1.5.tools/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="1.5.Tools">
+  <meta property="og:description" content="定义 Tools 工具被视为一个 LLM 可以在代理系统中调用的函数。为了使 LLM 与 tools 交互，LLM 需要一个知道这个 Tools 的 interface description，包括：Name，Tool description，Input Type and description，Output Type。
+创建Tools 在 smolagents 框架中，两种方式创建 Tools：
+使用 @tool 装饰器，定义相对简单的工具 设计 Tool 类 实现相对复杂的工具 两类创建的方式实例见 这里
+其中使用 Python 类定义的 Tools 必须要定义 forward()，它包含推理逻辑以执行的方法。并且是这个工具的交互接口，并且 Agent 无需关心工具的具体实现，只需知道如何调用 forward 函数即可。
+默认工具 smolagents 附带了一套预构建的工具
+PythonInterpreterTool FinalAnswerTool UserInputTool DuckDuckGoSearchTool GoogleSearchTool VisitWebpageTool 分享工具和导入工具 通过 load_tool() 功能轻松导入其他用户创建的工具。通过 Tool.from_space() 将一个 HF Space 作为工具导入。甚至可以重用其他框架（非 smolagents）中的 Tools，比如使用 LangChain 框架中的 Tools: Tool.from_langchain()。
+smolagents 也允许从 glama.ai 或 smithery.ai 上可用的数百个 MCP 服务器导入工具。">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="agent">
+    <meta property="article:published_time" content="2025-08-31T12:13:27+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:13:27+08:00">
+    <meta property="article:tag" content="Agent">
+    <meta property="article:tag" content="Smolagents">
+    <meta property="article:tag" content="MCP">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="1.5.Tools">
+<meta name="twitter:description" content="定义 Tools
+工具被视为一个 LLM 可以在代理系统中调用的函数。为了使 LLM 与 tools 交互，LLM 需要一个知道这个 Tools 的 interface description，包括：Name，Tool description，Input Type and description，Output Type。
+创建Tools
+在 smolagents 框架中，两种方式创建 Tools：
+
+使用 @tool 装饰器，定义相对简单的工具
+设计 Tool 类 实现相对复杂的工具
+
+两类创建的方式实例见 这里
+其中使用 Python 类定义的 Tools 必须要定义 forward()，它包含推理逻辑以执行的方法。并且是这个工具的交互接口，并且 Agent 无需关心工具的具体实现，只需知道如何调用 forward 函数即可。
+默认工具
+smolagents 附带了一套预构建的工具
+
+PythonInterpreterTool
+FinalAnswerTool
+UserInputTool
+DuckDuckGoSearchTool
+GoogleSearchTool
+VisitWebpageTool
+
+分享工具和导入工具
+通过 load_tool() 功能轻松导入其他用户创建的工具。通过 Tool.from_space() 将一个 HF Space 作为工具导入。甚至可以重用其他框架（非 smolagents）中的 Tools，比如使用 LangChain 框架中的 Tools: Tool.from_langchain()。
+smolagents 也允许从 glama.ai 或 smithery.ai 上可用的数百个 MCP 服务器导入工具。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Agent",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/agent/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "1.5.Tools",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/agent/1.5.tools/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "1.5.Tools",
+  "name": "1.5.Tools",
+  "description": "定义 Tools 工具被视为一个 LLM 可以在代理系统中调用的函数。为了使 LLM 与 tools 交互，LLM 需要一个知道这个 Tools 的 interface description，包括：Name，Tool description，Input Type and description，Output Type。\n创建Tools 在 smolagents 框架中，两种方式创建 Tools：\n使用 @tool 装饰器，定义相对简单的工具 设计 Tool 类 实现相对复杂的工具 两类创建的方式实例见 这里\n其中使用 Python 类定义的 Tools 必须要定义 forward()，它包含推理逻辑以执行的方法。并且是这个工具的交互接口，并且 Agent 无需关心工具的具体实现，只需知道如何调用 forward 函数即可。\n默认工具 smolagents 附带了一套预构建的工具\nPythonInterpreterTool FinalAnswerTool UserInputTool DuckDuckGoSearchTool GoogleSearchTool VisitWebpageTool 分享工具和导入工具 通过 load_tool() 功能轻松导入其他用户创建的工具。通过 Tool.from_space() 将一个 HF Space 作为工具导入。甚至可以重用其他框架（非 smolagents）中的 Tools，比如使用 LangChain 框架中的 Tools: Tool.from_langchain()。\nsmolagents 也允许从 glama.ai 或 smithery.ai 上可用的数百个 MCP 服务器导入工具。\n",
+  "keywords": [
+    "Agent", "Smolagents", "MCP"
+  ],
+  "articleBody": "定义 Tools 工具被视为一个 LLM 可以在代理系统中调用的函数。为了使 LLM 与 tools 交互，LLM 需要一个知道这个 Tools 的 interface description，包括：Name，Tool description，Input Type and description，Output Type。\n创建Tools 在 smolagents 框架中，两种方式创建 Tools：\n使用 @tool 装饰器，定义相对简单的工具 设计 Tool 类 实现相对复杂的工具 两类创建的方式实例见 这里\n其中使用 Python 类定义的 Tools 必须要定义 forward()，它包含推理逻辑以执行的方法。并且是这个工具的交互接口，并且 Agent 无需关心工具的具体实现，只需知道如何调用 forward 函数即可。\n默认工具 smolagents 附带了一套预构建的工具\nPythonInterpreterTool FinalAnswerTool UserInputTool DuckDuckGoSearchTool GoogleSearchTool VisitWebpageTool 分享工具和导入工具 通过 load_tool() 功能轻松导入其他用户创建的工具。通过 Tool.from_space() 将一个 HF Space 作为工具导入。甚至可以重用其他框架（非 smolagents）中的 Tools，比如使用 LangChain 框架中的 Tools: Tool.from_langchain()。\nsmolagents 也允许从 glama.ai 或 smithery.ai 上可用的数百个 MCP 服务器导入工具。\nKAQ: 什么是 MCP LLM 通常受限于其训练数据，无法获取实时信息或使用专业工具。这种局限性阻碍了 AI 系统在许多场景中提供真正相关、准确和有用的响应的潜力。\n这就是模型上下文协议（MCP）的作用所在。MCP 使 AI 大模型能够连接到外部数据源、工具和环境，从而实现 AI 系统与更广泛的数字世界之间信息和能力的无缝传输。这种互操作性对于真正有用的 AI 应用的成长和采用至关重要。\n更多关于 MCP learn MCP\n",
+  "wordCount" : "94",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:13:27+08:00",
+  "dateModified": "2025-08-31T12:13:27+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/agent/1.5.tools/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      1.5.Tools
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:13:27 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><h2 id="定义-tools">定义 Tools<a hidden class="anchor" aria-hidden="true" href="#定义-tools">#</a></h2>
+<p>工具被视为一个 LLM 可以在代理系统中调用的函数。为了使 LLM 与 tools 交互，LLM 需要一个知道这个 Tools 的 interface description，包括：Name，Tool description，Input Type and description，Output Type。</p>
+<h2 id="创建tools">创建Tools<a hidden class="anchor" aria-hidden="true" href="#创建tools">#</a></h2>
+<p>在 smolagents 框架中，两种方式创建 Tools：</p>
+<ol>
+<li>使用 <code>@tool</code> 装饰器，定义相对简单的工具</li>
+<li>设计 <code>Tool</code> 类 实现相对复杂的工具</li>
+</ol>
+<p>两类创建的方式实例见 <a href="1.4.codeagent-smolagents-%E4%BE%8B.md#code">这里</a></p>
+<p>其中使用 Python 类定义的 Tools 必须要定义 <code>forward()</code>，它包含推理逻辑以执行的方法。并且是这个工具的交互接口，并且 Agent 无需关心工具的具体实现，只需知道如何调用 forward 函数即可。</p>
+<h2 id="默认工具">默认工具<a hidden class="anchor" aria-hidden="true" href="#默认工具">#</a></h2>
+<p>smolagents 附带了一套预构建的工具</p>
+<ul>
+<li><code>PythonInterpreterTool</code></li>
+<li><code>FinalAnswerTool</code></li>
+<li><code>UserInputTool</code></li>
+<li><code>DuckDuckGoSearchTool</code></li>
+<li><code>GoogleSearchTool</code></li>
+<li><code>VisitWebpageTool</code></li>
+</ul>
+<h2 id="分享工具和导入工具">分享工具和导入工具<a hidden class="anchor" aria-hidden="true" href="#分享工具和导入工具">#</a></h2>
+<p>通过 <code>load_tool()</code> 功能轻松导入其他用户创建的工具。通过 <code>Tool.from_space()</code> 将一个 HF Space 作为工具导入。甚至可以重用其他框架（非 smolagents）中的 Tools，比如使用 LangChain 框架中的 Tools: <code>Tool.from_langchain()</code>。</p>
+<p>smolagents 也允许从 <code>glama.ai</code> 或 <code>smithery.ai</code> 上可用的数百个 <strong>MCP</strong> 服务器导入工具。</p>
+<h2 id="kaq-什么是-mcp">KAQ: 什么是 MCP<a hidden class="anchor" aria-hidden="true" href="#kaq-什么是-mcp">#</a></h2>
+<p>LLM 通常受限于其训练数据，<strong>无法获取实时信息或使用专业工具</strong>。这种局限性阻碍了 AI 系统在许多场景中提供真正相关、准确和有用的响应的潜力。</p>
+<p>这就是<strong>模型上下文协议</strong>（MCP）的作用所在。MCP 使 AI 大模型能够连接到外部数据源、工具和环境，从而实现 AI 系统与更广泛的数字世界之间信息和能力的无缝传输。这种<strong>互操作性</strong>对于真正有用的 AI 应用的成长和采用至关重要。</p>
+<p>更多关于 MCP <a href="https://huggingface.co/learn/mcp-course/unit1/introduction">learn MCP</a></p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/agent/">Agent</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/smolagents/">Smolagents</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/mcp/">MCP</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

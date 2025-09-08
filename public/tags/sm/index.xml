@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>SM on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/sm/</link>
+    <description>Recent content in SM on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:45:54 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/sm/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Warp 线程调度</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/cuda-notes/warp-%E7%BA%BF%E7%A8%8B%E8%B0%83%E5%BA%A6/</link>
+      <pubDate>Sun, 31 Aug 2025 12:45:54 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/cuda-notes/warp-%E7%BA%BF%E7%A8%8B%E8%B0%83%E5%BA%A6/</guid>
+      <description>&lt;h2 id=&#34;线程调度&#34;&gt;线程调度&lt;/h2&gt;
+&lt;p&gt;为什么 GPU 的 threads 数量远远多于物理执行单元（SP）。主要原因在于线程的并发执行和多线程的掩盖。虽然 SM 也有上下文切换，但这不是主要原因。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;多线程掩盖&lt;/strong&gt; (Multithreading Masking): 当一个 Warp 中的线程遇到内存访问延迟或其他阻塞操作时，SM 会迅速（零开销）切换到另一个 Warp，继续执行其他线程。这被称为多线程掩盖。通过快速切换 Warp，SM 能够隐藏延迟，提高整体吞吐量。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;非传统的上下文切换&lt;/strong&gt;: 虽然 SM 会进行上下文切换，但这主要用于在&lt;strong&gt;不同 Warp 之间切换&lt;/strong&gt;，以最大限度地利用资源，而不是像 CPU 一样频繁地进行线程上下文切换。 CPU 的上下文切换开销相对较大，而 GPU 的上下文切换开销相对较小，因为 &lt;strong&gt;Warp 的切换开销远小于线程的开销&lt;/strong&gt;。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;总而言之，GPU 的线程数量远大于物理执行单元，是其架构设计和并行计算策略的结果。&lt;/p&gt;
+&lt;h2 id=&#34;warp-调度&#34;&gt;Warp 调度&lt;/h2&gt;
+&lt;p&gt;当一个 Warp 因为内存访问或其他原因暂停执行时，&lt;strong&gt;Warp 调度器&lt;/strong&gt;会立即选择另一个准备就绪的 Warp 开始执行，从而最大限度地利用 SM 的计算资源，避免空闲。这个切换过程发生在硬件层面，速度极快，其开销被隐藏在硬件的流水线中。&lt;strong&gt;Warp 调度机制通过硬件层面的优化&lt;/strong&gt;，将上下文切换的开销降到极低。***&lt;/p&gt;
+&lt;p&gt;Warp 调度时，究竟有没有上下文切换？ 答：没有！&lt;/p&gt;
+&lt;p&gt;假设一个 CUDA 设备拥有 16 个 SM，每个 SM 包含 128 个SP。这些 SP 并非独立执行不同的指令，而是以 Warp 为单位协同工作。每个 Warp 包含 32 个线程，这些线程同时执行相同的指令。一个 SM 可以同时运行多个 Warp，并在它们之间快速切换，以&lt;strong&gt;最大限度地利用 SP 并隐藏延迟&lt;/strong&gt;。总共有 12288 个线程，这些线程被分配到不同的 Warp 和 SM 中执行。SM 通过调度这些 Warp 来实现高吞吐量和延迟隐藏。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

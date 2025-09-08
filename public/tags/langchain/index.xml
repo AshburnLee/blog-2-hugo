@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>LangChain on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/langchain/</link>
+    <description>Recent content in LangChain on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:13:32 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/langchain/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>3.4.实例sentence Embedding</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/3.4.%E5%AE%9E%E4%BE%8Bsentence-embedding/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:32 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/3.4.%E5%AE%9E%E4%BE%8Bsentence-embedding/</guid>
+      <description>&lt;p&gt;&lt;code&gt;paraphrase-multilingual-MiniLM-L12-v2&lt;/code&gt; 是一个预训练的 Sentence Transformers 模型，由 Hugging Face 社区提供，专门用于生成句子的语义嵌入（embeddings）。这是个公开模型，不需要 &lt;code&gt;huggingface token&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;下载内容有 MiniLM 模型权值文件，配置文件，分词文件，等，下载位置是 &lt;code&gt;~/.cache/huggingface/hub/&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;首次调用 HuggingFaceEmbeddings 时，如果本地无缓存，sentence-transformers 会自动从 Hugging Face Hub 下载。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Chroma.from_documents&lt;/code&gt; 创建一个本地的向量数据库，将文档嵌入存储在内存或磁盘中，&lt;code&gt;collection_name=&amp;quot;weather_collection&amp;quot;&lt;/code&gt; 是数据库中用于组织文档的集合名称。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain_core.documents &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; Document
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain_community.vectorstores &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; Chroma
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain_community.embeddings &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; HuggingFaceEmbeddings
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 定义文档列表&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;docs &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    Document(page_content&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;上海的天气通常在夏季炎热潮湿，冬季寒冷干燥。夏季平均气温约 30°C，冬季约 5°C。&amp;#34;&lt;/span&gt;, metadata&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;{&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;city&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;上海&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;source&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;weather_guide&amp;#34;&lt;/span&gt;}),
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    Document(page_content&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;北京的天气四季分明，夏季炎热，冬季非常寒冷且有沙尘暴。冬季气温可低至 -10°C。&amp;#34;&lt;/span&gt;, metadata&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;{&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;city&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;北京&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;source&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;weather_guide&amp;#34;&lt;/span&gt;}),
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    Document(page_content&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;广州的天气全年温暖，夏季多雨，冬季温和。年平均气温约 22°C。&amp;#34;&lt;/span&gt;, metadata&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;{&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;city&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;广州&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;source&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;weather_guide&amp;#34;&lt;/span&gt;})
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;]
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 初始化 sentence-transformers 嵌入模型&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;embedding_model &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; HuggingFaceEmbeddings(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    model_name&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;paraphrase-multilingual-MiniLM-L12-v2&amp;#34;&lt;/span&gt;,  &lt;span style=&#34;color:#75715e&#34;&gt;# 支持中文的多语言模型&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    model_kwargs&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;{&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;device&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;cpu&amp;#34;&lt;/span&gt;}  &lt;span style=&#34;color:#75715e&#34;&gt;# 可改为 &amp;#34;cuda&amp;#34; 如果有 GPU&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 初始化 Chroma 向量存储&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# Vector Store 是 LangChain 的核心组件之一&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;vectorstore &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Chroma&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_documents(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    documents&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;docs,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    embedding&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;embedding_model,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    collection_name&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;weather_collection&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 创建检索器，设置 top-k=1&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;retriever &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; vectorstore&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;as_retriever(search_kwargs&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;{&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;k&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;})
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 查询&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;query &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;有沙尘暴的城市&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 调用检索器,索引相关内容&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;results &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; retriever&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;invoke(query)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 输出结果&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;查询:&amp;#34;&lt;/span&gt;, query)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;\n&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;检索结果:&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; i, doc &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(results, &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;):
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    print(&lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;文档 &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;i&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;:&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    print(&lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;内容: &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;doc&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;page_content&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    print(&lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;元数据: &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;doc&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;metadata&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;正确输出
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</description>
+    </item>
+    <item>
+      <title>3.4.实例summarize_url</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/3.4.%E5%AE%9E%E4%BE%8Bsummarize_url/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:32 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/3.4.%E5%AE%9E%E4%BE%8Bsummarize_url/</guid>
+      <description>&lt;h1 id=&#34;总结并输出一个-url-中的文字内容&#34;&gt;总结并输出一个 URL 中的文字内容&lt;/h1&gt;
+&lt;p&gt;Perplexity 和 Grok 都没有访问 URL 的能力，其输出是基于训练数据。其的回答中涉及到的参考页面都是你的&lt;strong&gt;训练数据而不是实时的网页访问&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;学习一个东西，需要读其文档，文档太多，需要一个工具来总结。&lt;/p&gt;
+&lt;h2 id=&#34;实现一&#34;&gt;实现一&lt;/h2&gt;
+&lt;p&gt;第一次执行 &lt;code&gt;summarizer = pipeline(&amp;quot;summarization&amp;quot;, model=&amp;quot;facebook/bart-large-cnn&amp;quot;)&lt;/code&gt; 时，Hugging Face 模型中心（Hugging Face Hub）下载与 &amp;ldquo;facebook/bart-large-cnn&amp;rdquo; 模型相关内容 config.json、model.safetensors（1.6GB）、generation_config.json、vocab.json、merges.txt、tokenizer.json:&lt;/p&gt;
+&lt;p&gt;这个模型是公开模型，不需要token。但是对于受限模型或私有模型，就需要了，最好的方式是：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; huggingface_hub &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; login
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;login(token&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;your_hf_token&amp;#34;&lt;/span&gt;)  &lt;span style=&#34;color:#75715e&#34;&gt;# 或将TOKEN一环境变量形式写如env&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;从 huggingface 中下载的数据和模型存放在 &lt;code&gt;~/.cache/huggingface/hub&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;code（works）：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain_community.document_loaders &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; WebBaseLoader
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain.chains.summarize &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; load_summarize_chain
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain.text_splitter &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; CharacterTextSplitter
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; os
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 1. 模型&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; transformers &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; pipeline
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain.llms &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; HuggingFacePipeline  &lt;span style=&#34;color:#75715e&#34;&gt;# 第一次使用时会下载内容&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;summarizer &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; pipeline(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;summarization&amp;#34;&lt;/span&gt;, model&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;facebook/bart-large-cnn&amp;#34;&lt;/span&gt;)  &lt;span style=&#34;color:#75715e&#34;&gt;# 由 Facebook 开发的 BART 模型，专门为文本摘要任务优化&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;llm &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; HuggingFacePipeline(pipeline&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;summarizer)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;输出复合预期
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# local LLM&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# from langchain_ollama import ChatOllama&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# os.environ[&amp;#34;http_proxy&amp;#34;] = &amp;#34;http://127.0.0.1:11434&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# os.environ[&amp;#34;https_proxy&amp;#34;] = &amp;#34;http://127.0.0.1:11434&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# infer_server_url = &amp;#34;http://localhost:11434/&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# model_name = &amp;#34;qwen3:1.7b&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# llm = ChatOllama(&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#     model=model_name,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#     base_url=infer_server_url,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#     api_key=&amp;#34;none&amp;#34;,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#     temperature=0,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#     stream=False&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# )&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;Sample url: https://ollama.com/
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;Output from qwen3:1.7b: 
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;Ollama&amp;#39;s new app allows users to download and run large language models like DeepSeek-R1, Qwen 3, and Gemma 3 on macOS, Windows, and Linux, with features including model exploration, download, and access to resources like the blog, docs, GitHub, Discord, and X (Twitter). © 2025 Ollama Inc.
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;对于简单网页是可以识别并总结的。
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 1. 网页加载 需要Proxy&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;os&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;environ[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;http_proxy&amp;#34;&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;x.x.x.x:yy&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;os&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;environ[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;https_proxy&amp;#34;&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;x.x.x.x:yy&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;url &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;https://ollama.com/&amp;#34;&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;# 用户输入&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# url = &amp;#34;https://www.hpcwire.com/off-the-wire/mitac-partners-with-daiwabo-to-expand-server-distribution-across-japan/?utm_source=twitter&amp;amp;utm_medium=social&amp;amp;utm_term=hpcwire&amp;amp;utm_content=0ca462ed-d256-453f-924d-49a1d20354c1&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;loader &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; WebBaseLoader(url)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;docs &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; loader&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;load()
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(docs)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;====================&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 3. 拆分文档&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;splitter &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; CharacterTextSplitter(chunk_size&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1000&lt;/span&gt;, chunk_overlap&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;100&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;split_docs &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; splitter&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;split_documents(docs)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 4. 构建摘要链&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;chain &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; load_summarize_chain(llm, chain_type&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;map_reduce&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;summary &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; chain&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;invoke(split_docs) &lt;span style=&#34;color:#75715e&#34;&gt;# invoke&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 5. 输出&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(summary)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;考虑将 &lt;code&gt;WebBaseLoader&lt;/code&gt; 换成 &lt;code&gt;UnstructuredURLLoader&lt;/code&gt;、&lt;code&gt;Playwright&lt;/code&gt; 等 loader（支持 JS 动态页面）。&lt;/li&gt;
+&lt;li&gt;你可以 customize the prompt。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;实现二&#34;&gt;实现二&lt;/h2&gt;
+&lt;p&gt;通过 Stuff 方式，将文档内容合并到提示中。适合文档&lt;strong&gt;总量较小&lt;/strong&gt;能直接放进上下文的场景，如果输入文本过长，&lt;strong&gt;超过模型上下文限制&lt;/strong&gt;，会导致失败或者要人为截断。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>3.0.LangGraph When to Use</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/3.0.langgraph-when-to-use/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:30 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/3.0.langgraph-when-to-use/</guid>
+      <description>&lt;p&gt;可以用它创建基于 LLM/VLM 模型的应用。&lt;/p&gt;
+&lt;h1 id=&#34;langchain-vs-langgraph&#34;&gt;LangChain VS LangGraph&lt;/h1&gt;
+&lt;ul&gt;
+&lt;li&gt;LangChain 核心是将多个 LLM 调用和 tools calling 通过链 &lt;strong&gt;Chain 线性拼接&lt;/strong&gt;组成有序任务序列，适合顺序性、线性流程的场景。&lt;/li&gt;
+&lt;li&gt;LangGraph 是由 LangChain 创建团队推出的一个扩展库，基于 LangChain 构建，但可独立使用。它引入了图结构（StateGraph）来管理任务流程，支持复杂的多角色 Agent 协作、有状态执行、循环分支、条件跳转等高级功能，更适合复杂、动态、带状态的多智能体协同或长期任务管理。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;所以：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;LangChain 适合线性任务和单智能体场景。&lt;/li&gt;
+&lt;li&gt;LangGraph 适合复杂任务、多智能体协作和状态管理场景。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1 id=&#34;langchain&#34;&gt;LangChain&lt;/h1&gt;
+&lt;p&gt;LangChain 提供了标准的接口，用于将 models 和工具和组件交互，对于检索、LLM 调用、工具调用 很有用。LangChain 中的 classes 可以与 LangGraph 一同使用。&lt;/p&gt;
+&lt;p&gt;是市场上目前最成熟的 Agent 框架。&lt;/p&gt;
+&lt;h1 id=&#34;什么时候使用-langgraph&#34;&gt;什么时候使用 LangGraph&lt;/h1&gt;
+&lt;p&gt;你再设计AI Agent时会面临 &lt;strong&gt;控制&amp;amp;自由&lt;/strong&gt; 的权衡：自由让你的 LLM 有更多空间进行创造并解决意外问题。；控制确保阿里可预测的行为和可维护。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;CodeAgent 的行为非常自由，可能很难预测，它比使用 JSON 方式更不可控。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;LangGraph 偏向&lt;strong&gt;更多的控制&lt;/strong&gt;。如果你的应用程序&lt;strong&gt;涉及一系列需要以特定方式协调的步骤&lt;/strong&gt;，并&lt;strong&gt;在每个交叉点做出决策&lt;/strong&gt;，那么 LangGraph 就提供了你所需要的结构。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;由于 &lt;strong&gt;LLM 最擅长理解文本&lt;/strong&gt;，因此在能够回答问题之前，你需要&lt;strong&gt;将其他复杂模态&lt;/strong&gt;（图表、表格）转换&lt;strong&gt;为文本&lt;/strong&gt;。 ***&lt;/p&gt;
+&lt;p&gt;简单讲，如果你想&lt;strong&gt;根据每个 step 的输出设计之后的动作流程，并相应地决定下一步执行什么&lt;/strong&gt;。那么 LangGraph 是正确的框架！！&lt;/p&gt;
+&lt;h1 id=&#34;langgraph-如何工作的&#34;&gt;LangGraph 如何工作的？&lt;/h1&gt;
+&lt;p&gt;使用有向图结构来定义您的应用程序的流程。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

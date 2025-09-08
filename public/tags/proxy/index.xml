@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Proxy on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/proxy/</link>
+    <description>Recent content in Proxy on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:57:46 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/proxy/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>网络 Clash</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/%E7%BD%91%E7%BB%9C-clash/</link>
+      <pubDate>Sun, 31 Aug 2025 12:57:46 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/%E7%BD%91%E7%BB%9C-clash/</guid>
+      <description>&lt;h1 id=&#34;路由路径&#34;&gt;路由路径&lt;/h1&gt;
+&lt;p&gt;查看Windows系统中的路由路径，可以使用命令行工具 tracert（Trace Route），它可以显示数据包从本机到目标主机经过的每个路由节点（跳数），帮助分析路由路径和每跳延迟。也可使用 pathping 命令结合了 ping 和 tracert 的功能，带来更详细的路径和丢包统计。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;tracert 目标域名或IP地址
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;pathping www.baidu.com
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h1 id=&#34;cookies&#34;&gt;cookies&lt;/h1&gt;
+&lt;p&gt;Cookie 是网页服务器发送到你的浏览器中并储存的一小段数据文件（文本信息）。网页浏览器会保存这些Cookie，并在你访问同一网站时自动发送给服务器，使服务器能够识别你之前的访问和身份，并为你提供个性化服务。&lt;/p&gt;
+&lt;h1 id=&#34;requests-库&#34;&gt;requests 库&lt;/h1&gt;
+&lt;p&gt;requests 库是基于 HTTP 协议的客户端库。&lt;code&gt;requests.get()&lt;/code&gt; 等方法默认且仅支持 &lt;code&gt;HTTP/HTTPS&lt;/code&gt; 请求，这些方法定义的请求类型（&lt;code&gt;GET、POST、PUT、DELETE&lt;/code&gt;等）都是 HTTP 协议定义的动作。&lt;/p&gt;
+&lt;p&gt;在发送请求时，优势需要给出&lt;code&gt;header&lt;/code&gt;。用来传递额外的元信息，比如访问指定服务器的 token。&lt;code&gt;headers&lt;/code&gt; 是一个字典，可以张这样：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; requests
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;GITHUB_TOKEN &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; xxx  &lt;span style=&#34;color:#75715e&#34;&gt;# Copy your GitHub token here&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;headers &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;User-Agent&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;MyApp/1.0&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Authorization&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Bearer my_secret_token&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Accept&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;application/json&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Authorization&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;token &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;GITHUB_TOKEN&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;response &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; requests&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;get(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;https://api.example.com/data&amp;#34;&lt;/span&gt;, headers&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;headers)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(response&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;status_code)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(response&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;json())
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h1 id=&#34;路由器负责将局域网的私有-ip-地址转换为互联网上的公网-ip-地址从而保证了互联网上的地址唯一性&#34;&gt;路由器负责将局域网的私有 IP 地址转换为互联网上的公网 IP 地址，从而保证了互联网上的地址唯一性&lt;/h1&gt;
+&lt;p&gt;用一个具体的例子来说明路由器如何将局域网的私有 IP 地址转换为互联网上的公网 IP 地址，从而保证互联网地址的唯一性（通过 （Network Address Translation）NAT）。&lt;/p&gt;
+&lt;p&gt;场景： 一个家庭网络，包含一台路由器、一台笔记本电脑和一手机。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

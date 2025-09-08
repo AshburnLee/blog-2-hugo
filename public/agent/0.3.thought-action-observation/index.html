@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>0.3.Thought Action Observation | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="Agent, ReAct, TAO">
+<meta name="description" content="三步循环
+Thought-Action-Observation (TAO) 是 AI Agent 的完整的工作流程。在许多 Agent 框架中，规则和指示是被直接嵌入到 System prompt 中的，确保每个循环都遵循定义的逻辑。就是说，在后端，输入给 LLM 的 prompt 总是会有一些预设的信息，比如，有哪些 Tools 可以使用，等。
+三步循环中可以看出：
+
+代理会不断循环上述三步骤，直到目标较好地达成。
+第三步 Observation 其实是将上一部 Action 的结果拿到。在下一次循环中使用。
+动态适应：每个循环都允许代理将最新的信息（Observation 结果）纳入其推理（Thought）中，从而确保最终的答案是信息充分且准确的。
+
+上述循环称作 ReAct（Resoning &amp; Acting） cycle。
+Thought
+ReAct 是一种简单的 Prompting 技术，在让 LLM 解码下一个标记之前，他会添加 “让我们一步一步地思考”。“一步一步地思考”会鼓励模型解码过程朝着生成计划而不是最终解决方案的方向发展，因为模型被鼓励将问题分解为子任务。分解成子步骤，就是 Deepseek R1 或 OpenAI 的 o1 这类模型背后的原理，它们被微调成 “在回答之前思考”。
+这些训练好的模型包含特定的思考部分（在&lt;think&gt;和&lt;/think&gt; special token 之间）。这不仅仅是一种像 ReAct 这样的提示技术，而是一种训练方法。
+这一步是由 LLM 完成的。
+KAQ：TAO-cycle 和 ReAct 的区别
+TAO 是一个更通用的概念，描述了 AI Agent 与环境交互的基本循环过程 。它强调了 Agent 需要思考、行动、并观察行动的结果，然后根据观察到的结果进行下一步的思考和行动。这是一个基础模型。
+ReAct 是一个更具体的框架，它在 TAO 循环的基础上，特别强调了推理 (Reasoning) 的重要性 。ReAct Agent 不仅仅是简单地思考和行动，而是会生成详细的推理轨迹，用于指导行动，并处理异常情况。这是个具体实现。">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/agent/0.3.thought-action-observation/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/agent/0.3.thought-action-observation/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/agent/0.3.thought-action-observation/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="0.3.Thought Action Observation">
+  <meta property="og:description" content="三步循环 Thought-Action-Observation (TAO) 是 AI Agent 的完整的工作流程。在许多 Agent 框架中，规则和指示是被直接嵌入到 System prompt 中的，确保每个循环都遵循定义的逻辑。就是说，在后端，输入给 LLM 的 prompt 总是会有一些预设的信息，比如，有哪些 Tools 可以使用，等。
+三步循环中可以看出：
+代理会不断循环上述三步骤，直到目标较好地达成。 第三步 Observation 其实是将上一部 Action 的结果拿到。在下一次循环中使用。 动态适应：每个循环都允许代理将最新的信息（Observation 结果）纳入其推理（Thought）中，从而确保最终的答案是信息充分且准确的。 上述循环称作 ReAct（Resoning &amp; Acting） cycle。
+Thought ReAct 是一种简单的 Prompting 技术，在让 LLM 解码下一个标记之前，他会添加 “让我们一步一步地思考”。“一步一步地思考”会鼓励模型解码过程朝着生成计划而不是最终解决方案的方向发展，因为模型被鼓励将问题分解为子任务。分解成子步骤，就是 Deepseek R1 或 OpenAI 的 o1 这类模型背后的原理，它们被微调成 “在回答之前思考”。
+这些训练好的模型包含特定的思考部分（在&lt;think&gt;和&lt;/think&gt; special token 之间）。这不仅仅是一种像 ReAct 这样的提示技术，而是一种训练方法。
+这一步是由 LLM 完成的。
+KAQ：TAO-cycle 和 ReAct 的区别 TAO 是一个更通用的概念，描述了 AI Agent 与环境交互的基本循环过程 。它强调了 Agent 需要思考、行动、并观察行动的结果，然后根据观察到的结果进行下一步的思考和行动。这是一个基础模型。
+ReAct 是一个更具体的框架，它在 TAO 循环的基础上，特别强调了推理 (Reasoning) 的重要性 。ReAct Agent 不仅仅是简单地思考和行动，而是会生成详细的推理轨迹，用于指导行动，并处理异常情况。这是个具体实现。">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="agent">
+    <meta property="article:published_time" content="2025-08-31T12:13:25+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:13:25+08:00">
+    <meta property="article:tag" content="Agent">
+    <meta property="article:tag" content="ReAct">
+    <meta property="article:tag" content="TAO">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="0.3.Thought Action Observation">
+<meta name="twitter:description" content="三步循环
+Thought-Action-Observation (TAO) 是 AI Agent 的完整的工作流程。在许多 Agent 框架中，规则和指示是被直接嵌入到 System prompt 中的，确保每个循环都遵循定义的逻辑。就是说，在后端，输入给 LLM 的 prompt 总是会有一些预设的信息，比如，有哪些 Tools 可以使用，等。
+三步循环中可以看出：
+
+代理会不断循环上述三步骤，直到目标较好地达成。
+第三步 Observation 其实是将上一部 Action 的结果拿到。在下一次循环中使用。
+动态适应：每个循环都允许代理将最新的信息（Observation 结果）纳入其推理（Thought）中，从而确保最终的答案是信息充分且准确的。
+
+上述循环称作 ReAct（Resoning &amp; Acting） cycle。
+Thought
+ReAct 是一种简单的 Prompting 技术，在让 LLM 解码下一个标记之前，他会添加 “让我们一步一步地思考”。“一步一步地思考”会鼓励模型解码过程朝着生成计划而不是最终解决方案的方向发展，因为模型被鼓励将问题分解为子任务。分解成子步骤，就是 Deepseek R1 或 OpenAI 的 o1 这类模型背后的原理，它们被微调成 “在回答之前思考”。
+这些训练好的模型包含特定的思考部分（在&lt;think&gt;和&lt;/think&gt; special token 之间）。这不仅仅是一种像 ReAct 这样的提示技术，而是一种训练方法。
+这一步是由 LLM 完成的。
+KAQ：TAO-cycle 和 ReAct 的区别
+TAO 是一个更通用的概念，描述了 AI Agent 与环境交互的基本循环过程 。它强调了 Agent 需要思考、行动、并观察行动的结果，然后根据观察到的结果进行下一步的思考和行动。这是一个基础模型。
+ReAct 是一个更具体的框架，它在 TAO 循环的基础上，特别强调了推理 (Reasoning) 的重要性 。ReAct Agent 不仅仅是简单地思考和行动，而是会生成详细的推理轨迹，用于指导行动，并处理异常情况。这是个具体实现。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Agent",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/agent/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "0.3.Thought Action Observation",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/agent/0.3.thought-action-observation/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "0.3.Thought Action Observation",
+  "name": "0.3.Thought Action Observation",
+  "description": "三步循环 Thought-Action-Observation (TAO) 是 AI Agent 的完整的工作流程。在许多 Agent 框架中，规则和指示是被直接嵌入到 System prompt 中的，确保每个循环都遵循定义的逻辑。就是说，在后端，输入给 LLM 的 prompt 总是会有一些预设的信息，比如，有哪些 Tools 可以使用，等。\n三步循环中可以看出：\n代理会不断循环上述三步骤，直到目标较好地达成。 第三步 Observation 其实是将上一部 Action 的结果拿到。在下一次循环中使用。 动态适应：每个循环都允许代理将最新的信息（Observation 结果）纳入其推理（Thought）中，从而确保最终的答案是信息充分且准确的。 上述循环称作 ReAct（Resoning \u0026amp; Acting） cycle。\nThought ReAct 是一种简单的 Prompting 技术，在让 LLM 解码下一个标记之前，他会添加 “让我们一步一步地思考”。“一步一步地思考”会鼓励模型解码过程朝着生成计划而不是最终解决方案的方向发展，因为模型被鼓励将问题分解为子任务。分解成子步骤，就是 Deepseek R1 或 OpenAI 的 o1 这类模型背后的原理，它们被微调成 “在回答之前思考”。\n这些训练好的模型包含特定的思考部分（在\u0026lt;think\u0026gt;和\u0026lt;/think\u0026gt; special token 之间）。这不仅仅是一种像 ReAct 这样的提示技术，而是一种训练方法。\n这一步是由 LLM 完成的。\nKAQ：TAO-cycle 和 ReAct 的区别 TAO 是一个更通用的概念，描述了 AI Agent 与环境交互的基本循环过程 。它强调了 Agent 需要思考、行动、并观察行动的结果，然后根据观察到的结果进行下一步的思考和行动。这是一个基础模型。\nReAct 是一个更具体的框架，它在 TAO 循环的基础上，特别强调了推理 (Reasoning) 的重要性 。ReAct Agent 不仅仅是简单地思考和行动，而是会生成详细的推理轨迹，用于指导行动，并处理异常情况。这是个具体实现。\n",
+  "keywords": [
+    "Agent", "ReAct", "TAO"
+  ],
+  "articleBody": "三步循环 Thought-Action-Observation (TAO) 是 AI Agent 的完整的工作流程。在许多 Agent 框架中，规则和指示是被直接嵌入到 System prompt 中的，确保每个循环都遵循定义的逻辑。就是说，在后端，输入给 LLM 的 prompt 总是会有一些预设的信息，比如，有哪些 Tools 可以使用，等。\n三步循环中可以看出：\n代理会不断循环上述三步骤，直到目标较好地达成。 第三步 Observation 其实是将上一部 Action 的结果拿到。在下一次循环中使用。 动态适应：每个循环都允许代理将最新的信息（Observation 结果）纳入其推理（Thought）中，从而确保最终的答案是信息充分且准确的。 上述循环称作 ReAct（Resoning \u0026 Acting） cycle。\nThought ReAct 是一种简单的 Prompting 技术，在让 LLM 解码下一个标记之前，他会添加 “让我们一步一步地思考”。“一步一步地思考”会鼓励模型解码过程朝着生成计划而不是最终解决方案的方向发展，因为模型被鼓励将问题分解为子任务。分解成子步骤，就是 Deepseek R1 或 OpenAI 的 o1 这类模型背后的原理，它们被微调成 “在回答之前思考”。\n这些训练好的模型包含特定的思考部分（在和 special token 之间）。这不仅仅是一种像 ReAct 这样的提示技术，而是一种训练方法。\n这一步是由 LLM 完成的。\nKAQ：TAO-cycle 和 ReAct 的区别 TAO 是一个更通用的概念，描述了 AI Agent 与环境交互的基本循环过程 。它强调了 Agent 需要思考、行动、并观察行动的结果，然后根据观察到的结果进行下一步的思考和行动。这是一个基础模型。\nReAct 是一个更具体的框架，它在 TAO 循环的基础上，特别强调了推理 (Reasoning) 的重要性 。ReAct Agent 不仅仅是简单地思考和行动，而是会生成详细的推理轨迹，用于指导行动，并处理异常情况。这是个具体实现。\nAtion Agent 类型：\nJSON agent Code agent Function-call agent Action 的类型：\n信息收集 tools使用 环境交互 communication LLM 只能处理文本，使用文本来描述 Agent 想要执行的动作，和传给工具的参数。LLM 必须 STOP 继续生成 Tokens，接着将控制权从LLM 交给Agent，以确保 Action 的结果是可解析的。\nKAQ: 为什么要 STOP 继续生成 Tokens LLM 是一个生成模型，它会不断地生成 token (文本片段)，直到满足停止条件。如果 LLM 不停止生成 token，它可能会在行动指令之后继续生成一些无意义的文本，导致 Agent 无法正确解析指令。\nKAQ：确保 Action 的结果是可解析的，什么意思 为了让 Agent 能够正确地执行 LLM 产生的指令，LLM 生成的文本必须是结构化的、可解析的。例如，可以使用 JSON 格式来表示行动指令和参数。\nSTOP 和 parse LLM 结果的方法 第一步：Agent 输出预定的格式的 Actions。\n第二步：Stop token的生成。\n第三步：外部解析器解析格式化的 action，确定要调用的 tools 并给出参数。\nCodeAgent Code Agent 是这样：\nCode agent 图片来自：Executable Code Actions Elicit Better LLM Agents\n不是输出一个简单的 JSON 对象，Code Agent 会生成一段可执行的代码块，通常是用 Python 这样高级语言（是Agent自己生成 Python 函数，当然，用户业可以提供自己的 Tools）。\n这种输出的优点：\n表达能力强 模块化和可复用 调试能力强 Code Agent 可直接集成外部库和API 实例:\n# Code Agent Example: Retrieve Weather Information def get_weather(city): import requests api_url = f\"https://api.weather.com/v1/location/{city}?apiKey=YOUR_API_KEY\" response = requests.get(api_url) if response.status_code == 200: data = response.json() return data.get(\"weather\", \"No weather information available\") else: return \"Error: Unable to fetch weather data.\" # Execute the function and prepare the final answer result = get_weather(\"New York\") final_answer = f\"The current weather in New York is: {result}\" print(final_answer) 通过明确界定代码块并指示执行完成（在这里，通过打印 final_answer）表示 STOP 在这里。\nJSON agent 例子可以是这样:\nThought: I need to check the current weather for New York. Action : { \"action\": \"get_weather\", \"action_input\": {\"location\": \"New York\"} } KAQ：CodeAgent 是根据什么生成一段可执行的代码块 KAQ：JSON 或 Code 是谁生成的 LLM 生成的。\nLLM 根据用户的输入和设定的 Prompt，生成包含 action 和 action_input 字段的 JSON，用于指定要执行的操作和参数。 LLM 根据用户的输入和设定的 Prompt，生成包含代码的字符串，用于执行特定的任务。 Observe Observation 提供给 Agent 关键信息，为 Agent 的思考过程提供动力，并指导未来的行为。Observation 是来自环境的信号，可以是来自 API 的数据、错误消息，还可以来自系统日志，这些信号被用于指导下一轮的 Thought。\n在 Observation 阶段，Agent 做的事：\n收集反馈：接收其行动是否成功的或确认的数据 添加结果：将新信息整合到其现有上下文中，有效地更新其记忆。 调整其策略：使用更新后的上下文来优化随后的思考和行动。 KAQ: 如果一个任务需要 3 个 TAO 循环，LLM 确实会被调用 3 次，每次调用的输入都会包含之前循环中产生的新的信息和反馈。对吗？ 对\n每次 LLM 被调用时，它接收到的输入通常包括：\n系统提示 (System Prompt)：定义 Agent 的行为、可用的工具和 TAO 循环的规则 3。 用户输入 (User Input)：用户提出的问题或指令。 历史信息 (History)：之前循环中的 Thought、Action 和 Observation 记录。 通过这种方式，Agent 可以在每个循环中不断学习和调整，最终完成任务。\nObservation 有多种形式 错误消息、成功通知、状态码。\n数据库更新、文件系统修改、状态变更。\n传感器读数，系统指标，资源使用情况，比如机械臂位置。\nAPI 响应，查询结果，计算输出。\n到达截止日期，计划任务完成。\nKAQ：当一次 TAO cycle 结束后，得到一个 observation，如何将这个 observation 追加到下一次TAO 的输入中 ",
+  "wordCount" : "349",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:13:25+08:00",
+  "dateModified": "2025-08-31T12:13:25+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/agent/0.3.thought-action-observation/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      0.3.Thought Action Observation
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:13:25 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><h1 id="三步循环">三步循环<a hidden class="anchor" aria-hidden="true" href="#三步循环">#</a></h1>
+<p><strong>Thought-Action-Observation (TAO)</strong> 是 AI Agent 的完整的工作流程。在许多 Agent 框架中，规则和指示是被直接<strong>嵌入到</strong> System prompt 中的，确保每个循环都遵循定义的逻辑。就是说，在后端，输入给 LLM 的 prompt 总是会有一些预设的信息，比如，有哪些 Tools 可以使用，等。</p>
+<p><strong>三步循环</strong>中可以看出：</p>
+<ul>
+<li>代理会不断循环上述三步骤，直到目标较好地达成。</li>
+<li>第三步 Observation 其实是将上一部 Action 的结果拿到。在下一次循环中使用。</li>
+<li>动态适应：每个循环都允许代理将最新的信息（Observation 结果）<strong>纳入其推理</strong>（Thought）中，从而确保最终的答案是信息充分且准确的。</li>
+</ul>
+<p>上述循环称作 <strong>ReAct</strong>（Resoning &amp; Acting） cycle。</p>
+<h1 id="thought">Thought<a hidden class="anchor" aria-hidden="true" href="#thought">#</a></h1>
+<p>ReAct 是一种简单的 Prompting 技术，在让 LLM 解码下一个标记之前，他会添加 “让我们一步一步地思考”。“一步一步地思考”会鼓励模型解码过程朝着<strong>生成计划而不是最终解决方案</strong>的方向发展，因为模型被鼓励<strong>将问题分解为子任务</strong>。分解成子步骤，就是 Deepseek R1 或 OpenAI 的 o1 这类模型背后的原理，它们被微调成 “在回答之前思考”。</p>
+<p>这些训练好的模型包含特定的思考部分（在<code>&lt;think&gt;</code>和<code>&lt;/think&gt;</code> special token 之间）。这不仅仅是一种像 ReAct 这样的提示技术，而是一种训练方法。</p>
+<p>这一步是由 LLM 完成的。</p>
+<h2 id="kaqtao-cycle-和-react-的区别">KAQ：TAO-cycle 和 ReAct 的区别<a hidden class="anchor" aria-hidden="true" href="#kaqtao-cycle-和-react-的区别">#</a></h2>
+<p>TAO 是一个更通用的概念，描述了 AI Agent 与环境交互的基本循环过程 。它强调了 Agent 需要思考、行动、并观察行动的结果，然后根据观察到的结果进行下一步的思考和行动。这是一个<strong>基础模型</strong>。</p>
+<p>ReAct 是一个更具体的框架，它在 TAO 循环的基础上，特别强调了推理 (Reasoning) 的重要性 。ReAct Agent 不仅仅是简单地思考和行动，而是会生成详细的推理轨迹，用于指导行动，并处理异常情况。这是个<strong>具体实现</strong>。</p>
+<h1 id="ation">Ation<a hidden class="anchor" aria-hidden="true" href="#ation">#</a></h1>
+<p>Agent 类型：</p>
+<ul>
+<li>JSON agent</li>
+<li>Code agent</li>
+<li>Function-call agent</li>
+</ul>
+<p>Action 的类型：</p>
+<ul>
+<li>信息收集</li>
+<li>tools使用</li>
+<li>环境交互</li>
+<li>communication</li>
+</ul>
+<p>LLM 只能处理文本，使用文本来描述 Agent 想要执行的动作，和传给工具的参数。LLM 必须 <strong>STOP</strong> 继续生成 Tokens，接着将控制权从LLM 交给Agent，以确保 Action 的结果是可解析的。</p>
+<h2 id="kaq-为什么要-stop-继续生成-tokens">KAQ: 为什么要 STOP 继续生成 Tokens<a hidden class="anchor" aria-hidden="true" href="#kaq-为什么要-stop-继续生成-tokens">#</a></h2>
+<p>LLM 是一个<strong>生成模型</strong>，它会<strong>不断地生成</strong> token (文本片段)，直到满足停止条件。如果 LLM 不停止生成 token，它可能会在行动指令之后<strong>继续生成一些无意义</strong>的文本，导致 Agent 无法正确解析指令。</p>
+<h2 id="kaq确保-action-的结果是可解析的什么意思">KAQ：确保 Action 的结果是可解析的，什么意思<a hidden class="anchor" aria-hidden="true" href="#kaq确保-action-的结果是可解析的什么意思">#</a></h2>
+<p>为了让 Agent 能够正确地执行 LLM 产生的指令，LLM 生成的文本必须是结构化的、可解析的。例如，可以使用 JSON 格式来表示行动指令和参数。</p>
+<h2 id="stop-和-parse-llm-结果的方法">STOP 和 parse LLM 结果的方法<a hidden class="anchor" aria-hidden="true" href="#stop-和-parse-llm-结果的方法">#</a></h2>
+<ul>
+<li>
+<p>第一步：Agent 输出预定的格式的 Actions。</p>
+</li>
+<li>
+<p>第二步：Stop token的生成。</p>
+</li>
+<li>
+<p>第三步：外部解析器解析格式化的 action，确定要调用的 tools 并给出参数。</p>
+</li>
+</ul>
+<h2 id="codeagent">CodeAgent<a hidden class="anchor" aria-hidden="true" href="#codeagent">#</a></h2>
+<p>Code Agent 是这样：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: center"><img alt="code agent" loading="lazy" src="/pics/code-vs-json-actions.png"></th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: center"><em>Code agent</em></td>
+      </tr>
+  </tbody>
+</table>
+<p>图片来自：<a href="https://huggingface.co/papers/2402.01030">Executable Code Actions Elicit Better LLM Agents</a></p>
+<p>不是输出一个简单的 JSON 对象，Code Agent 会<strong>生成一段可执行的代码块</strong>，通常是用 Python 这样高级语言（是Agent自己生成 Python 函数，当然，用户业可以提供自己的 Tools）。</p>
+<p>这种输出的优点：</p>
+<ul>
+<li>表达能力强</li>
+<li>模块化和可复用</li>
+<li>调试能力强</li>
+<li>Code Agent 可直接集成外部库和API</li>
+</ul>
+<p>实例:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#75715e"># Code Agent Example: Retrieve Weather Information</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_weather</span>(city):
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">import</span> requests
+</span></span><span style="display:flex;"><span>    api_url <span style="color:#f92672">=</span> <span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;https://api.weather.com/v1/location/</span><span style="color:#e6db74">{</span>city<span style="color:#e6db74">}</span><span style="color:#e6db74">?apiKey=YOUR_API_KEY&#34;</span>
+</span></span><span style="display:flex;"><span>    response <span style="color:#f92672">=</span> requests<span style="color:#f92672">.</span>get(api_url)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> response<span style="color:#f92672">.</span>status_code <span style="color:#f92672">==</span> <span style="color:#ae81ff">200</span>:
+</span></span><span style="display:flex;"><span>        data <span style="color:#f92672">=</span> response<span style="color:#f92672">.</span>json()
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> data<span style="color:#f92672">.</span>get(<span style="color:#e6db74">&#34;weather&#34;</span>, <span style="color:#e6db74">&#34;No weather information available&#34;</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">else</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#34;Error: Unable to fetch weather data.&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Execute the function and prepare the final answer</span>
+</span></span><span style="display:flex;"><span>result <span style="color:#f92672">=</span> get_weather(<span style="color:#e6db74">&#34;New York&#34;</span>)
+</span></span><span style="display:flex;"><span>final_answer <span style="color:#f92672">=</span> <span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;The current weather in New York is: </span><span style="color:#e6db74">{</span>result<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>
+</span></span><span style="display:flex;"><span>print(final_answer)
+</span></span></code></pre></div><p>通过明确界定代码块并指示执行完成（在这里，通过打印 final_answer）表示 <strong>STOP</strong> 在这里。</p>
+<p>JSON agent 例子可以是这样:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-yml" data-lang="yml"><span style="display:flex;"><span><span style="color:#f92672">Thought</span>: <span style="color:#ae81ff">I need to check the current weather for New York.</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">Action </span>:
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;action&#34;: </span><span style="color:#e6db74">&#34;get_weather&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;action_input&#34;: {&#34;location&#34;: </span><span style="color:#e6db74">&#34;New York&#34;</span>}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="kaqcodeagent-是根据什么生成一段可执行的代码块">KAQ：CodeAgent 是根据什么生成一段可执行的代码块<a hidden class="anchor" aria-hidden="true" href="#kaqcodeagent-是根据什么生成一段可执行的代码块">#</a></h2>
+<h2 id="kaqjson-或-code-是谁生成的">KAQ：JSON 或 Code 是谁生成的<a hidden class="anchor" aria-hidden="true" href="#kaqjson-或-code-是谁生成的">#</a></h2>
+<p>LLM 生成的。</p>
+<ul>
+<li>LLM 根据用户的输入和设定的 Prompt，生成包含 action 和 action_input 字段的 JSON，用于指定要执行的操作和参数。</li>
+<li>LLM 根据用户的输入和设定的 Prompt，生成包含代码的字符串，用于执行特定的任务。</li>
+</ul>
+<h1 id="observe">Observe<a hidden class="anchor" aria-hidden="true" href="#observe">#</a></h1>
+<p>Observation 提供给 Agent 关键信息，为 Agent 的思考过程提供动力，并指导未来的行为。Observation 是来自环境的信号，可以是来自 API 的数据、错误消息，还可以来自系统日志，这些信号被用于指导下一轮的 Thought。</p>
+<p>在 Observation 阶段，Agent 做的事：</p>
+<ol>
+<li>收集反馈：接收其行动是否成功的或确认的数据</li>
+<li>添加结果：将新信息整合到其现有上下文中，有效地更新其记忆。</li>
+<li>调整其策略：使用更新后的上下文来优化随后的思考和行动。</li>
+</ol>
+<h2 id="kaq-如果一个任务需要-3-个-tao-循环llm-确实会被调用-3-次每次调用的输入都会包含之前循环中产生的新的信息和反馈对吗">KAQ: 如果一个任务需要 3 个 TAO 循环，LLM 确实会被调用 3 次，每次调用的输入都会包含之前循环中产生的新的信息和反馈。对吗？<a hidden class="anchor" aria-hidden="true" href="#kaq-如果一个任务需要-3-个-tao-循环llm-确实会被调用-3-次每次调用的输入都会包含之前循环中产生的新的信息和反馈对吗">#</a></h2>
+<p>对</p>
+<p>每次 LLM 被调用时，它接收到的输入通常包括：</p>
+<ul>
+<li>系统提示 (<strong>System Prompt</strong>)：定义 Agent 的行为、可用的工具和 TAO 循环的规则 3。</li>
+<li>用户输入 (<strong>User Input</strong>)：用户提出的问题或指令。</li>
+<li>历史信息 (<strong>History</strong>)：之前循环中的 Thought、Action 和 Observation 记录。</li>
+</ul>
+<p>通过这种方式，Agent 可以在每个循环中不断学习和调整，最终完成任务。</p>
+<h2 id="observation-有多种形式">Observation 有多种形式<a hidden class="anchor" aria-hidden="true" href="#observation-有多种形式">#</a></h2>
+<p>错误消息、成功通知、状态码。</p>
+<p>数据库更新、文件系统修改、状态变更。</p>
+<p>传感器读数，系统指标，资源使用情况，比如机械臂位置。</p>
+<p>API 响应，查询结果，计算输出。</p>
+<p>到达截止日期，计划任务完成。</p>
+<h2 id="kaq当一次-tao-cycle-结束后得到一个-observation如何将这个-observation-追加到下一次tao-的输入中">KAQ：当一次 TAO cycle 结束后，得到一个 observation，如何将这个 observation 追加到下一次TAO 的输入中<a hidden class="anchor" aria-hidden="true" href="#kaq当一次-tao-cycle-结束后得到一个-observation如何将这个-observation-追加到下一次tao-的输入中">#</a></h2>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/agent/">Agent</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/react/">ReAct</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/tao/">TAO</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

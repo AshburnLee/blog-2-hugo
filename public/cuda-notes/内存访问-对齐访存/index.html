@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>内存访问 对齐访存 | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="CUDA">
+<meta name="description" content="Coalesced Memory Access
+要实现合并内存访问，需要满足以下条件：
+
+
+连续内存地址: warp 中的相邻线程必须访问连续的全局内存地址。这意味着线程 0 访问地址 A，线程 1 访问地址 A&#43;B，线程 2 访问地址 A&#43;2B，以此类推，其中 B 是每个线程访问的内存大小。
+
+
+对齐: 访问的内存地址起始位置必须按照一定大小对齐。对齐大小取决于每个线程访问的数据大小和 GPU 的计算能力。例如，对于 32 位数据，通常需要 128 字节对齐。上面的 A = 32.
+
+
+数据大小: 访问的数据大小也影响合并的效率。较大的数据访问（例如 128 位或 256 位）通常比较小的数据访问（例如 8 位或 16 位）更容易合并。
+
+
+合并访问的理想情况是一个 warp 中的 32 个线程应该能够在一个或少数几个内存事务中完成所有数据的读取或写入。如果不是合并访存，GPU 可能需要多个内存事务才能完成所有数据的读取或写入。
+上述中的：“对于 32 位数据，通常需要 128 字节对齐”，如何理解：每个线程访问 32位 数据，就是 4 字节数据，一个 warp 32 线程，那么一个 warp 会访问 32 * 4 = 128 字节数据。如果这 128 字节的数据在内存中是 128 字节对齐的（起始地址是 128 的倍数），那么 GPU 就可以在一个内存事务中完成所有数据的读取或写入，从而实现合并访问。">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/%E5%86%85%E5%AD%98%E8%AE%BF%E9%97%AE-%E5%AF%B9%E9%BD%90%E8%AE%BF%E5%AD%98/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/%E5%86%85%E5%AD%98%E8%AE%BF%E9%97%AE-%E5%AF%B9%E9%BD%90%E8%AE%BF%E5%AD%98/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/%E5%86%85%E5%AD%98%E8%AE%BF%E9%97%AE-%E5%AF%B9%E9%BD%90%E8%AE%BF%E5%AD%98/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="内存访问 对齐访存">
+  <meta property="og:description" content="Coalesced Memory Access 要实现合并内存访问，需要满足以下条件：
+连续内存地址: warp 中的相邻线程必须访问连续的全局内存地址。这意味着线程 0 访问地址 A，线程 1 访问地址 A&#43;B，线程 2 访问地址 A&#43;2B，以此类推，其中 B 是每个线程访问的内存大小。
+对齐: 访问的内存地址起始位置必须按照一定大小对齐。对齐大小取决于每个线程访问的数据大小和 GPU 的计算能力。例如，对于 32 位数据，通常需要 128 字节对齐。上面的 A = 32.
+数据大小: 访问的数据大小也影响合并的效率。较大的数据访问（例如 128 位或 256 位）通常比较小的数据访问（例如 8 位或 16 位）更容易合并。
+合并访问的理想情况是一个 warp 中的 32 个线程应该能够在一个或少数几个内存事务中完成所有数据的读取或写入。如果不是合并访存，GPU 可能需要多个内存事务才能完成所有数据的读取或写入。
+上述中的：“对于 32 位数据，通常需要 128 字节对齐”，如何理解：每个线程访问 32位 数据，就是 4 字节数据，一个 warp 32 线程，那么一个 warp 会访问 32 * 4 = 128 字节数据。如果这 128 字节的数据在内存中是 128 字节对齐的（起始地址是 128 的倍数），那么 GPU 就可以在一个内存事务中完成所有数据的读取或写入，从而实现合并访问。">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="cuda-notes">
+    <meta property="article:published_time" content="2025-08-31T12:45:55+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:45:55+08:00">
+    <meta property="article:tag" content="CUDA">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="内存访问 对齐访存">
+<meta name="twitter:description" content="Coalesced Memory Access
+要实现合并内存访问，需要满足以下条件：
+
+
+连续内存地址: warp 中的相邻线程必须访问连续的全局内存地址。这意味着线程 0 访问地址 A，线程 1 访问地址 A&#43;B，线程 2 访问地址 A&#43;2B，以此类推，其中 B 是每个线程访问的内存大小。
+
+
+对齐: 访问的内存地址起始位置必须按照一定大小对齐。对齐大小取决于每个线程访问的数据大小和 GPU 的计算能力。例如，对于 32 位数据，通常需要 128 字节对齐。上面的 A = 32.
+
+
+数据大小: 访问的数据大小也影响合并的效率。较大的数据访问（例如 128 位或 256 位）通常比较小的数据访问（例如 8 位或 16 位）更容易合并。
+
+
+合并访问的理想情况是一个 warp 中的 32 个线程应该能够在一个或少数几个内存事务中完成所有数据的读取或写入。如果不是合并访存，GPU 可能需要多个内存事务才能完成所有数据的读取或写入。
+上述中的：“对于 32 位数据，通常需要 128 字节对齐”，如何理解：每个线程访问 32位 数据，就是 4 字节数据，一个 warp 32 线程，那么一个 warp 会访问 32 * 4 = 128 字节数据。如果这 128 字节的数据在内存中是 128 字节对齐的（起始地址是 128 的倍数），那么 GPU 就可以在一个内存事务中完成所有数据的读取或写入，从而实现合并访问。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "CUDA Notes",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/cuda-notes/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "内存访问 对齐访存",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/cuda-notes/%E5%86%85%E5%AD%98%E8%AE%BF%E9%97%AE-%E5%AF%B9%E9%BD%90%E8%AE%BF%E5%AD%98/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "内存访问 对齐访存",
+  "name": "内存访问 对齐访存",
+  "description": "Coalesced Memory Access 要实现合并内存访问，需要满足以下条件：\n连续内存地址: warp 中的相邻线程必须访问连续的全局内存地址。这意味着线程 0 访问地址 A，线程 1 访问地址 A+B，线程 2 访问地址 A+2B，以此类推，其中 B 是每个线程访问的内存大小。\n对齐: 访问的内存地址起始位置必须按照一定大小对齐。对齐大小取决于每个线程访问的数据大小和 GPU 的计算能力。例如，对于 32 位数据，通常需要 128 字节对齐。上面的 A = 32.\n数据大小: 访问的数据大小也影响合并的效率。较大的数据访问（例如 128 位或 256 位）通常比较小的数据访问（例如 8 位或 16 位）更容易合并。\n合并访问的理想情况是一个 warp 中的 32 个线程应该能够在一个或少数几个内存事务中完成所有数据的读取或写入。如果不是合并访存，GPU 可能需要多个内存事务才能完成所有数据的读取或写入。\n上述中的：“对于 32 位数据，通常需要 128 字节对齐”，如何理解：每个线程访问 32位 数据，就是 4 字节数据，一个 warp 32 线程，那么一个 warp 会访问 32 * 4 = 128 字节数据。如果这 128 字节的数据在内存中是 128 字节对齐的（起始地址是 128 的倍数），那么 GPU 就可以在一个内存事务中完成所有数据的读取或写入，从而实现合并访问。\n",
+  "keywords": [
+    "CUDA"
+  ],
+  "articleBody": "Coalesced Memory Access 要实现合并内存访问，需要满足以下条件：\n连续内存地址: warp 中的相邻线程必须访问连续的全局内存地址。这意味着线程 0 访问地址 A，线程 1 访问地址 A+B，线程 2 访问地址 A+2B，以此类推，其中 B 是每个线程访问的内存大小。\n对齐: 访问的内存地址起始位置必须按照一定大小对齐。对齐大小取决于每个线程访问的数据大小和 GPU 的计算能力。例如，对于 32 位数据，通常需要 128 字节对齐。上面的 A = 32.\n数据大小: 访问的数据大小也影响合并的效率。较大的数据访问（例如 128 位或 256 位）通常比较小的数据访问（例如 8 位或 16 位）更容易合并。\n合并访问的理想情况是一个 warp 中的 32 个线程应该能够在一个或少数几个内存事务中完成所有数据的读取或写入。如果不是合并访存，GPU 可能需要多个内存事务才能完成所有数据的读取或写入。\n上述中的：“对于 32 位数据，通常需要 128 字节对齐”，如何理解：每个线程访问 32位 数据，就是 4 字节数据，一个 warp 32 线程，那么一个 warp 会访问 32 * 4 = 128 字节数据。如果这 128 字节的数据在内存中是 128 字节对齐的（起始地址是 128 的倍数），那么 GPU 就可以在一个内存事务中完成所有数据的读取或写入，从而实现合并访问。\n连续的 threads 访问连续的地址，效率是最高的。保证在一个内存事务可以传输多个数据字。\n一个比喻：想象从一个装满巧克力的大盒子里取巧克力。如果每个线程都从盒子的同一层取（连续的内存），那么取的过程会非常高效。但如果每个线程都从盒子的不同层取（非连续的内存），那么取糖果的过程就会变得低效，因为需要多次移动到不同的层。\n关于上述的 对齐 在 CPU 系统上，对于 4 字节数据，通常需要 4 字节对齐。\n所有线程访问数据的起始地址必须是这个对齐大小的倍数。\n4 字节数据: 如果每个线程访问 4 字节的数据（例如一个 float），那么所有线程访问数据的起始地址必须是 4 的倍数 (0, 4, 8, 12, …)。 8 字节数据: 如果每个线程访问 8 字节的数据（例如一个 double），那么所有线程访问数据的起始地址必须是 8 的倍数 (0, 8, 16, 24, …)。 16 字节数据: 以此类推。 如何保证 线程访问数据的起始位置是上述的情况？ struct MyData { float value; char padding[3]; // 填充 3 个字节，使结构体大小为 4 的倍数 }; 结构体填充 (Padding): 如果你的数据存储在结构体中，你可以通过在结构体中添加填充成员来确保对齐。编译器通常会自动进行填充以满足对齐要求，但为了确保，你可以手动添加填充成员。 在上述例子中，padding 数组确保 MyData 结构体的大小是 4 的倍数，即使 value 只有 4 字节。 这样，即使你有多个 MyData 实例，它们在内存中的起始地址也自然会是 4 的倍数。\n数组: 如果你的数据存储在数组中，那么数组元素的地址本身就自然满足对齐要求。假设你有一个 float 类型的数组：float data[100]; data[0] 的地址将是 4 的倍数，data[1] 的地址将是 8 的倍数，以此类推。\ncudaMallocPitch (对于二维数据): 如果你处理的是二维数据（例如矩阵）， cudaMallocPitch 函数可以帮助你分配内存并控制行对齐。 它允许你指定每行的字节数，从而确保每行的起始地址满足对齐要求。 这对于处理矩阵等二维数据非常有用，可以确保行访问的合并性。\n使用 alignas() 等强制内存对齐。详见 SIMD\n编译器通常会进行优化以确保数据对齐，但为了确保你的代码在不同编译器和平台上都能正确运行，最好手动进行对齐处理。***\n给个实例，打印连续10个对象的地址和与前一个对象的地址差：\n#include using namespace std; struct MyData { float value; char padding[3]; // 填充 3 个字节，使结构体大小为 4 的倍数 }; int main() { MyData myDataArray[10]; // 打印每个对象的起始地址和与前一个对象的地址差 for (int i = 0; i \u003c 10; ++i) { std::uintptr_t address = reinterpret_cast\u003cstd::uintptr_t\u003e(\u0026myDataArray[i]); std::cout \u003c\u003c \"MyData[\" \u003c\u003c i \u003c\u003c \"] address: \" \u003c\u003c address \u003c\u003c std::endl; if (i \u003e 0) { std::uintptr_t prevAddress = reinterpret_cast\u003cstd::uintptr_t\u003e(\u0026myDataArray[i - 1]); std::cout \u003c\u003c \"Difference from previous: \" \u003c\u003c address - prevAddress \u003c\u003c \" bytes\" \u003c\u003c std::endl; } } return 0; } 编译器会对齐，返回：\nMyData[0] address: 140724588819808 # 所有地址都是 8 的倍数 MyData[1] address: 140724588819816 Difference from previous: 8 bytes MyData[2] address: 140724588819824 Difference from previous: 8 bytes MyData[3] address: 140724588819832 Difference from previous: 8 bytes MyData[4] address: 140724588819840 Difference from previous: 8 bytes MyData[5] address: 140724588819848 Difference from previous: 8 bytes MyData[6] address: 140724588819856 Difference from previous: 8 bytes MyData[7] address: 140724588819864 Difference from previous: 8 bytes MyData[8] address: 140724588819872 Difference from previous: 8 bytes MyData[9] address: 140724588819880 Difference from previous: 8 bytes 编译器会自动填充。\n",
+  "wordCount" : "340",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:45:55+08:00",
+  "dateModified": "2025-08-31T12:45:55+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/cuda-notes/%E5%86%85%E5%AD%98%E8%AE%BF%E9%97%AE-%E5%AF%B9%E9%BD%90%E8%AE%BF%E5%AD%98/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      内存访问 对齐访存
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:45:55 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><h2 id="coalesced-memory-access">Coalesced Memory Access<a hidden class="anchor" aria-hidden="true" href="#coalesced-memory-access">#</a></h2>
+<p>要实现合并内存访问，需要满足以下条件：</p>
+<ul>
+<li>
+<p><strong>连续</strong>内存地址: <strong>warp 中的相邻线程必须访问连续的全局内存地址</strong>。这意味着线程 0 访问地址 A，线程 1 访问地址 A+B，线程 2 访问地址 A+2B，以此类推，其中 B 是每个线程访问的内存大小。</p>
+</li>
+<li>
+<p><strong>对齐</strong>: 访问的内存<strong>地址起始位置</strong>必须按照一定大小对齐。对齐大小取决于每个线程访问的数据大小和 GPU 的计算能力。例如，对于 32 位数据，通常需要 128 字节对齐。上面的 A = 32.</p>
+</li>
+<li>
+<p>数据大小: 访问的数据大小也影响合并的效率。较大的数据访问（例如 128 位或 256 位）通常比较小的数据访问（例如 8 位或 16 位）更容易合并。</p>
+</li>
+</ul>
+<p>合并访问的理想情况是一个 warp 中的 32 个线程应该能够在一个或少数几个<strong>内存事务</strong>中完成所有数据的读取或写入。如果不是合并访存，GPU 可能需要多个内存事务才能完成所有数据的读取或写入。</p>
+<p>上述中的：“对于 32 位数据，通常需要 128 字节对齐”，如何理解：每个线程访问 32位 数据，就是 4 字节数据，一个 warp 32 线程，那么一个 warp 会访问 32 * 4 = 128 字节数据。如果这 128 字节的数据在内存中是 128 字节<strong>对齐的（起始地址是 128 的倍数</strong>），那么 GPU 就可以在一个内存事务中完成所有数据的读取或写入，从而实现合并访问。</p>
+<p>连续的 threads 访问连续的地址，效率是最高的。保证在一个内存事务可以传输多个数据字。</p>
+<p>一个比喻：想象从一个装满巧克力的大盒子里取巧克力。如果每个线程都从盒子的同一层取（连续的内存），那么取的过程会非常高效。但如果每个线程都从盒子的不同层取（非连续的内存），那么取糖果的过程就会变得低效，因为需要多次移动到不同的层。</p>
+<h2 id="关于上述的-对齐">关于上述的 对齐<a hidden class="anchor" aria-hidden="true" href="#关于上述的-对齐">#</a></h2>
+<p>在 CPU 系统上，对于 4 字节数据，通常需要 4 字节对齐。</p>
+<p>所有线程访问数据的起始地址必须是这个对齐大小的倍数。</p>
+<ul>
+<li>4 字节数据: 如果每个线程访问 4 字节的数据（例如一个 float），那么所有线程访问数据的起始地址必须是 4 的倍数 (0, 4, 8, 12, &hellip;)。</li>
+<li>8 字节数据: 如果每个线程访问 8 字节的数据（例如一个 double），那么所有线程访问数据的起始地址必须是 8 的倍数 (0, 8, 16, 24, &hellip;)。</li>
+<li>16 字节数据: 以此类推。</li>
+</ul>
+<h2 id="如何保证-线程访问数据的起始位置是上述的情况">如何保证 线程访问数据的起始位置是上述的情况？<a hidden class="anchor" aria-hidden="true" href="#如何保证-线程访问数据的起始位置是上述的情况">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">MyData</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">float</span> value;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">char</span> padding[<span style="color:#ae81ff">3</span>]; <span style="color:#75715e">// 填充 3 个字节，使结构体大小为 4 的倍数
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>};
+</span></span></code></pre></div><ul>
+<li>
+<p>结构体填充 (Padding): 如果你的数据存储在结构体中，你可以通过在结构体中添加填充成员来确保对齐。编译器通常会自动进行填充以满足对齐要求，但为了确保，你可以手动添加填充成员。 在上述例子中，padding 数组确保 MyData 结构体的大小是 4 的倍数，即使 value 只有 4 字节。 这样，即使你有多个 MyData 实例，它们在内存中的起始地址也自然会是 4 的倍数。</p>
+</li>
+<li>
+<p>数组: 如果你的数据存储在数组中，那么数组元素的地址本身就自然满足对齐要求。假设你有一个 float 类型的数组：<code>float data[100];</code> <code>data[0]</code> 的地址将是 4 的倍数，<code>data[1]</code> 的地址将是 8 的倍数，以此类推。</p>
+</li>
+<li>
+<p><code>cudaMallocPitch</code> (对于二维数据): 如果你处理的是二维数据（例如矩阵）， <code>cudaMallocPitch</code> 函数可以帮助你分配内存并控制行对齐。 它允许你指定每行的字节数，从而确保每行的起始地址满足对齐要求。 这对于处理矩阵等二维数据非常有用，可以确保行访问的合并性。</p>
+</li>
+<li>
+<p>使用 <code>alignas()</code> 等强制内存对齐。详见 <a href="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/kernel-%E5%90%91%E9%87%8F%E5%8C%96-simd/">SIMD</a></p>
+</li>
+</ul>
+<p>编译器通常会进行优化以确保数据对齐，但为了确保你的代码在不同编译器和平台上都能正确运行，最好手动进行对齐处理。***</p>
+<p>给个实例，打印连续10个对象的地址和与前一个对象的地址差：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;iostream&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">using</span> <span style="color:#66d9ef">namespace</span> std;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">MyData</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">float</span> value;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">char</span> padding[<span style="color:#ae81ff">3</span>]; <span style="color:#75715e">// 填充 3 个字节，使结构体大小为 4 的倍数
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span>() {
+</span></span><span style="display:flex;"><span>  MyData myDataArray[<span style="color:#ae81ff">10</span>];
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// 打印每个对象的起始地址和与前一个对象的地址差
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">10</span>; <span style="color:#f92672">++</span>i) {
+</span></span><span style="display:flex;"><span>    std<span style="color:#f92672">::</span>uintptr_t address <span style="color:#f92672">=</span> <span style="color:#66d9ef">reinterpret_cast</span><span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>uintptr_t<span style="color:#f92672">&gt;</span>(<span style="color:#f92672">&amp;</span>myDataArray[i]);
+</span></span><span style="display:flex;"><span>    std<span style="color:#f92672">::</span>cout <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;MyData[&#34;</span> <span style="color:#f92672">&lt;&lt;</span> i <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;] address: &#34;</span> <span style="color:#f92672">&lt;&lt;</span> address <span style="color:#f92672">&lt;&lt;</span> std<span style="color:#f92672">::</span>endl;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (i <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>      std<span style="color:#f92672">::</span>uintptr_t prevAddress <span style="color:#f92672">=</span> <span style="color:#66d9ef">reinterpret_cast</span><span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>uintptr_t<span style="color:#f92672">&gt;</span>(<span style="color:#f92672">&amp;</span>myDataArray[i <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>]);
+</span></span><span style="display:flex;"><span>      std<span style="color:#f92672">::</span>cout <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;Difference from previous: &#34;</span> <span style="color:#f92672">&lt;&lt;</span> address <span style="color:#f92672">-</span> prevAddress <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34; bytes&#34;</span> <span style="color:#f92672">&lt;&lt;</span> std<span style="color:#f92672">::</span>endl;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>编译器会对齐，返回：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>MyData<span style="color:#f92672">[</span>0<span style="color:#f92672">]</span> address: <span style="color:#ae81ff">140724588819808</span>  <span style="color:#75715e"># 所有地址都是 8 的倍数</span>
+</span></span><span style="display:flex;"><span>MyData<span style="color:#f92672">[</span>1<span style="color:#f92672">]</span> address: <span style="color:#ae81ff">140724588819816</span>  
+</span></span><span style="display:flex;"><span>Difference from previous: <span style="color:#ae81ff">8</span> bytes
+</span></span><span style="display:flex;"><span>MyData<span style="color:#f92672">[</span>2<span style="color:#f92672">]</span> address: <span style="color:#ae81ff">140724588819824</span>
+</span></span><span style="display:flex;"><span>Difference from previous: <span style="color:#ae81ff">8</span> bytes
+</span></span><span style="display:flex;"><span>MyData<span style="color:#f92672">[</span>3<span style="color:#f92672">]</span> address: <span style="color:#ae81ff">140724588819832</span>
+</span></span><span style="display:flex;"><span>Difference from previous: <span style="color:#ae81ff">8</span> bytes
+</span></span><span style="display:flex;"><span>MyData<span style="color:#f92672">[</span>4<span style="color:#f92672">]</span> address: <span style="color:#ae81ff">140724588819840</span>
+</span></span><span style="display:flex;"><span>Difference from previous: <span style="color:#ae81ff">8</span> bytes
+</span></span><span style="display:flex;"><span>MyData<span style="color:#f92672">[</span>5<span style="color:#f92672">]</span> address: <span style="color:#ae81ff">140724588819848</span>
+</span></span><span style="display:flex;"><span>Difference from previous: <span style="color:#ae81ff">8</span> bytes
+</span></span><span style="display:flex;"><span>MyData<span style="color:#f92672">[</span>6<span style="color:#f92672">]</span> address: <span style="color:#ae81ff">140724588819856</span>
+</span></span><span style="display:flex;"><span>Difference from previous: <span style="color:#ae81ff">8</span> bytes
+</span></span><span style="display:flex;"><span>MyData<span style="color:#f92672">[</span>7<span style="color:#f92672">]</span> address: <span style="color:#ae81ff">140724588819864</span>
+</span></span><span style="display:flex;"><span>Difference from previous: <span style="color:#ae81ff">8</span> bytes
+</span></span><span style="display:flex;"><span>MyData<span style="color:#f92672">[</span>8<span style="color:#f92672">]</span> address: <span style="color:#ae81ff">140724588819872</span>
+</span></span><span style="display:flex;"><span>Difference from previous: <span style="color:#ae81ff">8</span> bytes
+</span></span><span style="display:flex;"><span>MyData<span style="color:#f92672">[</span>9<span style="color:#f92672">]</span> address: <span style="color:#ae81ff">140724588819880</span>
+</span></span><span style="display:flex;"><span>Difference from previous: <span style="color:#ae81ff">8</span> bytes
+</span></span></code></pre></div><p>编译器会自动填充。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/cuda/">CUDA</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

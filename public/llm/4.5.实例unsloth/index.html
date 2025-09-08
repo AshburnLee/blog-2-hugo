@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>4.5.实例unsloth | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="LLM, Unsloth, GRPO">
+<meta name="description" content="Unloth
+Unsloth 是一个加速 LLM 微调的库，它使得训练模型更快，并减少计算资源的需求。Unsloth 与 TRL 集成。
+可在 Google Colab T4 GPU 上免费运行。
+pip install unsloth vllm
+pip install --upgrade pillow
+Setup unsloth 加载模型
+from unsloth import FastLanguageModel 这个类将 transformers 与 Unsloth 优化集成。
+加载 Google 的 Gemma 3 1B Instruct 模型并配置它进行微调。
+from unsloth import FastLanguageModel
+import torch
+
+max_seq_length = 1024  # Can increase for longer reasoning traces
+lora_rank = 32  # Larger rank = smarter, but slower
+
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name=&#34;google/gemma-3-1b-it&#34;,
+    max_seq_length=max_seq_length,
+    load_in_4bit=True,  # False for LoRA 16bit
+    fast_inference=True,  # Enable vLLM fast inference
+    max_lora_rank=lora_rank,
+    gpu_memory_utilization=0.6,  # Reduce if out of memory
+)
+
+model = FastLanguageModel.get_peft_model(
+    model,
+    r=lora_rank,  # Choose any number &gt; 0 ! Suggested 8, 16, 32, 64, 128
+    target_modules=[
+        &#34;q_proj&#34;,
+        &#34;k_proj&#34;,
+        &#34;v_proj&#34;,
+        &#34;o_proj&#34;,
+        &#34;gate_proj&#34;,
+        &#34;up_proj&#34;,
+        &#34;down_proj&#34;,
+    ],  # Remove QKVO if out of memory
+    lora_alpha=lora_rank,
+    use_gradient_checkpointing=&#34;unsloth&#34;,  # Enable long context finetuning
+    random_state=3407,
+)
+用 4 位量化方式加载模型以节省内存，并应用 LoRA 低秩适配进行高效微调。 target_modules 参数指定要微调模型的哪些层， use_gradient_checkpointing 参数启用使用更长的上下文进行训练。">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/llm/4.5.%E5%AE%9E%E4%BE%8Bunsloth/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/llm/4.5.%E5%AE%9E%E4%BE%8Bunsloth/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/llm/4.5.%E5%AE%9E%E4%BE%8Bunsloth/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="4.5.实例unsloth">
+  <meta property="og:description" content="Unloth Unsloth 是一个加速 LLM 微调的库，它使得训练模型更快，并减少计算资源的需求。Unsloth 与 TRL 集成。
+可在 Google Colab T4 GPU 上免费运行。
+pip install unsloth vllm pip install --upgrade pillow Setup unsloth 加载模型 from unsloth import FastLanguageModel 这个类将 transformers 与 Unsloth 优化集成。
+加载 Google 的 Gemma 3 1B Instruct 模型并配置它进行微调。
+from unsloth import FastLanguageModel import torch max_seq_length = 1024 # Can increase for longer reasoning traces lora_rank = 32 # Larger rank = smarter, but slower model, tokenizer = FastLanguageModel.from_pretrained( model_name=&#34;google/gemma-3-1b-it&#34;, max_seq_length=max_seq_length, load_in_4bit=True, # False for LoRA 16bit fast_inference=True, # Enable vLLM fast inference max_lora_rank=lora_rank, gpu_memory_utilization=0.6, # Reduce if out of memory ) model = FastLanguageModel.get_peft_model( model, r=lora_rank, # Choose any number &gt; 0 ! Suggested 8, 16, 32, 64, 128 target_modules=[ &#34;q_proj&#34;, &#34;k_proj&#34;, &#34;v_proj&#34;, &#34;o_proj&#34;, &#34;gate_proj&#34;, &#34;up_proj&#34;, &#34;down_proj&#34;, ], # Remove QKVO if out of memory lora_alpha=lora_rank, use_gradient_checkpointing=&#34;unsloth&#34;, # Enable long context finetuning random_state=3407, ) 用 4 位量化方式加载模型以节省内存，并应用 LoRA 低秩适配进行高效微调。 target_modules 参数指定要微调模型的哪些层， use_gradient_checkpointing 参数启用使用更长的上下文进行训练。">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="llm">
+    <meta property="article:published_time" content="2025-08-31T12:49:38+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:49:38+08:00">
+    <meta property="article:tag" content="LLM">
+    <meta property="article:tag" content="Unsloth">
+    <meta property="article:tag" content="GRPO">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="4.5.实例unsloth">
+<meta name="twitter:description" content="Unloth
+Unsloth 是一个加速 LLM 微调的库，它使得训练模型更快，并减少计算资源的需求。Unsloth 与 TRL 集成。
+可在 Google Colab T4 GPU 上免费运行。
+pip install unsloth vllm
+pip install --upgrade pillow
+Setup unsloth 加载模型
+from unsloth import FastLanguageModel 这个类将 transformers 与 Unsloth 优化集成。
+加载 Google 的 Gemma 3 1B Instruct 模型并配置它进行微调。
+from unsloth import FastLanguageModel
+import torch
+
+max_seq_length = 1024  # Can increase for longer reasoning traces
+lora_rank = 32  # Larger rank = smarter, but slower
+
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name=&#34;google/gemma-3-1b-it&#34;,
+    max_seq_length=max_seq_length,
+    load_in_4bit=True,  # False for LoRA 16bit
+    fast_inference=True,  # Enable vLLM fast inference
+    max_lora_rank=lora_rank,
+    gpu_memory_utilization=0.6,  # Reduce if out of memory
+)
+
+model = FastLanguageModel.get_peft_model(
+    model,
+    r=lora_rank,  # Choose any number &gt; 0 ! Suggested 8, 16, 32, 64, 128
+    target_modules=[
+        &#34;q_proj&#34;,
+        &#34;k_proj&#34;,
+        &#34;v_proj&#34;,
+        &#34;o_proj&#34;,
+        &#34;gate_proj&#34;,
+        &#34;up_proj&#34;,
+        &#34;down_proj&#34;,
+    ],  # Remove QKVO if out of memory
+    lora_alpha=lora_rank,
+    use_gradient_checkpointing=&#34;unsloth&#34;,  # Enable long context finetuning
+    random_state=3407,
+)
+用 4 位量化方式加载模型以节省内存，并应用 LoRA 低秩适配进行高效微调。 target_modules 参数指定要微调模型的哪些层， use_gradient_checkpointing 参数启用使用更长的上下文进行训练。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "LLM",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "4.5.实例unsloth",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/4.5.%E5%AE%9E%E4%BE%8Bunsloth/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "4.5.实例unsloth",
+  "name": "4.5.实例unsloth",
+  "description": "Unloth Unsloth 是一个加速 LLM 微调的库，它使得训练模型更快，并减少计算资源的需求。Unsloth 与 TRL 集成。\n可在 Google Colab T4 GPU 上免费运行。\npip install unsloth vllm pip install --upgrade pillow Setup unsloth 加载模型 from unsloth import FastLanguageModel 这个类将 transformers 与 Unsloth 优化集成。\n加载 Google 的 Gemma 3 1B Instruct 模型并配置它进行微调。\nfrom unsloth import FastLanguageModel import torch max_seq_length = 1024 # Can increase for longer reasoning traces lora_rank = 32 # Larger rank = smarter, but slower model, tokenizer = FastLanguageModel.from_pretrained( model_name=\u0026#34;google/gemma-3-1b-it\u0026#34;, max_seq_length=max_seq_length, load_in_4bit=True, # False for LoRA 16bit fast_inference=True, # Enable vLLM fast inference max_lora_rank=lora_rank, gpu_memory_utilization=0.6, # Reduce if out of memory ) model = FastLanguageModel.get_peft_model( model, r=lora_rank, # Choose any number \u0026gt; 0 ! Suggested 8, 16, 32, 64, 128 target_modules=[ \u0026#34;q_proj\u0026#34;, \u0026#34;k_proj\u0026#34;, \u0026#34;v_proj\u0026#34;, \u0026#34;o_proj\u0026#34;, \u0026#34;gate_proj\u0026#34;, \u0026#34;up_proj\u0026#34;, \u0026#34;down_proj\u0026#34;, ], # Remove QKVO if out of memory lora_alpha=lora_rank, use_gradient_checkpointing=\u0026#34;unsloth\u0026#34;, # Enable long context finetuning random_state=3407, ) 用 4 位量化方式加载模型以节省内存，并应用 LoRA 低秩适配进行高效微调。 target_modules 参数指定要微调模型的哪些层， use_gradient_checkpointing 参数启用使用更长的上下文进行训练。\n",
+  "keywords": [
+    "LLM", "Unsloth", "GRPO"
+  ],
+  "articleBody": "Unloth Unsloth 是一个加速 LLM 微调的库，它使得训练模型更快，并减少计算资源的需求。Unsloth 与 TRL 集成。\n可在 Google Colab T4 GPU 上免费运行。\npip install unsloth vllm pip install --upgrade pillow Setup unsloth 加载模型 from unsloth import FastLanguageModel 这个类将 transformers 与 Unsloth 优化集成。\n加载 Google 的 Gemma 3 1B Instruct 模型并配置它进行微调。\nfrom unsloth import FastLanguageModel import torch max_seq_length = 1024 # Can increase for longer reasoning traces lora_rank = 32 # Larger rank = smarter, but slower model, tokenizer = FastLanguageModel.from_pretrained( model_name=\"google/gemma-3-1b-it\", max_seq_length=max_seq_length, load_in_4bit=True, # False for LoRA 16bit fast_inference=True, # Enable vLLM fast inference max_lora_rank=lora_rank, gpu_memory_utilization=0.6, # Reduce if out of memory ) model = FastLanguageModel.get_peft_model( model, r=lora_rank, # Choose any number \u003e 0 ! Suggested 8, 16, 32, 64, 128 target_modules=[ \"q_proj\", \"k_proj\", \"v_proj\", \"o_proj\", \"gate_proj\", \"up_proj\", \"down_proj\", ], # Remove QKVO if out of memory lora_alpha=lora_rank, use_gradient_checkpointing=\"unsloth\", # Enable long context finetuning random_state=3407, ) 用 4 位量化方式加载模型以节省内存，并应用 LoRA 低秩适配进行高效微调。 target_modules 参数指定要微调模型的哪些层， use_gradient_checkpointing 参数启用使用更长的上下文进行训练。\n准备数据 使用 GSM8K 数据集，其包含小学数学问题。我们将格式化数据，以鼓励模型在给出答案之前展示其推理过程。首先，定义提示和答案的格式：\n# Define the system prompt that instructs the model to use a specific format SYSTEM_PROMPT = \"\"\" Respond in the following format: ... ... \"\"\" XML_COT_FORMAT = \"\"\"\\ {reasoning} {answer} \"\"\" 然后准备数据集，从数据集中提取答案并将其格式化为字符串：\nimport re from datasets import load_dataset, Dataset # Helper functions to extract answers from different formats def extract_xml_answer(text: str) -\u003e str: answer = text.split(\"\")[-1] answer = answer.split(\"\")[0] return answer.strip() def extract_hash_answer(text: str) -\u003e str | None: if \"####\" not in text: return None return text.split(\"####\")[1].strip() # Function to prepare the GSM8K dataset def get_gsm8k_questions(split=\"train\") -\u003e Dataset: data = load_dataset(\"openai/gsm8k\", \"main\")[split] data = data.map( lambda x: { \"prompt\": [ {\"role\": \"system\", \"content\": SYSTEM_PROMPT}, {\"role\": \"user\", \"content\": x[\"question\"]}, ], \"answer\": extract_hash_answer(x[\"answer\"]), } ) return data dataset = get_gsm8k_questions() 定义 Reward function 回顾下， GRPO 可以使用奖励函数根据可验证的标准（如长度和格式）来指导模型的学习。\n# 奖励模型当其答案与正确答案匹配时 def correctness_reward_func(prompts, completions, answer, **kwargs) -\u003e list[float]: responses = [completion[0][\"content\"] for completion in completions] q = prompts[0][-1][\"content\"] extracted_responses = [extract_xml_answer(r) for r in responses] print( \"-\" * 20, f\"Question:\\n{q}\", f\"\\nAnswer:\\n{answer[0]}\", f\"\\nResponse:\\n{responses[0]}\", f\"\\nExtracted:\\n{extracted_responses[0]}\", ) return [2.0 if r == a else 0.0 for r, a in zip(extracted_responses, answer)] # 奖励模型提供 数值答案 def int_reward_func(completions, **kwargs) -\u003e list[float]: responses = [completion[0][\"content\"] for completion in completions] extracted_responses = [extract_xml_answer(r) for r in responses] return [0.5 if r.isdigit() else 0.0 for r in extracted_responses] # 奖励模型遵循指定格式 def strict_format_reward_func(completions, **kwargs) -\u003e list[float]: pattern = r\"^\\n.*?\\n\\n\\n.*?\\n\\n$\" responses = [completion[0][\"content\"] for completion in completions] matches = [re.match(pattern, r) for r in responses] return [0.5 if match else 0.0 for match in matches] # 奖励模型遵循指定格式 def soft_format_reward_func(completions, **kwargs) -\u003e list[float]: pattern = r\".*?\\s*.*?\" responses = [completion[0][\"content\"] for completion in completions] matches = [re.match(pattern, r) for r in responses] return [0.5 if match else 0.0 for match in matches] # 奖励正确的 XML 标签使用，并惩罚闭合标签后的额外内容 def count_xml(text) -\u003e float: count = 0.0 if text.count(\"\\n\") == 1: count += 0.125 if text.count(\"\\n\\n\") == 1: count += 0.125 if text.count(\"\\n\\n\") == 1: count += 0.125 count -= len(text.split(\"\\n\\n\")[-1]) * 0.001 if text.count(\"\\n\") == 1: count += 0.125 count -= (len(text.split(\"\\n\")[-1]) - 1) * 0.001 return count def xmlcount_reward_func(completions, **kwargs) -\u003e list[float]: contents = [completion[0][\"content\"] for completion in completions] return [count_xml(c) for c in contents] 使用 GRPO 进行训练 现在使用得到的模型、分词器和奖励函数来设置 GRPO 训练器：\nfrom trl import GRPOConfig, GRPOTrainer max_prompt_length = 256 training_args = GRPOConfig( learning_rate=5e-6, adam_beta1=0.9, adam_beta2=0.99, weight_decay=0.1, warmup_ratio=0.1, lr_scheduler_type=\"cosine\", optim=\"paged_adamw_8bit\", logging_steps=1, per_device_train_batch_size=1, gradient_accumulation_steps=1, # Increase to 4 for smoother training num_generations=6, # Decrease if out of memory max_prompt_length=max_prompt_length, max_completion_length=max_seq_length - max_prompt_length, # num_train_epochs = 1, # Set to 1 for a full training run max_steps=250, save_steps=250, max_grad_norm=0.1, report_to=\"none\", # Can use Weights \u0026 Biases output_dir=\"outputs\", ) trainer = GRPOTrainer( model=model, processing_class=tokenizer, reward_funcs=[ xmlcount_reward_func, soft_format_reward_func, strict_format_reward_func, int_reward_func, correctness_reward_func, ], args=training_args, train_dataset=dataset, ) 开始训练：\ntrainer.train() 测试模型 model.save_lora(\"grpo_saved_lora\") from vllm import SamplingParams # 计算pi text = tokenizer.apply_chat_template( [ {\"role\": \"system\", \"content\": SYSTEM_PROMPT}, {\"role\": \"user\", \"content\": \"Calculate pi.\"}, ], tokenize=False, add_generation_prompt=True, ) sampling_params = SamplingParams( temperature=0.8, top_p=0.95, max_tokens=1024, ) output = ( model.fast_generate( text, sampling_params=sampling_params, lora_request=model.load_lora(\"grpo_saved_lora\"), )[0] .outputs[0] .text ) print(output) 保存模型 Unsloth 提供了多种保存您微调模型的选项：\n保存为 16-bit precision model.save_pretrained_merged(\"model\", tokenizer, save_method=\"merged_16bit\") push 到 HF model.push_to_hub_merged( \"your-username/model-name\", tokenizer, save_method=\"merged_16bit\", token=\"your-token\" ) 保存为 GGUF 格式，用于与 llama.cpp 一起使用 model.push_to_hub_gguf( \"your-username/model-name\", tokenizer, quantization_method=[\"q4_k_m\", \"q8_0\", \"q5_k_m\"], token=\"your-token\", ) 然后可以使用 llama.cpp 运行模型： llama-cli -m my_model.gguf。\n",
+  "wordCount" : "673",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:49:38+08:00",
+  "dateModified": "2025-08-31T12:49:38+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/llm/4.5.%E5%AE%9E%E4%BE%8Bunsloth/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      4.5.实例unsloth
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:49:38 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><h1 id="unloth">Unloth<a hidden class="anchor" aria-hidden="true" href="#unloth">#</a></h1>
+<p>Unsloth 是一个加速 LLM 微调的库，它使得训练模型更快，并减少计算资源的需求。Unsloth 与 TRL 集成。</p>
+<p>可在 Google Colab T4 GPU 上免费运行。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>pip install unsloth vllm
+</span></span><span style="display:flex;"><span>pip install --upgrade pillow
+</span></span></code></pre></div><h1 id="setup-unsloth-加载模型">Setup unsloth 加载模型<a hidden class="anchor" aria-hidden="true" href="#setup-unsloth-加载模型">#</a></h1>
+<p><code>from unsloth import FastLanguageModel</code> 这个类将 transformers 与 Unsloth 优化集成。</p>
+<p>加载 Google 的 Gemma 3 1B Instruct 模型并配置它进行微调。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> unsloth <span style="color:#f92672">import</span> FastLanguageModel
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> torch
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>max_seq_length <span style="color:#f92672">=</span> <span style="color:#ae81ff">1024</span>  <span style="color:#75715e"># Can increase for longer reasoning traces</span>
+</span></span><span style="display:flex;"><span>lora_rank <span style="color:#f92672">=</span> <span style="color:#ae81ff">32</span>  <span style="color:#75715e"># Larger rank = smarter, but slower</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>model, tokenizer <span style="color:#f92672">=</span> FastLanguageModel<span style="color:#f92672">.</span>from_pretrained(
+</span></span><span style="display:flex;"><span>    model_name<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;google/gemma-3-1b-it&#34;</span>,
+</span></span><span style="display:flex;"><span>    max_seq_length<span style="color:#f92672">=</span>max_seq_length,
+</span></span><span style="display:flex;"><span>    load_in_4bit<span style="color:#f92672">=</span><span style="color:#66d9ef">True</span>,  <span style="color:#75715e"># False for LoRA 16bit</span>
+</span></span><span style="display:flex;"><span>    fast_inference<span style="color:#f92672">=</span><span style="color:#66d9ef">True</span>,  <span style="color:#75715e"># Enable vLLM fast inference</span>
+</span></span><span style="display:flex;"><span>    max_lora_rank<span style="color:#f92672">=</span>lora_rank,
+</span></span><span style="display:flex;"><span>    gpu_memory_utilization<span style="color:#f92672">=</span><span style="color:#ae81ff">0.6</span>,  <span style="color:#75715e"># Reduce if out of memory</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>model <span style="color:#f92672">=</span> FastLanguageModel<span style="color:#f92672">.</span>get_peft_model(
+</span></span><span style="display:flex;"><span>    model,
+</span></span><span style="display:flex;"><span>    r<span style="color:#f92672">=</span>lora_rank,  <span style="color:#75715e"># Choose any number &gt; 0 ! Suggested 8, 16, 32, 64, 128</span>
+</span></span><span style="display:flex;"><span>    target_modules<span style="color:#f92672">=</span>[
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;q_proj&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;k_proj&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;v_proj&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;o_proj&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;gate_proj&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;up_proj&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;down_proj&#34;</span>,
+</span></span><span style="display:flex;"><span>    ],  <span style="color:#75715e"># Remove QKVO if out of memory</span>
+</span></span><span style="display:flex;"><span>    lora_alpha<span style="color:#f92672">=</span>lora_rank,
+</span></span><span style="display:flex;"><span>    use_gradient_checkpointing<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;unsloth&#34;</span>,  <span style="color:#75715e"># Enable long context finetuning</span>
+</span></span><span style="display:flex;"><span>    random_state<span style="color:#f92672">=</span><span style="color:#ae81ff">3407</span>,
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><p>用 <strong>4 位量化</strong>方式加载模型以节省内存，并应用 <strong>LoRA 低秩适配</strong>进行高效微调。 <code>target_modules</code> 参数指定要微调模型的哪些层， <code>use_gradient_checkpointing</code> 参数启用使用更长的上下文进行训练。</p>
+<h1 id="准备数据">准备数据<a hidden class="anchor" aria-hidden="true" href="#准备数据">#</a></h1>
+<p>使用 GSM8K 数据集，其包含小学数学问题。我们将格式化数据，以鼓励模型在给出答案之前<strong>展示其推理过程</strong>。首先，定义提示和答案的格式：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#75715e"># Define the system prompt that instructs the model to use a specific format</span>
+</span></span><span style="display:flex;"><span>SYSTEM_PROMPT <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;&#34;&#34;
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">Respond in the following format:
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">&lt;reasoning&gt;
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">...
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">&lt;/reasoning&gt;
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">&lt;answer&gt;
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">...
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">&lt;/answer&gt;
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">&#34;&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>XML_COT_FORMAT <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;&#34;&#34;</span><span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span><span style="color:#e6db74">&lt;reasoning&gt;
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74"></span><span style="color:#e6db74">{reasoning}</span><span style="color:#e6db74">
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">&lt;/reasoning&gt;
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">&lt;answer&gt;
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74"></span><span style="color:#e6db74">{answer}</span><span style="color:#e6db74">
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">&lt;/answer&gt;
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">&#34;&#34;&#34;</span>
+</span></span></code></pre></div><p>然后准备数据集，从数据集中提取答案并将其格式化为字符串：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">import</span> re
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> datasets <span style="color:#f92672">import</span> load_dataset, Dataset
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Helper functions to extract answers from different formats</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">extract_xml_answer</span>(text: str) <span style="color:#f92672">-&gt;</span> str:
+</span></span><span style="display:flex;"><span>    answer <span style="color:#f92672">=</span> text<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#34;&lt;answer&gt;&#34;</span>)[<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>    answer <span style="color:#f92672">=</span> answer<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#34;&lt;/answer&gt;&#34;</span>)[<span style="color:#ae81ff">0</span>]
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> answer<span style="color:#f92672">.</span>strip()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">extract_hash_answer</span>(text: str) <span style="color:#f92672">-&gt;</span> str <span style="color:#f92672">|</span> <span style="color:#66d9ef">None</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#e6db74">&#34;####&#34;</span> <span style="color:#f92672">not</span> <span style="color:#f92672">in</span> text:
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">None</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> text<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#34;####&#34;</span>)[<span style="color:#ae81ff">1</span>]<span style="color:#f92672">.</span>strip()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Function to prepare the GSM8K dataset</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_gsm8k_questions</span>(split<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;train&#34;</span>) <span style="color:#f92672">-&gt;</span> Dataset:
+</span></span><span style="display:flex;"><span>    data <span style="color:#f92672">=</span> load_dataset(<span style="color:#e6db74">&#34;openai/gsm8k&#34;</span>, <span style="color:#e6db74">&#34;main&#34;</span>)[split]
+</span></span><span style="display:flex;"><span>    data <span style="color:#f92672">=</span> data<span style="color:#f92672">.</span>map(
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">lambda</span> x: {
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;prompt&#34;</span>: [
+</span></span><span style="display:flex;"><span>                {<span style="color:#e6db74">&#34;role&#34;</span>: <span style="color:#e6db74">&#34;system&#34;</span>, <span style="color:#e6db74">&#34;content&#34;</span>: SYSTEM_PROMPT},
+</span></span><span style="display:flex;"><span>                {<span style="color:#e6db74">&#34;role&#34;</span>: <span style="color:#e6db74">&#34;user&#34;</span>, <span style="color:#e6db74">&#34;content&#34;</span>: x[<span style="color:#e6db74">&#34;question&#34;</span>]},
+</span></span><span style="display:flex;"><span>            ],
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;answer&#34;</span>: extract_hash_answer(x[<span style="color:#e6db74">&#34;answer&#34;</span>]),
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    )
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> data
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>dataset <span style="color:#f92672">=</span> get_gsm8k_questions()
+</span></span></code></pre></div><h1 id="定义-reward-function">定义 Reward function<a hidden class="anchor" aria-hidden="true" href="#定义-reward-function">#</a></h1>
+<p>回顾下， GRPO 可以使用奖励函数根据可验证的标准（如长度和格式）来指导模型的学习。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#75715e"># 奖励模型当其答案与正确答案匹配时</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">correctness_reward_func</span>(prompts, completions, answer, <span style="color:#f92672">**</span>kwargs) <span style="color:#f92672">-&gt;</span> list[float]:
+</span></span><span style="display:flex;"><span>    responses <span style="color:#f92672">=</span> [completion[<span style="color:#ae81ff">0</span>][<span style="color:#e6db74">&#34;content&#34;</span>] <span style="color:#66d9ef">for</span> completion <span style="color:#f92672">in</span> completions]
+</span></span><span style="display:flex;"><span>    q <span style="color:#f92672">=</span> prompts[<span style="color:#ae81ff">0</span>][<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>][<span style="color:#e6db74">&#34;content&#34;</span>]
+</span></span><span style="display:flex;"><span>    extracted_responses <span style="color:#f92672">=</span> [extract_xml_answer(r) <span style="color:#66d9ef">for</span> r <span style="color:#f92672">in</span> responses]
+</span></span><span style="display:flex;"><span>    print(
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;-&#34;</span> <span style="color:#f92672">*</span> <span style="color:#ae81ff">20</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;Question:</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">{</span>q<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">Answer:</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">{</span>answer[<span style="color:#ae81ff">0</span>]<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">Response:</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">{</span>responses[<span style="color:#ae81ff">0</span>]<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">Extracted:</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">{</span>extracted_responses[<span style="color:#ae81ff">0</span>]<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>,
+</span></span><span style="display:flex;"><span>    )
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> [<span style="color:#ae81ff">2.0</span> <span style="color:#66d9ef">if</span> r <span style="color:#f92672">==</span> a <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">0.0</span> <span style="color:#66d9ef">for</span> r, a <span style="color:#f92672">in</span> zip(extracted_responses, answer)]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 奖励模型提供 数值答案</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">int_reward_func</span>(completions, <span style="color:#f92672">**</span>kwargs) <span style="color:#f92672">-&gt;</span> list[float]:
+</span></span><span style="display:flex;"><span>    responses <span style="color:#f92672">=</span> [completion[<span style="color:#ae81ff">0</span>][<span style="color:#e6db74">&#34;content&#34;</span>] <span style="color:#66d9ef">for</span> completion <span style="color:#f92672">in</span> completions]
+</span></span><span style="display:flex;"><span>    extracted_responses <span style="color:#f92672">=</span> [extract_xml_answer(r) <span style="color:#66d9ef">for</span> r <span style="color:#f92672">in</span> responses]
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> [<span style="color:#ae81ff">0.5</span> <span style="color:#66d9ef">if</span> r<span style="color:#f92672">.</span>isdigit() <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">0.0</span> <span style="color:#66d9ef">for</span> r <span style="color:#f92672">in</span> extracted_responses]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 奖励模型遵循指定格式</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">strict_format_reward_func</span>(completions, <span style="color:#f92672">**</span>kwargs) <span style="color:#f92672">-&gt;</span> list[float]:
+</span></span><span style="display:flex;"><span>    pattern <span style="color:#f92672">=</span> <span style="color:#e6db74">r</span><span style="color:#e6db74">&#34;^&lt;reasoning&gt;\n.*?\n&lt;/reasoning&gt;\n&lt;answer&gt;\n.*?\n&lt;/answer&gt;\n$&#34;</span>
+</span></span><span style="display:flex;"><span>    responses <span style="color:#f92672">=</span> [completion[<span style="color:#ae81ff">0</span>][<span style="color:#e6db74">&#34;content&#34;</span>] <span style="color:#66d9ef">for</span> completion <span style="color:#f92672">in</span> completions]
+</span></span><span style="display:flex;"><span>    matches <span style="color:#f92672">=</span> [re<span style="color:#f92672">.</span><span style="color:#66d9ef">match</span>(pattern, r) <span style="color:#66d9ef">for</span> r <span style="color:#f92672">in</span> responses]
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> [<span style="color:#ae81ff">0.5</span> <span style="color:#66d9ef">if</span> <span style="color:#66d9ef">match</span> <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">0.0</span> <span style="color:#66d9ef">for</span> <span style="color:#66d9ef">match</span> <span style="color:#f92672">in</span> matches]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 奖励模型遵循指定格式</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">soft_format_reward_func</span>(completions, <span style="color:#f92672">**</span>kwargs) <span style="color:#f92672">-&gt;</span> list[float]:
+</span></span><span style="display:flex;"><span>    pattern <span style="color:#f92672">=</span> <span style="color:#e6db74">r</span><span style="color:#e6db74">&#34;&lt;reasoning&gt;.*?&lt;/reasoning&gt;\s*&lt;answer&gt;.*?&lt;/answer&gt;&#34;</span>
+</span></span><span style="display:flex;"><span>    responses <span style="color:#f92672">=</span> [completion[<span style="color:#ae81ff">0</span>][<span style="color:#e6db74">&#34;content&#34;</span>] <span style="color:#66d9ef">for</span> completion <span style="color:#f92672">in</span> completions]
+</span></span><span style="display:flex;"><span>    matches <span style="color:#f92672">=</span> [re<span style="color:#f92672">.</span><span style="color:#66d9ef">match</span>(pattern, r) <span style="color:#66d9ef">for</span> r <span style="color:#f92672">in</span> responses]
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> [<span style="color:#ae81ff">0.5</span> <span style="color:#66d9ef">if</span> <span style="color:#66d9ef">match</span> <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">0.0</span> <span style="color:#66d9ef">for</span> <span style="color:#66d9ef">match</span> <span style="color:#f92672">in</span> matches]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 奖励正确的 XML 标签使用，并惩罚闭合标签后的额外内容</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">count_xml</span>(text) <span style="color:#f92672">-&gt;</span> float:
+</span></span><span style="display:flex;"><span>    count <span style="color:#f92672">=</span> <span style="color:#ae81ff">0.0</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> text<span style="color:#f92672">.</span>count(<span style="color:#e6db74">&#34;&lt;reasoning&gt;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>) <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span>:
+</span></span><span style="display:flex;"><span>        count <span style="color:#f92672">+=</span> <span style="color:#ae81ff">0.125</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> text<span style="color:#f92672">.</span>count(<span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&lt;/reasoning&gt;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>) <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span>:
+</span></span><span style="display:flex;"><span>        count <span style="color:#f92672">+=</span> <span style="color:#ae81ff">0.125</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> text<span style="color:#f92672">.</span>count(<span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&lt;answer&gt;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>) <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span>:
+</span></span><span style="display:flex;"><span>        count <span style="color:#f92672">+=</span> <span style="color:#ae81ff">0.125</span>
+</span></span><span style="display:flex;"><span>        count <span style="color:#f92672">-=</span> len(text<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&lt;/answer&gt;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>)[<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]) <span style="color:#f92672">*</span> <span style="color:#ae81ff">0.001</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> text<span style="color:#f92672">.</span>count(<span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&lt;/answer&gt;&#34;</span>) <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span>:
+</span></span><span style="display:flex;"><span>        count <span style="color:#f92672">+=</span> <span style="color:#ae81ff">0.125</span>
+</span></span><span style="display:flex;"><span>        count <span style="color:#f92672">-=</span> (len(text<span style="color:#f92672">.</span>split(<span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&lt;/answer&gt;&#34;</span>)[<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]) <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>) <span style="color:#f92672">*</span> <span style="color:#ae81ff">0.001</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> count
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">xmlcount_reward_func</span>(completions, <span style="color:#f92672">**</span>kwargs) <span style="color:#f92672">-&gt;</span> list[float]:
+</span></span><span style="display:flex;"><span>    contents <span style="color:#f92672">=</span> [completion[<span style="color:#ae81ff">0</span>][<span style="color:#e6db74">&#34;content&#34;</span>] <span style="color:#66d9ef">for</span> completion <span style="color:#f92672">in</span> completions]
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> [count_xml(c) <span style="color:#66d9ef">for</span> c <span style="color:#f92672">in</span> contents]
+</span></span></code></pre></div><h1 id="使用-grpo-进行训练">使用 GRPO 进行训练<a hidden class="anchor" aria-hidden="true" href="#使用-grpo-进行训练">#</a></h1>
+<p>现在使用得到的模型、分词器和奖励函数来设置 GRPO 训练器：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> trl <span style="color:#f92672">import</span> GRPOConfig, GRPOTrainer
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>max_prompt_length <span style="color:#f92672">=</span> <span style="color:#ae81ff">256</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>training_args <span style="color:#f92672">=</span> GRPOConfig(
+</span></span><span style="display:flex;"><span>    learning_rate<span style="color:#f92672">=</span><span style="color:#ae81ff">5e-6</span>,
+</span></span><span style="display:flex;"><span>    adam_beta1<span style="color:#f92672">=</span><span style="color:#ae81ff">0.9</span>,
+</span></span><span style="display:flex;"><span>    adam_beta2<span style="color:#f92672">=</span><span style="color:#ae81ff">0.99</span>,
+</span></span><span style="display:flex;"><span>    weight_decay<span style="color:#f92672">=</span><span style="color:#ae81ff">0.1</span>,
+</span></span><span style="display:flex;"><span>    warmup_ratio<span style="color:#f92672">=</span><span style="color:#ae81ff">0.1</span>,
+</span></span><span style="display:flex;"><span>    lr_scheduler_type<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;cosine&#34;</span>,
+</span></span><span style="display:flex;"><span>    optim<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;paged_adamw_8bit&#34;</span>,
+</span></span><span style="display:flex;"><span>    logging_steps<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span>,
+</span></span><span style="display:flex;"><span>    per_device_train_batch_size<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span>,
+</span></span><span style="display:flex;"><span>    gradient_accumulation_steps<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span>,  <span style="color:#75715e"># Increase to 4 for smoother training</span>
+</span></span><span style="display:flex;"><span>    num_generations<span style="color:#f92672">=</span><span style="color:#ae81ff">6</span>,  <span style="color:#75715e"># Decrease if out of memory</span>
+</span></span><span style="display:flex;"><span>    max_prompt_length<span style="color:#f92672">=</span>max_prompt_length,
+</span></span><span style="display:flex;"><span>    max_completion_length<span style="color:#f92672">=</span>max_seq_length <span style="color:#f92672">-</span> max_prompt_length,
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># num_train_epochs = 1, # Set to 1 for a full training run</span>
+</span></span><span style="display:flex;"><span>    max_steps<span style="color:#f92672">=</span><span style="color:#ae81ff">250</span>,
+</span></span><span style="display:flex;"><span>    save_steps<span style="color:#f92672">=</span><span style="color:#ae81ff">250</span>,
+</span></span><span style="display:flex;"><span>    max_grad_norm<span style="color:#f92672">=</span><span style="color:#ae81ff">0.1</span>,
+</span></span><span style="display:flex;"><span>    report_to<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;none&#34;</span>,  <span style="color:#75715e"># Can use Weights &amp; Biases</span>
+</span></span><span style="display:flex;"><span>    output_dir<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;outputs&#34;</span>,
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>trainer <span style="color:#f92672">=</span> GRPOTrainer(
+</span></span><span style="display:flex;"><span>    model<span style="color:#f92672">=</span>model,
+</span></span><span style="display:flex;"><span>    processing_class<span style="color:#f92672">=</span>tokenizer,
+</span></span><span style="display:flex;"><span>    reward_funcs<span style="color:#f92672">=</span>[
+</span></span><span style="display:flex;"><span>        xmlcount_reward_func,
+</span></span><span style="display:flex;"><span>        soft_format_reward_func,
+</span></span><span style="display:flex;"><span>        strict_format_reward_func,
+</span></span><span style="display:flex;"><span>        int_reward_func,
+</span></span><span style="display:flex;"><span>        correctness_reward_func,
+</span></span><span style="display:flex;"><span>    ],
+</span></span><span style="display:flex;"><span>    args<span style="color:#f92672">=</span>training_args,
+</span></span><span style="display:flex;"><span>    train_dataset<span style="color:#f92672">=</span>dataset,
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><p>开始训练：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span>trainer<span style="color:#f92672">.</span>train()
+</span></span></code></pre></div><h1 id="测试模型">测试模型<a hidden class="anchor" aria-hidden="true" href="#测试模型">#</a></h1>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span>model<span style="color:#f92672">.</span>save_lora(<span style="color:#e6db74">&#34;grpo_saved_lora&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> vllm <span style="color:#f92672">import</span> SamplingParams
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 计算pi</span>
+</span></span><span style="display:flex;"><span>text <span style="color:#f92672">=</span> tokenizer<span style="color:#f92672">.</span>apply_chat_template(
+</span></span><span style="display:flex;"><span>    [
+</span></span><span style="display:flex;"><span>        {<span style="color:#e6db74">&#34;role&#34;</span>: <span style="color:#e6db74">&#34;system&#34;</span>, <span style="color:#e6db74">&#34;content&#34;</span>: SYSTEM_PROMPT},
+</span></span><span style="display:flex;"><span>        {<span style="color:#e6db74">&#34;role&#34;</span>: <span style="color:#e6db74">&#34;user&#34;</span>, <span style="color:#e6db74">&#34;content&#34;</span>: <span style="color:#e6db74">&#34;Calculate pi.&#34;</span>},
+</span></span><span style="display:flex;"><span>    ],
+</span></span><span style="display:flex;"><span>    tokenize<span style="color:#f92672">=</span><span style="color:#66d9ef">False</span>,
+</span></span><span style="display:flex;"><span>    add_generation_prompt<span style="color:#f92672">=</span><span style="color:#66d9ef">True</span>,
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>sampling_params <span style="color:#f92672">=</span> SamplingParams(
+</span></span><span style="display:flex;"><span>    temperature<span style="color:#f92672">=</span><span style="color:#ae81ff">0.8</span>,
+</span></span><span style="display:flex;"><span>    top_p<span style="color:#f92672">=</span><span style="color:#ae81ff">0.95</span>,
+</span></span><span style="display:flex;"><span>    max_tokens<span style="color:#f92672">=</span><span style="color:#ae81ff">1024</span>,
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>output <span style="color:#f92672">=</span> (
+</span></span><span style="display:flex;"><span>    model<span style="color:#f92672">.</span>fast_generate(
+</span></span><span style="display:flex;"><span>        text,
+</span></span><span style="display:flex;"><span>        sampling_params<span style="color:#f92672">=</span>sampling_params,
+</span></span><span style="display:flex;"><span>        lora_request<span style="color:#f92672">=</span>model<span style="color:#f92672">.</span>load_lora(<span style="color:#e6db74">&#34;grpo_saved_lora&#34;</span>),
+</span></span><span style="display:flex;"><span>    )[<span style="color:#ae81ff">0</span>]
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">.</span>outputs[<span style="color:#ae81ff">0</span>]
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">.</span>text
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>print(output)
+</span></span></code></pre></div><h1 id="保存模型">保存模型<a hidden class="anchor" aria-hidden="true" href="#保存模型">#</a></h1>
+<p>Unsloth 提供了多种保存您微调模型的选项：</p>
+<ol>
+<li>保存为 16-bit precision</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span>model<span style="color:#f92672">.</span>save_pretrained_merged(<span style="color:#e6db74">&#34;model&#34;</span>, tokenizer, save_method<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;merged_16bit&#34;</span>)
+</span></span></code></pre></div><ol start="2">
+<li>push 到 HF</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span>model<span style="color:#f92672">.</span>push_to_hub_merged(
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;your-username/model-name&#34;</span>, tokenizer, save_method<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;merged_16bit&#34;</span>, token<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;your-token&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><ol start="3">
+<li>保存为 GGUF 格式，用于与 <code>llama.cpp</code> 一起使用</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span>model<span style="color:#f92672">.</span>push_to_hub_gguf(
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;your-username/model-name&#34;</span>,
+</span></span><span style="display:flex;"><span>    tokenizer,
+</span></span><span style="display:flex;"><span>    quantization_method<span style="color:#f92672">=</span>[<span style="color:#e6db74">&#34;q4_k_m&#34;</span>, <span style="color:#e6db74">&#34;q8_0&#34;</span>, <span style="color:#e6db74">&#34;q5_k_m&#34;</span>],
+</span></span><span style="display:flex;"><span>    token<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;your-token&#34;</span>,
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><p>然后可以使用 <code>llama.cpp</code> 运行模型： <code>llama-cli -m my_model.gguf</code>。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llm/">LLM</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/unsloth/">Unsloth</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/grpo/">GRPO</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

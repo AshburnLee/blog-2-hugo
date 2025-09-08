@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>5.0.GGML Llama.cpp | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="LLM, GGML, GGUF, llama.cpp">
+<meta name="description" content="llama.cpp 本身是一个仓库
+其作用是 LLM inference in C/C&#43;&#43; 。用最少配置和最先进的性能在广泛的硬件上进行 LLM 推理。
+作用
+
+
+纯 C/C&#43;&#43; 实现，不需要额外的复杂依赖，易于部署。
+
+
+支持 Windows、macOS、Linux，并针对不同硬件（如 ARM NEON、AVX、CUDA 等）进行优化。
+
+
+支持 1.5 位、2 位、4 位等整数量化技术，大幅降低模型的内存需求和计算开销。
+
+
+针对本地硬件（CPU、GPU、Apple Silicon 等）优化了 LLM 的推理过程，支持低资源设备运行大模型。
+
+
+与 GGUF（GGML 的升级版）模型格式紧密结合，用于高效加载和运行量化模型。
+
+
+简言之 llama.cpp 是一个轻量、高效的工具，用于在本地运行和推理 LLM，特别适合资源受限的环境或需要隐私保护的场景。
+如何使用
+
+
+安装并准备好模型文件。
+
+
+安装与C&#43;&#43; 编译器相关的依赖。
+
+
+源码编译,具体见源码编译，生成可执行文件 llama-cli 和 llama-server 等。
+
+
+从 Hugging Face 或其他模型托管平台下载 GGUF 格式的模型。
+
+
+llama-cli 工具适合快速测试模型
+
+
+llama-server 提供一个 HTTP 服务器，可以用于集成到其他应用中。启动后，可以通过 http://localhost:8080/v1/chat/completions 访问 API。
+
+
+与 llama-cpp-python 包一起使用，可以在 Python 中调用 llama.cpp 功能。
+
+
+llama-bench: benchmark 模型在各种 backend，parameter 等时的推理性能">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/llm/5.0.ggml-llama.cpp/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/llm/5.0.ggml-llama.cpp/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/llm/5.0.ggml-llama.cpp/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="5.0.GGML Llama.cpp">
+  <meta property="og:description" content="llama.cpp 本身是一个仓库 其作用是 LLM inference in C/C&#43;&#43; 。用最少配置和最先进的性能在广泛的硬件上进行 LLM 推理。
+作用 纯 C/C&#43;&#43; 实现，不需要额外的复杂依赖，易于部署。
+支持 Windows、macOS、Linux，并针对不同硬件（如 ARM NEON、AVX、CUDA 等）进行优化。
+支持 1.5 位、2 位、4 位等整数量化技术，大幅降低模型的内存需求和计算开销。
+针对本地硬件（CPU、GPU、Apple Silicon 等）优化了 LLM 的推理过程，支持低资源设备运行大模型。
+与 GGUF（GGML 的升级版）模型格式紧密结合，用于高效加载和运行量化模型。
+简言之 llama.cpp 是一个轻量、高效的工具，用于在本地运行和推理 LLM，特别适合资源受限的环境或需要隐私保护的场景。
+如何使用 安装并准备好模型文件。
+安装与C&#43;&#43; 编译器相关的依赖。
+源码编译,具体见源码编译，生成可执行文件 llama-cli 和 llama-server 等。
+从 Hugging Face 或其他模型托管平台下载 GGUF 格式的模型。
+llama-cli 工具适合快速测试模型
+llama-server 提供一个 HTTP 服务器，可以用于集成到其他应用中。启动后，可以通过 http://localhost:8080/v1/chat/completions 访问 API。
+与 llama-cpp-python 包一起使用，可以在 Python 中调用 llama.cpp 功能。
+llama-bench: benchmark 模型在各种 backend，parameter 等时的推理性能">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="llm">
+    <meta property="article:published_time" content="2025-08-31T12:49:39+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:49:39+08:00">
+    <meta property="article:tag" content="LLM">
+    <meta property="article:tag" content="GGML">
+    <meta property="article:tag" content="GGUF">
+    <meta property="article:tag" content="Llama.cpp">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="5.0.GGML Llama.cpp">
+<meta name="twitter:description" content="llama.cpp 本身是一个仓库
+其作用是 LLM inference in C/C&#43;&#43; 。用最少配置和最先进的性能在广泛的硬件上进行 LLM 推理。
+作用
+
+
+纯 C/C&#43;&#43; 实现，不需要额外的复杂依赖，易于部署。
+
+
+支持 Windows、macOS、Linux，并针对不同硬件（如 ARM NEON、AVX、CUDA 等）进行优化。
+
+
+支持 1.5 位、2 位、4 位等整数量化技术，大幅降低模型的内存需求和计算开销。
+
+
+针对本地硬件（CPU、GPU、Apple Silicon 等）优化了 LLM 的推理过程，支持低资源设备运行大模型。
+
+
+与 GGUF（GGML 的升级版）模型格式紧密结合，用于高效加载和运行量化模型。
+
+
+简言之 llama.cpp 是一个轻量、高效的工具，用于在本地运行和推理 LLM，特别适合资源受限的环境或需要隐私保护的场景。
+如何使用
+
+
+安装并准备好模型文件。
+
+
+安装与C&#43;&#43; 编译器相关的依赖。
+
+
+源码编译,具体见源码编译，生成可执行文件 llama-cli 和 llama-server 等。
+
+
+从 Hugging Face 或其他模型托管平台下载 GGUF 格式的模型。
+
+
+llama-cli 工具适合快速测试模型
+
+
+llama-server 提供一个 HTTP 服务器，可以用于集成到其他应用中。启动后，可以通过 http://localhost:8080/v1/chat/completions 访问 API。
+
+
+与 llama-cpp-python 包一起使用，可以在 Python 中调用 llama.cpp 功能。
+
+
+llama-bench: benchmark 模型在各种 backend，parameter 等时的推理性能">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "LLM",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "5.0.GGML Llama.cpp",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/5.0.ggml-llama.cpp/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "5.0.GGML Llama.cpp",
+  "name": "5.0.GGML Llama.cpp",
+  "description": "llama.cpp 本身是一个仓库 其作用是 LLM inference in C/C++ 。用最少配置和最先进的性能在广泛的硬件上进行 LLM 推理。\n作用 纯 C/C++ 实现，不需要额外的复杂依赖，易于部署。\n支持 Windows、macOS、Linux，并针对不同硬件（如 ARM NEON、AVX、CUDA 等）进行优化。\n支持 1.5 位、2 位、4 位等整数量化技术，大幅降低模型的内存需求和计算开销。\n针对本地硬件（CPU、GPU、Apple Silicon 等）优化了 LLM 的推理过程，支持低资源设备运行大模型。\n与 GGUF（GGML 的升级版）模型格式紧密结合，用于高效加载和运行量化模型。\n简言之 llama.cpp 是一个轻量、高效的工具，用于在本地运行和推理 LLM，特别适合资源受限的环境或需要隐私保护的场景。\n如何使用 安装并准备好模型文件。\n安装与C++ 编译器相关的依赖。\n源码编译,具体见源码编译，生成可执行文件 llama-cli 和 llama-server 等。\n从 Hugging Face 或其他模型托管平台下载 GGUF 格式的模型。\nllama-cli 工具适合快速测试模型\nllama-server 提供一个 HTTP 服务器，可以用于集成到其他应用中。启动后，可以通过 http://localhost:8080/v1/chat/completions 访问 API。\n与 llama-cpp-python 包一起使用，可以在 Python 中调用 llama.cpp 功能。\nllama-bench: benchmark 模型在各种 backend，parameter 等时的推理性能\n",
+  "keywords": [
+    "LLM", "GGML", "GGUF", "llama.cpp"
+  ],
+  "articleBody": "llama.cpp 本身是一个仓库 其作用是 LLM inference in C/C++ 。用最少配置和最先进的性能在广泛的硬件上进行 LLM 推理。\n作用 纯 C/C++ 实现，不需要额外的复杂依赖，易于部署。\n支持 Windows、macOS、Linux，并针对不同硬件（如 ARM NEON、AVX、CUDA 等）进行优化。\n支持 1.5 位、2 位、4 位等整数量化技术，大幅降低模型的内存需求和计算开销。\n针对本地硬件（CPU、GPU、Apple Silicon 等）优化了 LLM 的推理过程，支持低资源设备运行大模型。\n与 GGUF（GGML 的升级版）模型格式紧密结合，用于高效加载和运行量化模型。\n简言之 llama.cpp 是一个轻量、高效的工具，用于在本地运行和推理 LLM，特别适合资源受限的环境或需要隐私保护的场景。\n如何使用 安装并准备好模型文件。\n安装与C++ 编译器相关的依赖。\n源码编译,具体见源码编译，生成可执行文件 llama-cli 和 llama-server 等。\n从 Hugging Face 或其他模型托管平台下载 GGUF 格式的模型。\nllama-cli 工具适合快速测试模型\nllama-server 提供一个 HTTP 服务器，可以用于集成到其他应用中。启动后，可以通过 http://localhost:8080/v1/chat/completions 访问 API。\n与 llama-cpp-python 包一起使用，可以在 Python 中调用 llama.cpp 功能。\nllama-bench: benchmark 模型在各种 backend，parameter 等时的推理性能\n更多见官方 github readme\nggml llama.cpp 仓库属于 ggml org，GGML（Tensor library for machine learning），是一个轻量级、高效的 C/C++ 机器学习库，专为在资源受限设备上运行大型模型（如语言模型）设计。\nllama.cpp 依赖 GGML，使用 GGML 作为核心计算引擎，处理模型推理、量化和优化。GGML 提供底层基础设施（如矩阵乘法、量化算法），llama.cpp 实现模型特定的逻辑（如 LLaMA 的架构）。GGML 是通用库，llama.cpp 是应用。GGML 可用于其他项目，如 whisper.cpp 用于语音模型。llama.cpp 是 GGML 的一个具体实现，专注于语言模型推理。当你阅读 llama.cpp 源码时，几乎肯定会跳转到 GGML 的代码，因为 llama.cpp 深度依赖 GGML 作为其底层计算引擎。\nGGML 本身是一个通用框架，独立于特定模型。\nGGML 提供底层功能（如 ggml_tensor、ggml_matmul），负责模型的权重加载、量化（如 4-bit Q4_0）和推理计算。llama.cpp 调用 GGML 的函数来执行这些操作，而不是自己实现。\nGGML use case 记录一个应用：vscode：add VSCode’s Github Copilot Chat support。在vscode中 使用本地大模型作为 copilot 的引擎。\n",
+  "wordCount" : "133",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:49:39+08:00",
+  "dateModified": "2025-08-31T12:49:39+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/llm/5.0.ggml-llama.cpp/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      5.0.GGML Llama.cpp
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:49:39 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><h1 id="llamacpp-本身是一个仓库"><code>llama.cpp</code> 本身是一个仓库<a hidden class="anchor" aria-hidden="true" href="#llamacpp-本身是一个仓库">#</a></h1>
+<p>其作用是 LLM inference in C/C++ 。用最少配置和最先进的性能在广泛的硬件上进行 LLM 推理。</p>
+<h2 id="作用">作用<a hidden class="anchor" aria-hidden="true" href="#作用">#</a></h2>
+<ul>
+<li>
+<p>纯 C/C++ 实现，不需要额外的复杂依赖，易于部署。</p>
+</li>
+<li>
+<p>支持 Windows、macOS、Linux，并针对不同硬件（如 ARM NEON、AVX、CUDA 等）进行优化。</p>
+</li>
+<li>
+<p>支持 1.5 位、2 位、4 位等整数量化技术，大幅降低模型的内存需求和计算开销。</p>
+</li>
+<li>
+<p>针对本地硬件（CPU、GPU、Apple Silicon 等）优化了 LLM 的推理过程，支持低资源设备运行大模型。</p>
+</li>
+<li>
+<p>与 GGUF（GGML 的升级版）模型格式紧密结合，用于高效加载和运行量化模型。</p>
+</li>
+</ul>
+<p>简言之 <code>llama.cpp</code> 是一个轻量、高效的工具，用于在本地运行和推理 LLM，特别适合资源受限的环境或需要隐私保护的场景。</p>
+<h2 id="如何使用">如何使用<a hidden class="anchor" aria-hidden="true" href="#如何使用">#</a></h2>
+<ul>
+<li>
+<p>安装并准备好模型文件。</p>
+</li>
+<li>
+<p>安装与C++ 编译器相关的依赖。</p>
+</li>
+<li>
+<p>源码编译,具体见<a href="https://ashburnLee.github.io/blog-2-hugo/llm/5.1.llama.cpp/##源码编译">源码编译</a>，生成可执行文件 <code>llama-cli</code> 和 <code>llama-server</code> 等。</p>
+</li>
+<li>
+<p>从 Hugging Face 或其他模型托管平台下载 GGUF 格式的模型。</p>
+</li>
+<li>
+<p><code>llama-cli</code> 工具适合快速测试模型</p>
+</li>
+<li>
+<p><code>llama-server</code> 提供一个 HTTP 服务器，可以用于集成到其他应用中。启动后，可以通过 <code>http://localhost:8080/v1/chat/completions</code> 访问 API。</p>
+</li>
+<li>
+<p>与 <code>llama-cpp-python</code> 包一起使用，可以在 Python 中调用 <code>llama.cpp</code> 功能。</p>
+</li>
+<li>
+<p><code>llama-bench</code>: benchmark 模型在各种 backend，parameter 等时的推理性能</p>
+</li>
+<li>
+<p>更多见<a href="https://github.com/ggml-org/llama.cpp?tab=readme-ov-file#llamacpp">官方 github readme</a></p>
+</li>
+</ul>
+<h1 id="ggml">ggml<a hidden class="anchor" aria-hidden="true" href="#ggml">#</a></h1>
+<p><code>llama.cpp</code> 仓库属于 ggml org，GGML（Tensor library for machine learning），是一个轻量级、高效的 C/C++ 机器学习库，专为在资源受限设备上运行大型模型（如语言模型）设计。</p>
+<p><code>llama.cpp</code> 依赖 GGML，使用 GGML 作为核心计算引擎，处理模型推理、量化和优化。GGML 提供底层基础设施（如矩阵乘法、量化算法），<code>llama.cpp</code> 实现模型特定的逻辑（如 LLaMA 的架构）。GGML 是通用库，<code>llama.cpp</code> 是应用。GGML 可用于其他项目，如 <code>whisper.cpp</code> 用于语音模型。<code>llama.cpp</code> 是 GGML 的一个具体实现，专注于语言模型推理。当你阅读 <code>llama.cpp</code> 源码时，几乎肯定会跳转到 GGML 的代码，因为 <code>llama.cpp</code> 深度依赖 GGML 作为其底层计算引擎。</p>
+<p>GGML 本身是一个通用框架，独立于特定模型。</p>
+<p>GGML 提供底层功能（如 <code>ggml_tensor</code>、<code>ggml_matmul</code>），负责模型的权重加载、量化（如 4-bit <code>Q4_0</code>）和推理计算。<code>llama.cpp</code> 调用 GGML 的函数来执行这些操作，而不是自己实现。</p>
+<h2 id="ggml-use-case">GGML use case<a hidden class="anchor" aria-hidden="true" href="#ggml-use-case">#</a></h2>
+<p>记录一个应用：<a href="https://github.com/ggml-org/llama.cpp/pull/12896">vscode：add VSCode&rsquo;s Github Copilot Chat support</a>。在vscode中 使用本地大模型作为 copilot 的引擎。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llm/">LLM</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/ggml/">GGML</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/gguf/">GGUF</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llama.cpp/">Llama.cpp</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>4.3.实例 GRPO | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="LLM, TRL, GRPO, KL Divergence">
+<meta name="description" content="@ KL 离散度自实现
+import torch
+from torch.nn.functional import kl_div, log_softmax, softmax
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from datasets import load_dataset
+import re
+from copy import deepcopy
+
+# 1. 加载数据集
+dataset = load_dataset(&#34;openai/gsm8k&#34;, split=&#34;train[:5%]&#34;)
+
+# 2. 奖励函数
+# 组件：奖励函数，用于评估每一个响应的好坏
+def reward_function(completions, answers, **kwargs):
+    rewards = []
+    pattern = r&#34;&lt;answer&gt;(.*?)&lt;/answer&gt;&#34;
+    for completion, correct_answer in zip(completions, answers):
+        try:
+            match = re.search(pattern, completion)
+            reward = 1.0 if match and match.group(1).strip() == str(correct_answer) else 0.0
+        except:
+            reward = 0.0
+        rewards.append(reward)
+    return rewards
+
+# 3. 数据预处理
+def format_dataset(example):
+    system_prompt = (
+        &#34;Solve the math problem step-by-step, providing reasoning in &lt;think&gt; tags &#34;
+        &#34;and the final answer in &lt;answer&gt; tags.&#34;
+    )
+    return {
+        &#34;prompt&#34;: [
+            {&#34;role&#34;: &#34;system&#34;, &#34;content&#34;: system_prompt},
+            {&#34;role&#34;: &#34;user&#34;, &#34;content&#34;: example[&#34;question&#34;]}
+        ],
+        &#34;answer&#34;: example[&#34;answer&#34;]
+    }
+
+dataset = dataset.map(format_dataset)
+
+# 4. 初始化模型和分词器
+model_name = &#34;Qwen/Qwen2-0.5B-Instruct&#34;
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16)
+model_old = deepcopy(model)  # 参考模型（旧策略），保持不变
+model.to(&#34;cuda&#34; if torch.cuda.is_available() else &#34;cpu&#34;)
+model_old.to(&#34;cuda&#34; if torch.cuda.is_available() else &#34;cpu&#34;)
+
+# 5. 自定义训练循环
+def train_with_kl(dataset, num_epochs=3, batch_size=4, num_generation=4, kl_weight=0.1):
+    # Adam 优化器的目标是最小化
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5)
+    for epoch in range(num_epochs):
+        for i in range(0, len(dataset), batch_size):
+            batch = dataset[i:i &#43; batch_size]
+            prompts = batch[&#34;prompt&#34;]
+            answers = batch[&#34;answer&#34;]
+
+            # 生成多个候选输出
+            completions = []
+            new_logits = []
+            old_logits = []
+            for prompt in prompts:
+                inputs = tokenizer([f&#34;{prompt[0][&#39;content&#39;]}\n{prompt[1][&#39;content&#39;]}&#34;], 
+                                    return_tensors=&#34;pt&#34;, 
+                                    padding=True).to(model.device)
+                # 组件分组采样：每一个prompt 生成4个响应，形成一个响应组
+                for _ in range(num_generation):
+                    outputs = model.generate(**inputs, 
+                                             max_new_tokens=50, 
+                                             do_sample=True, 
+                                             return_dict_in_generate=True, 
+                                             output_scores=True)
+                    # 生成响应，evla值
+                    completion = tokenizer.decode(outputs.sequences[0], skip_special_tokens=True)
+                    completions.append(completion)
+                    # 获取 logits
+                    logits = torch.stack(outputs.scores, dim=1)[:, -1, :]  # 最后一层的 logits
+                    new_logits.append(logits)
+                # 旧策略 logits
+                with torch.no_grad():
+                    ref_outputs = model_old(**inputs, return_dict=True)
+                    old_logits.append(ref_outputs.logits[:, -1, :])
+
+            # 计算奖励
+            # 评估响应，响应值与真值比较
+            rewards = reward_function(completions, answers)
+
+            # 计算 KL 散度
+            kl_loss = 0
+            for new_logit, old_logit in zip(new_logits, old_logits):
+                kl_loss &#43;= kl_div(
+                    log_softmax(new_logit, dim=-1),
+                    softmax(old_logit, dim=-1),
+                    reduction=&#34;batchmean&#34;
+                )
+            kl_loss /= num_generation
+
+            # 计算奖励loss
+            reward_loss = -torch.tensor(rewards, device=model.device).mean()
+            # 总loss
+            total_loss = reward_loss &#43; kl_weight * kl_loss
+            # 优化
+            optimizer.zero_grad()
+            total_loss.backward()
+            optimizer.step()
+
+            print(f&#34;Epoch {epoch&#43;1}, Batch {i//batch_size&#43;1}, Total Loss: {total_loss.item()}, KL Loss: {kl_loss.item()}&#34;)
+
+# 6. 开始训练
+train_with_kl(dataset, num_epochs=3, batch_size=4, num_generation=4, kl_weight=0.1)
+KAQ： 如何体现新旧模型的不同
+model_old = deepcopy(model)  model_old 保持不变，即旧 Policy 的表达无变化。model 是在学习的模型，它表达 Policy 的更新。">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/llm/4.3.%E5%AE%9E%E4%BE%8Bgrpo-in-myself/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/llm/4.3.%E5%AE%9E%E4%BE%8Bgrpo-in-myself/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/llm/4.3.%E5%AE%9E%E4%BE%8Bgrpo-in-myself/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="4.3.实例 GRPO">
+  <meta property="og:description" content="@ KL 离散度自实现 import torch from torch.nn.functional import kl_div, log_softmax, softmax from transformers import AutoModelForCausalLM, AutoTokenizer from datasets import load_dataset import re from copy import deepcopy # 1. 加载数据集 dataset = load_dataset(&#34;openai/gsm8k&#34;, split=&#34;train[:5%]&#34;) # 2. 奖励函数 # 组件：奖励函数，用于评估每一个响应的好坏 def reward_function(completions, answers, **kwargs): rewards = [] pattern = r&#34;&lt;answer&gt;(.*?)&lt;/answer&gt;&#34; for completion, correct_answer in zip(completions, answers): try: match = re.search(pattern, completion) reward = 1.0 if match and match.group(1).strip() == str(correct_answer) else 0.0 except: reward = 0.0 rewards.append(reward) return rewards # 3. 数据预处理 def format_dataset(example): system_prompt = ( &#34;Solve the math problem step-by-step, providing reasoning in &lt;think&gt; tags &#34; &#34;and the final answer in &lt;answer&gt; tags.&#34; ) return { &#34;prompt&#34;: [ {&#34;role&#34;: &#34;system&#34;, &#34;content&#34;: system_prompt}, {&#34;role&#34;: &#34;user&#34;, &#34;content&#34;: example[&#34;question&#34;]} ], &#34;answer&#34;: example[&#34;answer&#34;] } dataset = dataset.map(format_dataset) # 4. 初始化模型和分词器 model_name = &#34;Qwen/Qwen2-0.5B-Instruct&#34; tokenizer = AutoTokenizer.from_pretrained(model_name) model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16) model_old = deepcopy(model) # 参考模型（旧策略），保持不变 model.to(&#34;cuda&#34; if torch.cuda.is_available() else &#34;cpu&#34;) model_old.to(&#34;cuda&#34; if torch.cuda.is_available() else &#34;cpu&#34;) # 5. 自定义训练循环 def train_with_kl(dataset, num_epochs=3, batch_size=4, num_generation=4, kl_weight=0.1): # Adam 优化器的目标是最小化 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5) for epoch in range(num_epochs): for i in range(0, len(dataset), batch_size): batch = dataset[i:i &#43; batch_size] prompts = batch[&#34;prompt&#34;] answers = batch[&#34;answer&#34;] # 生成多个候选输出 completions = [] new_logits = [] old_logits = [] for prompt in prompts: inputs = tokenizer([f&#34;{prompt[0][&#39;content&#39;]}\n{prompt[1][&#39;content&#39;]}&#34;], return_tensors=&#34;pt&#34;, padding=True).to(model.device) # 组件分组采样：每一个prompt 生成4个响应，形成一个响应组 for _ in range(num_generation): outputs = model.generate(**inputs, max_new_tokens=50, do_sample=True, return_dict_in_generate=True, output_scores=True) # 生成响应，evla值 completion = tokenizer.decode(outputs.sequences[0], skip_special_tokens=True) completions.append(completion) # 获取 logits logits = torch.stack(outputs.scores, dim=1)[:, -1, :] # 最后一层的 logits new_logits.append(logits) # 旧策略 logits with torch.no_grad(): ref_outputs = model_old(**inputs, return_dict=True) old_logits.append(ref_outputs.logits[:, -1, :]) # 计算奖励 # 评估响应，响应值与真值比较 rewards = reward_function(completions, answers) # 计算 KL 散度 kl_loss = 0 for new_logit, old_logit in zip(new_logits, old_logits): kl_loss &#43;= kl_div( log_softmax(new_logit, dim=-1), softmax(old_logit, dim=-1), reduction=&#34;batchmean&#34; ) kl_loss /= num_generation # 计算奖励loss reward_loss = -torch.tensor(rewards, device=model.device).mean() # 总loss total_loss = reward_loss &#43; kl_weight * kl_loss # 优化 optimizer.zero_grad() total_loss.backward() optimizer.step() print(f&#34;Epoch {epoch&#43;1}, Batch {i//batch_size&#43;1}, Total Loss: {total_loss.item()}, KL Loss: {kl_loss.item()}&#34;) # 6. 开始训练 train_with_kl(dataset, num_epochs=3, batch_size=4, num_generation=4, kl_weight=0.1) KAQ： 如何体现新旧模型的不同 model_old = deepcopy(model) model_old 保持不变，即旧 Policy 的表达无变化。model 是在学习的模型，它表达 Policy 的更新。">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="llm">
+    <meta property="article:published_time" content="2025-08-31T12:49:38+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:49:38+08:00">
+    <meta property="article:tag" content="LLM">
+    <meta property="article:tag" content="TRL">
+    <meta property="article:tag" content="GRPO">
+    <meta property="article:tag" content="KL Divergence">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="4.3.实例 GRPO">
+<meta name="twitter:description" content="@ KL 离散度自实现
+import torch
+from torch.nn.functional import kl_div, log_softmax, softmax
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from datasets import load_dataset
+import re
+from copy import deepcopy
+
+# 1. 加载数据集
+dataset = load_dataset(&#34;openai/gsm8k&#34;, split=&#34;train[:5%]&#34;)
+
+# 2. 奖励函数
+# 组件：奖励函数，用于评估每一个响应的好坏
+def reward_function(completions, answers, **kwargs):
+    rewards = []
+    pattern = r&#34;&lt;answer&gt;(.*?)&lt;/answer&gt;&#34;
+    for completion, correct_answer in zip(completions, answers):
+        try:
+            match = re.search(pattern, completion)
+            reward = 1.0 if match and match.group(1).strip() == str(correct_answer) else 0.0
+        except:
+            reward = 0.0
+        rewards.append(reward)
+    return rewards
+
+# 3. 数据预处理
+def format_dataset(example):
+    system_prompt = (
+        &#34;Solve the math problem step-by-step, providing reasoning in &lt;think&gt; tags &#34;
+        &#34;and the final answer in &lt;answer&gt; tags.&#34;
+    )
+    return {
+        &#34;prompt&#34;: [
+            {&#34;role&#34;: &#34;system&#34;, &#34;content&#34;: system_prompt},
+            {&#34;role&#34;: &#34;user&#34;, &#34;content&#34;: example[&#34;question&#34;]}
+        ],
+        &#34;answer&#34;: example[&#34;answer&#34;]
+    }
+
+dataset = dataset.map(format_dataset)
+
+# 4. 初始化模型和分词器
+model_name = &#34;Qwen/Qwen2-0.5B-Instruct&#34;
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16)
+model_old = deepcopy(model)  # 参考模型（旧策略），保持不变
+model.to(&#34;cuda&#34; if torch.cuda.is_available() else &#34;cpu&#34;)
+model_old.to(&#34;cuda&#34; if torch.cuda.is_available() else &#34;cpu&#34;)
+
+# 5. 自定义训练循环
+def train_with_kl(dataset, num_epochs=3, batch_size=4, num_generation=4, kl_weight=0.1):
+    # Adam 优化器的目标是最小化
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5)
+    for epoch in range(num_epochs):
+        for i in range(0, len(dataset), batch_size):
+            batch = dataset[i:i &#43; batch_size]
+            prompts = batch[&#34;prompt&#34;]
+            answers = batch[&#34;answer&#34;]
+
+            # 生成多个候选输出
+            completions = []
+            new_logits = []
+            old_logits = []
+            for prompt in prompts:
+                inputs = tokenizer([f&#34;{prompt[0][&#39;content&#39;]}\n{prompt[1][&#39;content&#39;]}&#34;], 
+                                    return_tensors=&#34;pt&#34;, 
+                                    padding=True).to(model.device)
+                # 组件分组采样：每一个prompt 生成4个响应，形成一个响应组
+                for _ in range(num_generation):
+                    outputs = model.generate(**inputs, 
+                                             max_new_tokens=50, 
+                                             do_sample=True, 
+                                             return_dict_in_generate=True, 
+                                             output_scores=True)
+                    # 生成响应，evla值
+                    completion = tokenizer.decode(outputs.sequences[0], skip_special_tokens=True)
+                    completions.append(completion)
+                    # 获取 logits
+                    logits = torch.stack(outputs.scores, dim=1)[:, -1, :]  # 最后一层的 logits
+                    new_logits.append(logits)
+                # 旧策略 logits
+                with torch.no_grad():
+                    ref_outputs = model_old(**inputs, return_dict=True)
+                    old_logits.append(ref_outputs.logits[:, -1, :])
+
+            # 计算奖励
+            # 评估响应，响应值与真值比较
+            rewards = reward_function(completions, answers)
+
+            # 计算 KL 散度
+            kl_loss = 0
+            for new_logit, old_logit in zip(new_logits, old_logits):
+                kl_loss &#43;= kl_div(
+                    log_softmax(new_logit, dim=-1),
+                    softmax(old_logit, dim=-1),
+                    reduction=&#34;batchmean&#34;
+                )
+            kl_loss /= num_generation
+
+            # 计算奖励loss
+            reward_loss = -torch.tensor(rewards, device=model.device).mean()
+            # 总loss
+            total_loss = reward_loss &#43; kl_weight * kl_loss
+            # 优化
+            optimizer.zero_grad()
+            total_loss.backward()
+            optimizer.step()
+
+            print(f&#34;Epoch {epoch&#43;1}, Batch {i//batch_size&#43;1}, Total Loss: {total_loss.item()}, KL Loss: {kl_loss.item()}&#34;)
+
+# 6. 开始训练
+train_with_kl(dataset, num_epochs=3, batch_size=4, num_generation=4, kl_weight=0.1)
+KAQ： 如何体现新旧模型的不同
+model_old = deepcopy(model)  model_old 保持不变，即旧 Policy 的表达无变化。model 是在学习的模型，它表达 Policy 的更新。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "LLM",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "4.3.实例 GRPO",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/4.3.%E5%AE%9E%E4%BE%8Bgrpo-in-myself/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "4.3.实例 GRPO",
+  "name": "4.3.实例 GRPO",
+  "description": "@ KL 离散度自实现 import torch from torch.nn.functional import kl_div, log_softmax, softmax from transformers import AutoModelForCausalLM, AutoTokenizer from datasets import load_dataset import re from copy import deepcopy # 1. 加载数据集 dataset = load_dataset(\u0026#34;openai/gsm8k\u0026#34;, split=\u0026#34;train[:5%]\u0026#34;) # 2. 奖励函数 # 组件：奖励函数，用于评估每一个响应的好坏 def reward_function(completions, answers, **kwargs): rewards = [] pattern = r\u0026#34;\u0026lt;answer\u0026gt;(.*?)\u0026lt;/answer\u0026gt;\u0026#34; for completion, correct_answer in zip(completions, answers): try: match = re.search(pattern, completion) reward = 1.0 if match and match.group(1).strip() == str(correct_answer) else 0.0 except: reward = 0.0 rewards.append(reward) return rewards # 3. 数据预处理 def format_dataset(example): system_prompt = ( \u0026#34;Solve the math problem step-by-step, providing reasoning in \u0026lt;think\u0026gt; tags \u0026#34; \u0026#34;and the final answer in \u0026lt;answer\u0026gt; tags.\u0026#34; ) return { \u0026#34;prompt\u0026#34;: [ {\u0026#34;role\u0026#34;: \u0026#34;system\u0026#34;, \u0026#34;content\u0026#34;: system_prompt}, {\u0026#34;role\u0026#34;: \u0026#34;user\u0026#34;, \u0026#34;content\u0026#34;: example[\u0026#34;question\u0026#34;]} ], \u0026#34;answer\u0026#34;: example[\u0026#34;answer\u0026#34;] } dataset = dataset.map(format_dataset) # 4. 初始化模型和分词器 model_name = \u0026#34;Qwen/Qwen2-0.5B-Instruct\u0026#34; tokenizer = AutoTokenizer.from_pretrained(model_name) model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16) model_old = deepcopy(model) # 参考模型（旧策略），保持不变 model.to(\u0026#34;cuda\u0026#34; if torch.cuda.is_available() else \u0026#34;cpu\u0026#34;) model_old.to(\u0026#34;cuda\u0026#34; if torch.cuda.is_available() else \u0026#34;cpu\u0026#34;) # 5. 自定义训练循环 def train_with_kl(dataset, num_epochs=3, batch_size=4, num_generation=4, kl_weight=0.1): # Adam 优化器的目标是最小化 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5) for epoch in range(num_epochs): for i in range(0, len(dataset), batch_size): batch = dataset[i:i + batch_size] prompts = batch[\u0026#34;prompt\u0026#34;] answers = batch[\u0026#34;answer\u0026#34;] # 生成多个候选输出 completions = [] new_logits = [] old_logits = [] for prompt in prompts: inputs = tokenizer([f\u0026#34;{prompt[0][\u0026#39;content\u0026#39;]}\\n{prompt[1][\u0026#39;content\u0026#39;]}\u0026#34;], return_tensors=\u0026#34;pt\u0026#34;, padding=True).to(model.device) # 组件分组采样：每一个prompt 生成4个响应，形成一个响应组 for _ in range(num_generation): outputs = model.generate(**inputs, max_new_tokens=50, do_sample=True, return_dict_in_generate=True, output_scores=True) # 生成响应，evla值 completion = tokenizer.decode(outputs.sequences[0], skip_special_tokens=True) completions.append(completion) # 获取 logits logits = torch.stack(outputs.scores, dim=1)[:, -1, :] # 最后一层的 logits new_logits.append(logits) # 旧策略 logits with torch.no_grad(): ref_outputs = model_old(**inputs, return_dict=True) old_logits.append(ref_outputs.logits[:, -1, :]) # 计算奖励 # 评估响应，响应值与真值比较 rewards = reward_function(completions, answers) # 计算 KL 散度 kl_loss = 0 for new_logit, old_logit in zip(new_logits, old_logits): kl_loss += kl_div( log_softmax(new_logit, dim=-1), softmax(old_logit, dim=-1), reduction=\u0026#34;batchmean\u0026#34; ) kl_loss /= num_generation # 计算奖励loss reward_loss = -torch.tensor(rewards, device=model.device).mean() # 总loss total_loss = reward_loss + kl_weight * kl_loss # 优化 optimizer.zero_grad() total_loss.backward() optimizer.step() print(f\u0026#34;Epoch {epoch+1}, Batch {i//batch_size+1}, Total Loss: {total_loss.item()}, KL Loss: {kl_loss.item()}\u0026#34;) # 6. 开始训练 train_with_kl(dataset, num_epochs=3, batch_size=4, num_generation=4, kl_weight=0.1) KAQ： 如何体现新旧模型的不同 model_old = deepcopy(model) model_old 保持不变，即旧 Policy 的表达无变化。model 是在学习的模型，它表达 Policy 的更新。\n",
+  "keywords": [
+    "LLM", "TRL", "GRPO", "KL Divergence"
+  ],
+  "articleBody": "@ KL 离散度自实现 import torch from torch.nn.functional import kl_div, log_softmax, softmax from transformers import AutoModelForCausalLM, AutoTokenizer from datasets import load_dataset import re from copy import deepcopy # 1. 加载数据集 dataset = load_dataset(\"openai/gsm8k\", split=\"train[:5%]\") # 2. 奖励函数 # 组件：奖励函数，用于评估每一个响应的好坏 def reward_function(completions, answers, **kwargs): rewards = [] pattern = r\"(.*?)\" for completion, correct_answer in zip(completions, answers): try: match = re.search(pattern, completion) reward = 1.0 if match and match.group(1).strip() == str(correct_answer) else 0.0 except: reward = 0.0 rewards.append(reward) return rewards # 3. 数据预处理 def format_dataset(example): system_prompt = ( \"Solve the math problem step-by-step, providing reasoning in tags \" \"and the final answer in tags.\" ) return { \"prompt\": [ {\"role\": \"system\", \"content\": system_prompt}, {\"role\": \"user\", \"content\": example[\"question\"]} ], \"answer\": example[\"answer\"] } dataset = dataset.map(format_dataset) # 4. 初始化模型和分词器 model_name = \"Qwen/Qwen2-0.5B-Instruct\" tokenizer = AutoTokenizer.from_pretrained(model_name) model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float16) model_old = deepcopy(model) # 参考模型（旧策略），保持不变 model.to(\"cuda\" if torch.cuda.is_available() else \"cpu\") model_old.to(\"cuda\" if torch.cuda.is_available() else \"cpu\") # 5. 自定义训练循环 def train_with_kl(dataset, num_epochs=3, batch_size=4, num_generation=4, kl_weight=0.1): # Adam 优化器的目标是最小化 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5) for epoch in range(num_epochs): for i in range(0, len(dataset), batch_size): batch = dataset[i:i + batch_size] prompts = batch[\"prompt\"] answers = batch[\"answer\"] # 生成多个候选输出 completions = [] new_logits = [] old_logits = [] for prompt in prompts: inputs = tokenizer([f\"{prompt[0]['content']}\\n{prompt[1]['content']}\"], return_tensors=\"pt\", padding=True).to(model.device) # 组件分组采样：每一个prompt 生成4个响应，形成一个响应组 for _ in range(num_generation): outputs = model.generate(**inputs, max_new_tokens=50, do_sample=True, return_dict_in_generate=True, output_scores=True) # 生成响应，evla值 completion = tokenizer.decode(outputs.sequences[0], skip_special_tokens=True) completions.append(completion) # 获取 logits logits = torch.stack(outputs.scores, dim=1)[:, -1, :] # 最后一层的 logits new_logits.append(logits) # 旧策略 logits with torch.no_grad(): ref_outputs = model_old(**inputs, return_dict=True) old_logits.append(ref_outputs.logits[:, -1, :]) # 计算奖励 # 评估响应，响应值与真值比较 rewards = reward_function(completions, answers) # 计算 KL 散度 kl_loss = 0 for new_logit, old_logit in zip(new_logits, old_logits): kl_loss += kl_div( log_softmax(new_logit, dim=-1), softmax(old_logit, dim=-1), reduction=\"batchmean\" ) kl_loss /= num_generation # 计算奖励loss reward_loss = -torch.tensor(rewards, device=model.device).mean() # 总loss total_loss = reward_loss + kl_weight * kl_loss # 优化 optimizer.zero_grad() total_loss.backward() optimizer.step() print(f\"Epoch {epoch+1}, Batch {i//batch_size+1}, Total Loss: {total_loss.item()}, KL Loss: {kl_loss.item()}\") # 6. 开始训练 train_with_kl(dataset, num_epochs=3, batch_size=4, num_generation=4, kl_weight=0.1) KAQ： 如何体现新旧模型的不同 model_old = deepcopy(model) model_old 保持不变，即旧 Policy 的表达无变化。model 是在学习的模型，它表达 Policy 的更新。\nmodel 的行为体现了 Policy。\nKAQ：与 ppo 一样，总 loss 是几个 loss 的和 total_loss = reward_loss + kl_weight * kl_loss\nKAQ：new/old policy 是什么样的？含有概率分布？什么的概率分布？ new policy 就是模型的直接输出 new logits。然后通过 softmax 等转换为概率分布。\n要想正确理解，首先理解解数学题的训练数据是什么样的？既是 LLM，就有分词器，就有下一个 token 的概率分布。生成过程是自回归的，即模型按 token 顺序生成序列（token-by-token），即按 token 顺序逐个生成，每个 token 的生成依赖于之前的 token 和输入 prompt。\n更具体讲，自回归逐步生成条件概率 自回归：模型在时间步 $ t $ 生成 token $ t $，基于之前生成的 token $ 1, 2, …, t-1 $ 和输入 prompt 的条件概率: $$ P(token_t | prompt, token_1, …, token_{t-1}) $$ 它是逐步生成的。\napi model.generate 就是通过自回归的方式生成序列的。\n比如：\n输入：inputs 是分词后的 prompt（如“What is 2 + 3?”格式化为 [{\"role\": \"system\", ...}, {\"role\": \"user\", \"What is 2 + 3?\"}]）。\n输出：outputs.sequences 是生成的 token 序列（如 2 + 3 = 55），outputs.scores 是每个时间步的 logits。\n自回归过程：模型从 prompt 开始，逐个生成 token：\n时间步 1：生成 ，基于 prompt 的概率 $ P(think | prompt) $. 时间步 2：生成 2，基于 $ P(2 | prompt, think) $. 时间步 3：生成 +，基于 $ P(+ | prompt, think, 2) $. 以此类推，直到生成 或达到 max_new_tokens。 每个 token 的生成依赖于之前的所有 token 和 prompt。\n生成 5 的时间步，logits 是一个向量（如 [2.1, -0.3, 1.5, 4.8, 0.2, ...]，长度等于 vocab_size），表示词汇表中每个 token 的得分。\n然后通过 softmax(logits)，得到概率分布（如 [0.05, 0.01, 0.03, 0.75, 0.02, ...]），选择概率最高的 token（或采样）作为下一个 token。\n熟悉 TRL 的实现后，再看下 GRPO 的 Open R1 实现 【todo】\nKAQ：KL divergence 为什么一个是 log_softmax 一个是 softmax kl-div 作用是起着正则化的作用，用于约束策略更新，避免策略过度偏离原始策略。\n对新策略（new_policy）使用 log_softmax，而对旧策略（old_policy）使用 softmax，这是因为 KL 散度的数学定义和实现中的数值稳定性要求。也是 PyTorch kl_div 的标准做法\n不管使用softmax 还是logsoftmax，目的都是得到概率分布，这是使用KL divergence的前体。\nKAQ：KL divergence 数学表达 kl_loss = 0 for new_logit, old_logit in zip(new_logits, old_logits): kl_loss += kl_div( log_softmax(new_logit, dim=-1), softmax(old_logit, dim=-1), reduction=\"batchmean\" ) kl_loss /= num_generation KL 散度是信息论中衡量两个概率分布之间的差异：\n对于两个离散概率分布 $P$（新策略 $\\pi_\\theta$）和 $Q$（老策略 $\\pi_{\\text{ref}}$），KL 散度定义为： $$D_{\\text{KL}}(P | Q) = \\sum_{i} P(i) \\log \\left( \\frac{P(i)}{Q(i)} \\right)$$\n$P(i)$：新策略在状态 $x$ 下生成 token $i$ 的概率（$\\pi_\\theta(i|x)$）\n$Q(i)$：老策略生成 token $i$ 的概率（$\\pi_{\\text{ref}}(i|x)$）\n直观含义：KL 散度衡量 $P$ 和 $Q$ 的“距离”，值越大表示分布差异越大。我们的目的是让新策略尽可能接近老策略，会略有改进，但不会偏离太多。故 kl loss 符号为正，Adam 优化器最小化 total loss，意味着最小化 kl loss，即让新策略尽可能接近老策略。\n就我的 case。Qwen2 模型的词汇表通常约 15 万 具体为 151936，new_logits/old_logits 都是列表，包含 4 (响应个数) 个 [batch_size, vocab_size] 形状的张量:\nnew_logits = [ torch.tensor([[2.1, 0.5, ..., -1.2], ..., [1.8, 0.3, ..., -0.9]]), # 第一个响应 torch.tensor([[1.9, 0.7, ..., -1.0], ..., [2.0, 0.4, ..., -1.1]]), # 第二个响应 torch.tensor([[...]]), torch.tensor([[...]]) ] old_logits = [ torch.tensor([[1.5, 0.6, ..., -0.8], ..., [1.7, 0.5, ..., -0.7]]), # 老模型输出 torch.tensor([[...]]), torch.tensor([[...]]), torch.tensor([[...]]) ] 将上述 logits 替换掉 这里 的 $P$ 和 $Q$。然后就理解了\n实际上 $$ \\pi_\\theta(i|x) = P(i | x; \\theta) $$\n$x$：输入上下文（token 序列，例如 “What is the”）。 $i$：词汇表中的 token 索引（如 “meaning” 的 ID=123）。 $\\pi_\\theta(i|x)$：给定上下文 $x$，模型生成下一个 token 为 $i$ 的概率。 KAQ：既然是条件概率与x有关，也就是输入的 token 有关。那么概率分布的长度也与输入 token 的长度有关喽？ 无关。\n$P(i | x; \\theta)$ 的长度（即概率分布的大小）由 词汇表大小 决定，与输入上下文 $x$ 的长度无关。\n无论 $x$ 是 1 个 token（如 “What”）还是 100 个 token（如 “Solve the math problem step-by-step…\"），模型输出的 logits 和 $P(i | x; \\theta)$ 始终是 [vocab_size] 长度（151936）。\n原因：LLM（如 Qwen2）在每次预测下一个 token 时，基于整个上下文 $x$（通过 Transformer 的注意力机制）生成一个固定大小的概率分布，覆盖整个词汇表。 ！！！\n$x$ 的长度影响模型的计算过程（如注意力计算的复杂度），但不改变输出分布的长度。 例如：\n$x = \\text{“What”}$（1 token）=\u003e $P(i | x; \\theta)$：151936 个概率。 $x = \\text{“What is the meaning of life”}$（5 tokens）=\u003e $P(i | x; \\theta)$：仍为 151936 个概率。 KAQ：这个概率的得到其实是decode中transformer 的输出，所以概率分布的长度是与输入长度无关的？ 是的。\n",
+  "wordCount" : "769",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:49:38+08:00",
+  "dateModified": "2025-08-31T12:49:38+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/llm/4.3.%E5%AE%9E%E4%BE%8Bgrpo-in-myself/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      4.3.实例 GRPO
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:49:38 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><h2 id="-kl-离散度自实现">@ KL 离散度自实现<a hidden class="anchor" aria-hidden="true" href="#-kl-离散度自实现">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">import</span> torch
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> torch.nn.functional <span style="color:#f92672">import</span> kl_div, log_softmax, softmax
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> transformers <span style="color:#f92672">import</span> AutoModelForCausalLM, AutoTokenizer
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> datasets <span style="color:#f92672">import</span> load_dataset
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> re
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> copy <span style="color:#f92672">import</span> deepcopy
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 1. 加载数据集</span>
+</span></span><span style="display:flex;"><span>dataset <span style="color:#f92672">=</span> load_dataset(<span style="color:#e6db74">&#34;openai/gsm8k&#34;</span>, split<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;train[:5%]&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 2. 奖励函数</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 组件：奖励函数，用于评估每一个响应的好坏</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">reward_function</span>(completions, answers, <span style="color:#f92672">**</span>kwargs):
+</span></span><span style="display:flex;"><span>    rewards <span style="color:#f92672">=</span> []
+</span></span><span style="display:flex;"><span>    pattern <span style="color:#f92672">=</span> <span style="color:#e6db74">r</span><span style="color:#e6db74">&#34;&lt;answer&gt;(.*?)&lt;/answer&gt;&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> completion, correct_answer <span style="color:#f92672">in</span> zip(completions, answers):
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">try</span>:
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">match</span> <span style="color:#f92672">=</span> re<span style="color:#f92672">.</span>search(pattern, completion)
+</span></span><span style="display:flex;"><span>            reward <span style="color:#f92672">=</span> <span style="color:#ae81ff">1.0</span> <span style="color:#66d9ef">if</span> <span style="color:#66d9ef">match</span> <span style="color:#f92672">and</span> <span style="color:#66d9ef">match</span><span style="color:#f92672">.</span>group(<span style="color:#ae81ff">1</span>)<span style="color:#f92672">.</span>strip() <span style="color:#f92672">==</span> str(correct_answer) <span style="color:#66d9ef">else</span> <span style="color:#ae81ff">0.0</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">except</span>:
+</span></span><span style="display:flex;"><span>            reward <span style="color:#f92672">=</span> <span style="color:#ae81ff">0.0</span>
+</span></span><span style="display:flex;"><span>        rewards<span style="color:#f92672">.</span>append(reward)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> rewards
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 3. 数据预处理</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">format_dataset</span>(example):
+</span></span><span style="display:flex;"><span>    system_prompt <span style="color:#f92672">=</span> (
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;Solve the math problem step-by-step, providing reasoning in &lt;think&gt; tags &#34;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;and the final answer in &lt;answer&gt; tags.&#34;</span>
+</span></span><span style="display:flex;"><span>    )
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;prompt&#34;</span>: [
+</span></span><span style="display:flex;"><span>            {<span style="color:#e6db74">&#34;role&#34;</span>: <span style="color:#e6db74">&#34;system&#34;</span>, <span style="color:#e6db74">&#34;content&#34;</span>: system_prompt},
+</span></span><span style="display:flex;"><span>            {<span style="color:#e6db74">&#34;role&#34;</span>: <span style="color:#e6db74">&#34;user&#34;</span>, <span style="color:#e6db74">&#34;content&#34;</span>: example[<span style="color:#e6db74">&#34;question&#34;</span>]}
+</span></span><span style="display:flex;"><span>        ],
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;answer&#34;</span>: example[<span style="color:#e6db74">&#34;answer&#34;</span>]
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>dataset <span style="color:#f92672">=</span> dataset<span style="color:#f92672">.</span>map(format_dataset)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 4. 初始化模型和分词器</span>
+</span></span><span style="display:flex;"><span>model_name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;Qwen/Qwen2-0.5B-Instruct&#34;</span>
+</span></span><span style="display:flex;"><span>tokenizer <span style="color:#f92672">=</span> AutoTokenizer<span style="color:#f92672">.</span>from_pretrained(model_name)
+</span></span><span style="display:flex;"><span>model <span style="color:#f92672">=</span> AutoModelForCausalLM<span style="color:#f92672">.</span>from_pretrained(model_name, torch_dtype<span style="color:#f92672">=</span>torch<span style="color:#f92672">.</span>float16)
+</span></span><span style="display:flex;"><span>model_old <span style="color:#f92672">=</span> deepcopy(model)  <span style="color:#75715e"># 参考模型（旧策略），保持不变</span>
+</span></span><span style="display:flex;"><span>model<span style="color:#f92672">.</span>to(<span style="color:#e6db74">&#34;cuda&#34;</span> <span style="color:#66d9ef">if</span> torch<span style="color:#f92672">.</span>cuda<span style="color:#f92672">.</span>is_available() <span style="color:#66d9ef">else</span> <span style="color:#e6db74">&#34;cpu&#34;</span>)
+</span></span><span style="display:flex;"><span>model_old<span style="color:#f92672">.</span>to(<span style="color:#e6db74">&#34;cuda&#34;</span> <span style="color:#66d9ef">if</span> torch<span style="color:#f92672">.</span>cuda<span style="color:#f92672">.</span>is_available() <span style="color:#66d9ef">else</span> <span style="color:#e6db74">&#34;cpu&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 5. 自定义训练循环</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">train_with_kl</span>(dataset, num_epochs<span style="color:#f92672">=</span><span style="color:#ae81ff">3</span>, batch_size<span style="color:#f92672">=</span><span style="color:#ae81ff">4</span>, num_generation<span style="color:#f92672">=</span><span style="color:#ae81ff">4</span>, kl_weight<span style="color:#f92672">=</span><span style="color:#ae81ff">0.1</span>):
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># Adam 优化器的目标是最小化</span>
+</span></span><span style="display:flex;"><span>    optimizer <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>optim<span style="color:#f92672">.</span>AdamW(model<span style="color:#f92672">.</span>parameters(), lr<span style="color:#f92672">=</span><span style="color:#ae81ff">1e-5</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> epoch <span style="color:#f92672">in</span> range(num_epochs):
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> i <span style="color:#f92672">in</span> range(<span style="color:#ae81ff">0</span>, len(dataset), batch_size):
+</span></span><span style="display:flex;"><span>            batch <span style="color:#f92672">=</span> dataset[i:i <span style="color:#f92672">+</span> batch_size]
+</span></span><span style="display:flex;"><span>            prompts <span style="color:#f92672">=</span> batch[<span style="color:#e6db74">&#34;prompt&#34;</span>]
+</span></span><span style="display:flex;"><span>            answers <span style="color:#f92672">=</span> batch[<span style="color:#e6db74">&#34;answer&#34;</span>]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e"># 生成多个候选输出</span>
+</span></span><span style="display:flex;"><span>            completions <span style="color:#f92672">=</span> []
+</span></span><span style="display:flex;"><span>            new_logits <span style="color:#f92672">=</span> []
+</span></span><span style="display:flex;"><span>            old_logits <span style="color:#f92672">=</span> []
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">for</span> prompt <span style="color:#f92672">in</span> prompts:
+</span></span><span style="display:flex;"><span>                inputs <span style="color:#f92672">=</span> tokenizer([<span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;</span><span style="color:#e6db74">{</span>prompt[<span style="color:#ae81ff">0</span>][<span style="color:#e6db74">&#39;content&#39;</span>]<span style="color:#e6db74">}</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">{</span>prompt[<span style="color:#ae81ff">1</span>][<span style="color:#e6db74">&#39;content&#39;</span>]<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>], 
+</span></span><span style="display:flex;"><span>                                    return_tensors<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;pt&#34;</span>, 
+</span></span><span style="display:flex;"><span>                                    padding<span style="color:#f92672">=</span><span style="color:#66d9ef">True</span>)<span style="color:#f92672">.</span>to(model<span style="color:#f92672">.</span>device)
+</span></span><span style="display:flex;"><span>                <span style="color:#75715e"># 组件分组采样：每一个prompt 生成4个响应，形成一个响应组</span>
+</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">for</span> _ <span style="color:#f92672">in</span> range(num_generation):
+</span></span><span style="display:flex;"><span>                    outputs <span style="color:#f92672">=</span> model<span style="color:#f92672">.</span>generate(<span style="color:#f92672">**</span>inputs, 
+</span></span><span style="display:flex;"><span>                                             max_new_tokens<span style="color:#f92672">=</span><span style="color:#ae81ff">50</span>, 
+</span></span><span style="display:flex;"><span>                                             do_sample<span style="color:#f92672">=</span><span style="color:#66d9ef">True</span>, 
+</span></span><span style="display:flex;"><span>                                             return_dict_in_generate<span style="color:#f92672">=</span><span style="color:#66d9ef">True</span>, 
+</span></span><span style="display:flex;"><span>                                             output_scores<span style="color:#f92672">=</span><span style="color:#66d9ef">True</span>)
+</span></span><span style="display:flex;"><span>                    <span style="color:#75715e"># 生成响应，evla值</span>
+</span></span><span style="display:flex;"><span>                    completion <span style="color:#f92672">=</span> tokenizer<span style="color:#f92672">.</span>decode(outputs<span style="color:#f92672">.</span>sequences[<span style="color:#ae81ff">0</span>], skip_special_tokens<span style="color:#f92672">=</span><span style="color:#66d9ef">True</span>)
+</span></span><span style="display:flex;"><span>                    completions<span style="color:#f92672">.</span>append(completion)
+</span></span><span style="display:flex;"><span>                    <span style="color:#75715e"># 获取 logits</span>
+</span></span><span style="display:flex;"><span>                    logits <span style="color:#f92672">=</span> torch<span style="color:#f92672">.</span>stack(outputs<span style="color:#f92672">.</span>scores, dim<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span>)[:, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, :]  <span style="color:#75715e"># 最后一层的 logits</span>
+</span></span><span style="display:flex;"><span>                    new_logits<span style="color:#f92672">.</span>append(logits)
+</span></span><span style="display:flex;"><span>                <span style="color:#75715e"># 旧策略 logits</span>
+</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">with</span> torch<span style="color:#f92672">.</span>no_grad():
+</span></span><span style="display:flex;"><span>                    ref_outputs <span style="color:#f92672">=</span> model_old(<span style="color:#f92672">**</span>inputs, return_dict<span style="color:#f92672">=</span><span style="color:#66d9ef">True</span>)
+</span></span><span style="display:flex;"><span>                    old_logits<span style="color:#f92672">.</span>append(ref_outputs<span style="color:#f92672">.</span>logits[:, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>, :])
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e"># 计算奖励</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e"># 评估响应，响应值与真值比较</span>
+</span></span><span style="display:flex;"><span>            rewards <span style="color:#f92672">=</span> reward_function(completions, answers)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e"># 计算 KL 散度</span>
+</span></span><span style="display:flex;"><span>            kl_loss <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">for</span> new_logit, old_logit <span style="color:#f92672">in</span> zip(new_logits, old_logits):
+</span></span><span style="display:flex;"><span>                kl_loss <span style="color:#f92672">+=</span> kl_div(
+</span></span><span style="display:flex;"><span>                    log_softmax(new_logit, dim<span style="color:#f92672">=-</span><span style="color:#ae81ff">1</span>),
+</span></span><span style="display:flex;"><span>                    softmax(old_logit, dim<span style="color:#f92672">=-</span><span style="color:#ae81ff">1</span>),
+</span></span><span style="display:flex;"><span>                    reduction<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;batchmean&#34;</span>
+</span></span><span style="display:flex;"><span>                )
+</span></span><span style="display:flex;"><span>            kl_loss <span style="color:#f92672">/=</span> num_generation
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e"># 计算奖励loss</span>
+</span></span><span style="display:flex;"><span>            reward_loss <span style="color:#f92672">=</span> <span style="color:#f92672">-</span>torch<span style="color:#f92672">.</span>tensor(rewards, device<span style="color:#f92672">=</span>model<span style="color:#f92672">.</span>device)<span style="color:#f92672">.</span>mean()
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e"># 总loss</span>
+</span></span><span style="display:flex;"><span>            total_loss <span style="color:#f92672">=</span> reward_loss <span style="color:#f92672">+</span> kl_weight <span style="color:#f92672">*</span> kl_loss
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e"># 优化</span>
+</span></span><span style="display:flex;"><span>            optimizer<span style="color:#f92672">.</span>zero_grad()
+</span></span><span style="display:flex;"><span>            total_loss<span style="color:#f92672">.</span>backward()
+</span></span><span style="display:flex;"><span>            optimizer<span style="color:#f92672">.</span>step()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            print(<span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;Epoch </span><span style="color:#e6db74">{</span>epoch<span style="color:#f92672">+</span><span style="color:#ae81ff">1</span><span style="color:#e6db74">}</span><span style="color:#e6db74">, Batch </span><span style="color:#e6db74">{</span>i<span style="color:#f92672">//</span>batch_size<span style="color:#f92672">+</span><span style="color:#ae81ff">1</span><span style="color:#e6db74">}</span><span style="color:#e6db74">, Total Loss: </span><span style="color:#e6db74">{</span>total_loss<span style="color:#f92672">.</span>item()<span style="color:#e6db74">}</span><span style="color:#e6db74">, KL Loss: </span><span style="color:#e6db74">{</span>kl_loss<span style="color:#f92672">.</span>item()<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 6. 开始训练</span>
+</span></span><span style="display:flex;"><span>train_with_kl(dataset, num_epochs<span style="color:#f92672">=</span><span style="color:#ae81ff">3</span>, batch_size<span style="color:#f92672">=</span><span style="color:#ae81ff">4</span>, num_generation<span style="color:#f92672">=</span><span style="color:#ae81ff">4</span>, kl_weight<span style="color:#f92672">=</span><span style="color:#ae81ff">0.1</span>)
+</span></span></code></pre></div><h2 id="kaq-如何体现新旧模型的不同">KAQ： 如何体现新旧模型的不同<a hidden class="anchor" aria-hidden="true" href="#kaq-如何体现新旧模型的不同">#</a></h2>
+<p><code>model_old = deepcopy(model) </code> model_old 保持不变，即旧 Policy 的表达无变化。model 是在学习的模型，它表达 Policy 的更新。</p>
+<p>model 的行为体现了 Policy。</p>
+<h2 id="kaq与-ppo-一样总-loss-是几个-loss-的和">KAQ：与 ppo 一样，总 loss 是几个 loss 的和<a hidden class="anchor" aria-hidden="true" href="#kaq与-ppo-一样总-loss-是几个-loss-的和">#</a></h2>
+<p><code>total_loss = reward_loss + kl_weight * kl_loss</code></p>
+<h2 id="kaqnewold-policy-是什么样的含有概率分布什么的概率分布">KAQ：new/old policy 是什么样的？含有概率分布？什么的概率分布？<a hidden class="anchor" aria-hidden="true" href="#kaqnewold-policy-是什么样的含有概率分布什么的概率分布">#</a></h2>
+<p>new policy 就是模型的直接输出 new logits。然后通过 softmax 等转换为概率分布。</p>
+<p>要想正确理解，首先理解解数学题的训练数据是什么样的？既是 LLM，就有分词器，就有下一个 token 的概率分布。生成过程是自回归的，即模型按 token 顺序生成序列（token-by-token），即按 token 顺序逐个生成，每个 token 的生成依赖于之前的 token 和输入 prompt。</p>
+<p>更具体讲，自回归<strong>逐步</strong>生成<strong>条件概率</strong> 自回归：模型在时间步 $ t $ 生成 token $ t $，基于之前生成的 token $ 1, 2, &hellip;, t-1 $ 和输入 prompt 的条件概率: $$ P(token_t | prompt, token_1, &hellip;, token_{t-1}) $$ 它是逐步生成的。</p>
+<p>api <code>model.generate</code> 就是通过自回归的方式生成序列的。</p>
+<p>比如：</p>
+<p>输入：inputs 是分词后的 prompt（如“What is 2 + 3?”格式化为 <code>[{&quot;role&quot;: &quot;system&quot;, ...}, {&quot;role&quot;: &quot;user&quot;, &quot;What is 2 + 3?&quot;}]</code>）。</p>
+<p>输出：<code>outputs.sequences</code> 是生成的 token 序列（如 <code>&lt;think&gt;2 + 3 = 5&lt;/think&gt;&lt;answer&gt;5&lt;/answer&gt;</code>），<code>outputs.scores</code> 是每个时间步的 logits。</p>
+<p>自回归过程：模型从 prompt 开始，逐个生成 token：</p>
+<ul>
+<li>时间步 1：生成 <code>&lt;think&gt;</code>，基于 prompt 的概率 $ P(think | prompt) $.</li>
+<li>时间步 2：生成 2，基于 $ P(2 | prompt, think) $.</li>
+<li>时间步 3：生成 +，基于 $ P(+ | prompt, think, 2) $.</li>
+<li>以此类推，直到生成 <code>&lt;/answer&gt;</code> 或达到 max_new_tokens。</li>
+</ul>
+<p>每个 token 的生成依赖于之前的所有 token 和 prompt。</p>
+<p>生成 <code>5</code> 的时间步，logits 是一个向量（如 <code>[2.1, -0.3, 1.5, 4.8, 0.2, ...]</code>，长度等于 <code>vocab_size</code>），表示词汇表中每个 token 的得分。</p>
+<p>然后通过 <code>softmax(logits)</code>，得到概率分布（如 <code>[0.05, 0.01, 0.03, 0.75, 0.02, ...]</code>），选择概率最高的 token（或采样）作为下一个 token。</p>
+<p>熟悉 TRL 的实现后，再看下 GRPO 的 <a href="https://github.com/huggingface/open-r1/blob/main/src/open_r1/grpo.py">Open R1 实现</a> 【todo】</p>
+<h2 id="kaqkl-divergence-为什么一个是-log_softmax-一个是-softmax">KAQ：KL divergence 为什么一个是 log_softmax 一个是 softmax<a hidden class="anchor" aria-hidden="true" href="#kaqkl-divergence-为什么一个是-log_softmax-一个是-softmax">#</a></h2>
+<p>kl-div 作用是起着正则化的作用，用于约束策略更新，避免策略过度偏离原始策略。</p>
+<p>对新策略（new_policy）使用 <code>log_softmax</code>，而对旧策略（old_policy）使用 <code>softmax</code>，这是因为 KL 散度的<strong>数学定义</strong>和实现中的<strong>数值稳定性</strong>要求。也是 PyTorch <code>kl_div</code> 的标准做法</p>
+<p>不管使用softmax 还是logsoftmax，目的都是得到概率分布，这是使用KL divergence的前体。</p>
+<h2 id="kaqkl-divergence-数学表达">KAQ：KL divergence 数学表达<a hidden class="anchor" aria-hidden="true" href="#kaqkl-divergence-数学表达">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span>kl_loss <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> new_logit, old_logit <span style="color:#f92672">in</span> zip(new_logits, old_logits):
+</span></span><span style="display:flex;"><span>    kl_loss <span style="color:#f92672">+=</span> kl_div(
+</span></span><span style="display:flex;"><span>        log_softmax(new_logit, dim<span style="color:#f92672">=-</span><span style="color:#ae81ff">1</span>),
+</span></span><span style="display:flex;"><span>        softmax(old_logit, dim<span style="color:#f92672">=-</span><span style="color:#ae81ff">1</span>),
+</span></span><span style="display:flex;"><span>        reduction<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;batchmean&#34;</span>
+</span></span><span style="display:flex;"><span>    )
+</span></span><span style="display:flex;"><span>kl_loss <span style="color:#f92672">/=</span> num_generation
+</span></span></code></pre></div><p>KL 散度是信息论中衡量两个概率分布之间的差异：</p>
+<p>对于两个离散概率分布 $P$（新策略 $\pi_\theta$）和 $Q$（老策略 $\pi_{\text{ref}}$），KL 散度定义为：
+$$D_{\text{KL}}(P | Q) = \sum_{i} P(i) \log \left( \frac{P(i)}{Q(i)} \right)$$</p>
+<ul>
+<li>
+<p>$P(i)$：新策略在状态 $x$ 下生成 token $i$ 的概率（$\pi_\theta(i|x)$）</p>
+</li>
+<li>
+<p>$Q(i)$：老策略生成 token $i$ 的概率（$\pi_{\text{ref}}(i|x)$）</p>
+</li>
+</ul>
+<p>直观含义：KL 散度衡量 $P$ 和 $Q$ 的“距离”，值越大表示分布差异越大。我们的目的是让新策略尽可能接近老策略，会略有改进，但不会偏离太多。故 <code>kl loss</code> 符号为正，Adam 优化器最小化 <code>total loss</code>，意味着最小化 <code>kl loss</code>，即让新策略尽可能接近老策略。</p>
+<p>就我的 case。Qwen2 模型的词汇表通常约 15 万 具体为 151936，new_logits/old_logits 都是列表，包含 4 (响应个数) 个 <code>[batch_size, vocab_size]</code> 形状的张量:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span>new_logits <span style="color:#f92672">=</span> [
+</span></span><span style="display:flex;"><span>    torch<span style="color:#f92672">.</span>tensor([[<span style="color:#ae81ff">2.1</span>, <span style="color:#ae81ff">0.5</span>, <span style="color:#f92672">...</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1.2</span>], <span style="color:#f92672">...</span>, [<span style="color:#ae81ff">1.8</span>, <span style="color:#ae81ff">0.3</span>, <span style="color:#f92672">...</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">0.9</span>]]),  <span style="color:#75715e"># 第一个响应</span>
+</span></span><span style="display:flex;"><span>    torch<span style="color:#f92672">.</span>tensor([[<span style="color:#ae81ff">1.9</span>, <span style="color:#ae81ff">0.7</span>, <span style="color:#f92672">...</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1.0</span>], <span style="color:#f92672">...</span>, [<span style="color:#ae81ff">2.0</span>, <span style="color:#ae81ff">0.4</span>, <span style="color:#f92672">...</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1.1</span>]]),  <span style="color:#75715e"># 第二个响应</span>
+</span></span><span style="display:flex;"><span>    torch<span style="color:#f92672">.</span>tensor([[<span style="color:#f92672">...</span>]]),
+</span></span><span style="display:flex;"><span>    torch<span style="color:#f92672">.</span>tensor([[<span style="color:#f92672">...</span>]])
+</span></span><span style="display:flex;"><span>]
+</span></span><span style="display:flex;"><span>old_logits <span style="color:#f92672">=</span> [
+</span></span><span style="display:flex;"><span>    torch<span style="color:#f92672">.</span>tensor([[<span style="color:#ae81ff">1.5</span>, <span style="color:#ae81ff">0.6</span>, <span style="color:#f92672">...</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">0.8</span>], <span style="color:#f92672">...</span>, [<span style="color:#ae81ff">1.7</span>, <span style="color:#ae81ff">0.5</span>, <span style="color:#f92672">...</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">0.7</span>]]),  <span style="color:#75715e"># 老模型输出</span>
+</span></span><span style="display:flex;"><span>    torch<span style="color:#f92672">.</span>tensor([[<span style="color:#f92672">...</span>]]),
+</span></span><span style="display:flex;"><span>    torch<span style="color:#f92672">.</span>tensor([[<span style="color:#f92672">...</span>]]),
+</span></span><span style="display:flex;"><span>    torch<span style="color:#f92672">.</span>tensor([[<span style="color:#f92672">...</span>]])
+</span></span><span style="display:flex;"><span>]
+</span></span></code></pre></div><p>将上述 logits 替换掉 <a href="https://ashburnLee.github.io/blog-2-hugo/llm/concepts/## KL divergence">这里</a> 的 $P$ 和 $Q$。然后就理解了</p>
+<h3 id="实际上">实际上<a hidden class="anchor" aria-hidden="true" href="#实际上">#</a></h3>
+<p>$$ \pi_\theta(i|x) = P(i | x; \theta) $$</p>
+<ul>
+<li>$x$：输入上下文（token 序列，例如 &ldquo;What is the&rdquo;）。</li>
+<li>$i$：词汇表中的 token 索引（如 &ldquo;meaning&rdquo; 的 ID=123）。</li>
+<li>$\pi_\theta(i|x)$：给定上下文 $x$，模型生成下一个 token 为 $i$ 的概率。</li>
+</ul>
+<h3 id="kaq既然是条件概率与x有关也就是输入的-token-有关那么概率分布的长度也与输入-token-的长度有关喽">KAQ：既然是条件概率与x有关，也就是输入的 token 有关。那么概率分布的长度也与输入 token 的长度有关喽？<a hidden class="anchor" aria-hidden="true" href="#kaq既然是条件概率与x有关也就是输入的-token-有关那么概率分布的长度也与输入-token-的长度有关喽">#</a></h3>
+<p>无关。</p>
+<p>$P(i | x; \theta)$ 的长度（即概率分布的大小）由 词汇表大小 决定，与输入上下文 $x$ 的长度无关。</p>
+<p>无论 $x$ 是 1 个 token（如 &ldquo;What&rdquo;）还是 100 个 token（如 &ldquo;Solve the math problem step-by-step&hellip;&quot;），模型输出的 logits 和 $P(i | x; \theta)$ 始终是 [vocab_size] 长度（151936）。</p>
+<p>原因：LLM（如 Qwen2）在每次预测下一个 token 时，基于整个上下文 $x$（通过 Transformer 的注意力机制）<strong>生成一个固定大小的概率分布，覆盖整个词汇表</strong>。 ！！！</p>
+<p>$x$ 的长度影响模型的计算过程（如注意力计算的复杂度），但不改变输出分布的长度。
+例如：</p>
+<ul>
+<li>$x = \text{&ldquo;What&rdquo;}$（1 token）=&gt; $P(i | x; \theta)$：151936 个概率。</li>
+<li>$x = \text{&ldquo;What is the meaning of life&rdquo;}$（5 tokens）=&gt; $P(i | x; \theta)$：仍为 151936 个概率。</li>
+</ul>
+<h3 id="kaq这个概率的得到其实是decode中transformer-的输出所以概率分布的长度是与输入长度无关的">KAQ：这个概率的得到其实是decode中transformer 的输出，所以概率分布的长度是与输入长度无关的？<a hidden class="anchor" aria-hidden="true" href="#kaq这个概率的得到其实是decode中transformer-的输出所以概率分布的长度是与输入长度无关的">#</a></h3>
+<p>是的。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llm/">LLM</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/trl/">TRL</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/grpo/">GRPO</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/kl-divergence/">KL Divergence</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>BPE on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/bpe/</link>
+    <description>Recent content in BPE on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:49:37 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/bpe/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>3.2.BPE Tokenizer</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/llm/3.2.bpe-tokenizer/</link>
+      <pubDate>Sun, 31 Aug 2025 12:49:37 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/llm/3.2.bpe-tokenizer/</guid>
+      <description>&lt;h1 id=&#34;normalization-and-pre-tokenization&#34;&gt;Normalization and pre-tokenization&lt;/h1&gt;
+&lt;p&gt;下是tokenization pipline的流程：&lt;/p&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th style=&#34;text-align: center&#34;&gt;&lt;img alt=&#34;图片描述&#34; loading=&#34;lazy&#34; src=&#34;https://ashburnLee.github.io/blog-2-hugo/pics/tokenization_pipeline-dark.svg&#34;&gt;&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td style=&#34;text-align: center&#34;&gt;&lt;em&gt;分词的pipline&lt;/em&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;在根据其模型将文本分割为子词之前，分词器执行两个步骤：归一化 &amp;amp; 预分词。&lt;/p&gt;
+&lt;h2 id=&#34;normalization&#34;&gt;Normalization&lt;/h2&gt;
+&lt;p&gt;Normalization 进行常规清理工作，例如去除不必要的空白字符、转换为小写以及/或去除重音符号。一个 &lt;code&gt;tokenizer&lt;/code&gt; 对象含有底层的 &lt;code&gt;normalizer&lt;/code&gt; 属性，这个属性有一个方法 &lt;code&gt;normalize_str()&lt;/code&gt; 的作用就是进行归一化的。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;tokenizer &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; AutoTokenizer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_pretrained(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;bert-base-uncased&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(tokenizer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;backend_tokenizer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;normalizer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;normalize_str(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Héllò hôw are ü?&amp;#34;&lt;/span&gt;))
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;hello how are u?&amp;#39;&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;# 针对 bert-base-uncased 的归一化输出&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;strong&gt;不同的预训练模型的归一化方法有差别&lt;/strong&gt;。&lt;/p&gt;
+&lt;h2 id=&#34;预分词&#34;&gt;预分词&lt;/h2&gt;
+&lt;p&gt;相同的，一个 &lt;code&gt;tokenizer&lt;/code&gt; 对象含有底层的 &lt;code&gt;pre_tokenizer&lt;/code&gt; 属性，这个属性有一个方法 &lt;code&gt;pre_tokenize_str()&lt;/code&gt; 的作用就是进行预分词的：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;tokenizer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;backend_tokenizer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;pre_tokenizer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;pre_tokenize_str(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Hello, how are  you?&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;[(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;Hello&amp;#39;&lt;/span&gt;, (&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;5&lt;/span&gt;)), (&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;,&amp;#39;&lt;/span&gt;, (&lt;span style=&#34;color:#ae81ff&#34;&gt;5&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;6&lt;/span&gt;)), (&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;how&amp;#39;&lt;/span&gt;, (&lt;span style=&#34;color:#ae81ff&#34;&gt;7&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;)), (&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;are&amp;#39;&lt;/span&gt;, (&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;14&lt;/span&gt;)), (&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;you&amp;#39;&lt;/span&gt;, (&lt;span style=&#34;color:#ae81ff&#34;&gt;16&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;19&lt;/span&gt;)), (&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;?&amp;#39;&lt;/span&gt;, (&lt;span style=&#34;color:#ae81ff&#34;&gt;19&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;20&lt;/span&gt;))]
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;看看T5 模型的分词器：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;tokenizer &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; AutoTokenizer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_pretrained(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;t5-small&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;tokenizer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;backend_tokenizer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;pre_tokenizer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;pre_tokenize_str(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Hello, how are  you?&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;[(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;▁Hello,&amp;#39;&lt;/span&gt;, (&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;6&lt;/span&gt;)), (&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;▁how&amp;#39;&lt;/span&gt;, (&lt;span style=&#34;color:#ae81ff&#34;&gt;7&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;)), (&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;▁are&amp;#39;&lt;/span&gt;, (&lt;span style=&#34;color:#ae81ff&#34;&gt;11&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;14&lt;/span&gt;)), (&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;▁you?&amp;#39;&lt;/span&gt;, (&lt;span style=&#34;color:#ae81ff&#34;&gt;16&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;20&lt;/span&gt;))]
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;这个分词器是包含&lt;strong&gt;偏移映射&lt;/strong&gt;的。同样的，&lt;strong&gt;不同预训练模型的预分词方法有差别&lt;/strong&gt;。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

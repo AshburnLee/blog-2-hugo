@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>5.7.llama.cpp Follow Code | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="LLM, llama.cpp">
+<meta name="description" content="【设Q找A，避免陷入细节陷阱】
+llama-simple -m ./models/Qwen3-1.7B-Q4_K_M.gguf -n 30 &quot;What is the result of 5/0 in math?&quot;
+推理过程 in code
+int main () {
+    ggml_backend_load_all();
+    
+    // 初始化model 参数
+    llama_model_params model_params = llama_model_default_params();
+    model_params.n_gpu_layers = ngl;
+    // 创建 model对象
+    llama_model * model = llama_model_load_from_file(model_path.c_str(), model_params);
+    
+
+    // 得到vocab, 得到tokenizer model 和 type，得到 特殊token id，得到token-to-id 列表，包括了padding token id
+    // 得到id-to-token列表，得到 cached-token-to-piece 列表
+    const llama_vocab * vocab = llama_model_get_vocab(model);
+    
+
+    // 将prompt tokenize，得到 id 表示的 prompt : prompt_tokens。
+    std::vector&lt;llama_token&gt; prompt_tokens(n_prompt);
+    llama_tokenize(vocab, prompt.c_str(), prompt.size(), prompt_tokens.data(), prompt_tokens.size(), true, true)
+    
+
+    // 首先得到 ctx 参数
+    llama_context_params ctx_params = llama_context_default_params();
+    ctx_params.n_ctx = n_prompt &#43; n_predict - 1;
+    // 用上述 ctx 参数创建一个 ctx 对象 ***********
+    llama_context * ctx = llama_init_from_model(model, ctx_params);
+
+
+    // 初始化 sampler 参数
+    auto sparams = llama_sampler_chain_default_params();
+    // 创建 samplers 对象 
+    llama_sampler * smpl = llama_sampler_chain_init(sparams);
+    llama_sampler_chain_add(smpl, llama_sampler_init_greedy());
+
+    // 输出 prompt one by one
+    // 循环 prompt_tokens 中每一个id，
+    for (auto id : prompt_tokens) {
+        char buf[128];  // 假设每个 token 至多 127 个字符
+        int n = llama_token_to_piece(vocab, id, buf, sizeof(buf), 0, true);
+        if (n &lt; 0) {
+            fprintf(stderr, &#34;%s: error: failed to convert token to piece\n&#34;, __func__);
+            return 1;
+        } 
+        std::string s(buf, n);   // 从 bug中读前n个写入s。
+        printf(&#34;%s&#34;, s.c_str()); 
+    }
+
+    // prepare a batch ？总不能是空的batch
+    llama_batch batch = llama_batch_get_one(prompt_tokens.data(), prompt_tokens.size());
+
+    llama_token new_token_id;
+
+    // generate token by token
+    for (int n_pos = 0; n_pos &#43; batch.n_tokens &lt; n_prompt &#43; n_predict; ) {
+
+        // 1. 这里是forward pass 的实际计算，每生成一个token 前都需要一次forward 计算
+        llama_decode(ctx, batch)
+
+        // 2. 这里都开始 采样了，所以forward pass 在其之前
+        new_token_id = llama_sampler_sample(smpl, ctx, -1);
+        // is it an end of generation?
+        if (llama_vocab_is_eog(vocab, new_token_id)) {break;}
+        int n = llama_token_to_piece(vocab, new_token_id, buf,...)
+
+        // show generated
+        std::string s(buf, n); // 确保每个 token 立即打印到终端，适合实时交互或调试。
+        printf(&#34;%s&#34;, s.c_str());
+        fflush(stdout);
+
+        // 3. prepare the next batch 
+        // 包含这个 token 的新输入
+        batch = llama_batch_get_one(&amp;new_token_id, 1);
+
+    }
+
+    // perf 相关，clean up
+}
+关于cuda的信息：">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/llm/5.7.llama.cpp-follow-code/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/llm/5.7.llama.cpp-follow-code/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/llm/5.7.llama.cpp-follow-code/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="5.7.llama.cpp Follow Code">
+  <meta property="og:description" content="【设Q找A，避免陷入细节陷阱】
+llama-simple -m ./models/Qwen3-1.7B-Q4_K_M.gguf -n 30 &#34;What is the result of 5/0 in math?&#34;
+推理过程 in code int main () { ggml_backend_load_all(); // 初始化model 参数 llama_model_params model_params = llama_model_default_params(); model_params.n_gpu_layers = ngl; // 创建 model对象 llama_model * model = llama_model_load_from_file(model_path.c_str(), model_params); // 得到vocab, 得到tokenizer model 和 type，得到 特殊token id，得到token-to-id 列表，包括了padding token id // 得到id-to-token列表，得到 cached-token-to-piece 列表 const llama_vocab * vocab = llama_model_get_vocab(model); // 将prompt tokenize，得到 id 表示的 prompt : prompt_tokens。 std::vector&lt;llama_token&gt; prompt_tokens(n_prompt); llama_tokenize(vocab, prompt.c_str(), prompt.size(), prompt_tokens.data(), prompt_tokens.size(), true, true) // 首先得到 ctx 参数 llama_context_params ctx_params = llama_context_default_params(); ctx_params.n_ctx = n_prompt &#43; n_predict - 1; // 用上述 ctx 参数创建一个 ctx 对象 *********** llama_context * ctx = llama_init_from_model(model, ctx_params); // 初始化 sampler 参数 auto sparams = llama_sampler_chain_default_params(); // 创建 samplers 对象 llama_sampler * smpl = llama_sampler_chain_init(sparams); llama_sampler_chain_add(smpl, llama_sampler_init_greedy()); // 输出 prompt one by one // 循环 prompt_tokens 中每一个id， for (auto id : prompt_tokens) { char buf[128]; // 假设每个 token 至多 127 个字符 int n = llama_token_to_piece(vocab, id, buf, sizeof(buf), 0, true); if (n &lt; 0) { fprintf(stderr, &#34;%s: error: failed to convert token to piece\n&#34;, __func__); return 1; } std::string s(buf, n); // 从 bug中读前n个写入s。 printf(&#34;%s&#34;, s.c_str()); } // prepare a batch ？总不能是空的batch llama_batch batch = llama_batch_get_one(prompt_tokens.data(), prompt_tokens.size()); llama_token new_token_id; // generate token by token for (int n_pos = 0; n_pos &#43; batch.n_tokens &lt; n_prompt &#43; n_predict; ) { // 1. 这里是forward pass 的实际计算，每生成一个token 前都需要一次forward 计算 llama_decode(ctx, batch) // 2. 这里都开始 采样了，所以forward pass 在其之前 new_token_id = llama_sampler_sample(smpl, ctx, -1); // is it an end of generation? if (llama_vocab_is_eog(vocab, new_token_id)) {break;} int n = llama_token_to_piece(vocab, new_token_id, buf,...) // show generated std::string s(buf, n); // 确保每个 token 立即打印到终端，适合实时交互或调试。 printf(&#34;%s&#34;, s.c_str()); fflush(stdout); // 3. prepare the next batch // 包含这个 token 的新输入 batch = llama_batch_get_one(&amp;new_token_id, 1); } // perf 相关，clean up } 关于cuda的信息：">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="llm">
+    <meta property="article:published_time" content="2025-08-31T12:49:40+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:49:40+08:00">
+    <meta property="article:tag" content="LLM">
+    <meta property="article:tag" content="Llama.cpp">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="5.7.llama.cpp Follow Code">
+<meta name="twitter:description" content="【设Q找A，避免陷入细节陷阱】
+llama-simple -m ./models/Qwen3-1.7B-Q4_K_M.gguf -n 30 &quot;What is the result of 5/0 in math?&quot;
+推理过程 in code
+int main () {
+    ggml_backend_load_all();
+    
+    // 初始化model 参数
+    llama_model_params model_params = llama_model_default_params();
+    model_params.n_gpu_layers = ngl;
+    // 创建 model对象
+    llama_model * model = llama_model_load_from_file(model_path.c_str(), model_params);
+    
+
+    // 得到vocab, 得到tokenizer model 和 type，得到 特殊token id，得到token-to-id 列表，包括了padding token id
+    // 得到id-to-token列表，得到 cached-token-to-piece 列表
+    const llama_vocab * vocab = llama_model_get_vocab(model);
+    
+
+    // 将prompt tokenize，得到 id 表示的 prompt : prompt_tokens。
+    std::vector&lt;llama_token&gt; prompt_tokens(n_prompt);
+    llama_tokenize(vocab, prompt.c_str(), prompt.size(), prompt_tokens.data(), prompt_tokens.size(), true, true)
+    
+
+    // 首先得到 ctx 参数
+    llama_context_params ctx_params = llama_context_default_params();
+    ctx_params.n_ctx = n_prompt &#43; n_predict - 1;
+    // 用上述 ctx 参数创建一个 ctx 对象 ***********
+    llama_context * ctx = llama_init_from_model(model, ctx_params);
+
+
+    // 初始化 sampler 参数
+    auto sparams = llama_sampler_chain_default_params();
+    // 创建 samplers 对象 
+    llama_sampler * smpl = llama_sampler_chain_init(sparams);
+    llama_sampler_chain_add(smpl, llama_sampler_init_greedy());
+
+    // 输出 prompt one by one
+    // 循环 prompt_tokens 中每一个id，
+    for (auto id : prompt_tokens) {
+        char buf[128];  // 假设每个 token 至多 127 个字符
+        int n = llama_token_to_piece(vocab, id, buf, sizeof(buf), 0, true);
+        if (n &lt; 0) {
+            fprintf(stderr, &#34;%s: error: failed to convert token to piece\n&#34;, __func__);
+            return 1;
+        } 
+        std::string s(buf, n);   // 从 bug中读前n个写入s。
+        printf(&#34;%s&#34;, s.c_str()); 
+    }
+
+    // prepare a batch ？总不能是空的batch
+    llama_batch batch = llama_batch_get_one(prompt_tokens.data(), prompt_tokens.size());
+
+    llama_token new_token_id;
+
+    // generate token by token
+    for (int n_pos = 0; n_pos &#43; batch.n_tokens &lt; n_prompt &#43; n_predict; ) {
+
+        // 1. 这里是forward pass 的实际计算，每生成一个token 前都需要一次forward 计算
+        llama_decode(ctx, batch)
+
+        // 2. 这里都开始 采样了，所以forward pass 在其之前
+        new_token_id = llama_sampler_sample(smpl, ctx, -1);
+        // is it an end of generation?
+        if (llama_vocab_is_eog(vocab, new_token_id)) {break;}
+        int n = llama_token_to_piece(vocab, new_token_id, buf,...)
+
+        // show generated
+        std::string s(buf, n); // 确保每个 token 立即打印到终端，适合实时交互或调试。
+        printf(&#34;%s&#34;, s.c_str());
+        fflush(stdout);
+
+        // 3. prepare the next batch 
+        // 包含这个 token 的新输入
+        batch = llama_batch_get_one(&amp;new_token_id, 1);
+
+    }
+
+    // perf 相关，clean up
+}
+关于cuda的信息：">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "LLM",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "5.7.llama.cpp Follow Code",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/5.7.llama.cpp-follow-code/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "5.7.llama.cpp Follow Code",
+  "name": "5.7.llama.cpp Follow Code",
+  "description": "【设Q找A，避免陷入细节陷阱】\nllama-simple -m ./models/Qwen3-1.7B-Q4_K_M.gguf -n 30 \u0026quot;What is the result of 5/0 in math?\u0026quot;\n推理过程 in code int main () { ggml_backend_load_all(); // 初始化model 参数 llama_model_params model_params = llama_model_default_params(); model_params.n_gpu_layers = ngl; // 创建 model对象 llama_model * model = llama_model_load_from_file(model_path.c_str(), model_params); // 得到vocab, 得到tokenizer model 和 type，得到 特殊token id，得到token-to-id 列表，包括了padding token id // 得到id-to-token列表，得到 cached-token-to-piece 列表 const llama_vocab * vocab = llama_model_get_vocab(model); // 将prompt tokenize，得到 id 表示的 prompt : prompt_tokens。 std::vector\u0026lt;llama_token\u0026gt; prompt_tokens(n_prompt); llama_tokenize(vocab, prompt.c_str(), prompt.size(), prompt_tokens.data(), prompt_tokens.size(), true, true) // 首先得到 ctx 参数 llama_context_params ctx_params = llama_context_default_params(); ctx_params.n_ctx = n_prompt + n_predict - 1; // 用上述 ctx 参数创建一个 ctx 对象 *********** llama_context * ctx = llama_init_from_model(model, ctx_params); // 初始化 sampler 参数 auto sparams = llama_sampler_chain_default_params(); // 创建 samplers 对象 llama_sampler * smpl = llama_sampler_chain_init(sparams); llama_sampler_chain_add(smpl, llama_sampler_init_greedy()); // 输出 prompt one by one // 循环 prompt_tokens 中每一个id， for (auto id : prompt_tokens) { char buf[128]; // 假设每个 token 至多 127 个字符 int n = llama_token_to_piece(vocab, id, buf, sizeof(buf), 0, true); if (n \u0026lt; 0) { fprintf(stderr, \u0026#34;%s: error: failed to convert token to piece\\n\u0026#34;, __func__); return 1; } std::string s(buf, n); // 从 bug中读前n个写入s。 printf(\u0026#34;%s\u0026#34;, s.c_str()); } // prepare a batch ？总不能是空的batch llama_batch batch = llama_batch_get_one(prompt_tokens.data(), prompt_tokens.size()); llama_token new_token_id; // generate token by token for (int n_pos = 0; n_pos + batch.n_tokens \u0026lt; n_prompt + n_predict; ) { // 1. 这里是forward pass 的实际计算，每生成一个token 前都需要一次forward 计算 llama_decode(ctx, batch) // 2. 这里都开始 采样了，所以forward pass 在其之前 new_token_id = llama_sampler_sample(smpl, ctx, -1); // is it an end of generation? if (llama_vocab_is_eog(vocab, new_token_id)) {break;} int n = llama_token_to_piece(vocab, new_token_id, buf,...) // show generated std::string s(buf, n); // 确保每个 token 立即打印到终端，适合实时交互或调试。 printf(\u0026#34;%s\u0026#34;, s.c_str()); fflush(stdout); // 3. prepare the next batch // 包含这个 token 的新输入 batch = llama_batch_get_one(\u0026amp;new_token_id, 1); } // perf 相关，clean up } 关于cuda的信息：\n",
+  "keywords": [
+    "LLM", "llama.cpp"
+  ],
+  "articleBody": "【设Q找A，避免陷入细节陷阱】\nllama-simple -m ./models/Qwen3-1.7B-Q4_K_M.gguf -n 30 \"What is the result of 5/0 in math?\"\n推理过程 in code int main () { ggml_backend_load_all(); // 初始化model 参数 llama_model_params model_params = llama_model_default_params(); model_params.n_gpu_layers = ngl; // 创建 model对象 llama_model * model = llama_model_load_from_file(model_path.c_str(), model_params); // 得到vocab, 得到tokenizer model 和 type，得到 特殊token id，得到token-to-id 列表，包括了padding token id // 得到id-to-token列表，得到 cached-token-to-piece 列表 const llama_vocab * vocab = llama_model_get_vocab(model); // 将prompt tokenize，得到 id 表示的 prompt : prompt_tokens。 std::vector\u003cllama_token\u003e prompt_tokens(n_prompt); llama_tokenize(vocab, prompt.c_str(), prompt.size(), prompt_tokens.data(), prompt_tokens.size(), true, true) // 首先得到 ctx 参数 llama_context_params ctx_params = llama_context_default_params(); ctx_params.n_ctx = n_prompt + n_predict - 1; // 用上述 ctx 参数创建一个 ctx 对象 *********** llama_context * ctx = llama_init_from_model(model, ctx_params); // 初始化 sampler 参数 auto sparams = llama_sampler_chain_default_params(); // 创建 samplers 对象 llama_sampler * smpl = llama_sampler_chain_init(sparams); llama_sampler_chain_add(smpl, llama_sampler_init_greedy()); // 输出 prompt one by one // 循环 prompt_tokens 中每一个id， for (auto id : prompt_tokens) { char buf[128]; // 假设每个 token 至多 127 个字符 int n = llama_token_to_piece(vocab, id, buf, sizeof(buf), 0, true); if (n \u003c 0) { fprintf(stderr, \"%s: error: failed to convert token to piece\\n\", __func__); return 1; } std::string s(buf, n); // 从 bug中读前n个写入s。 printf(\"%s\", s.c_str()); } // prepare a batch ？总不能是空的batch llama_batch batch = llama_batch_get_one(prompt_tokens.data(), prompt_tokens.size()); llama_token new_token_id; // generate token by token for (int n_pos = 0; n_pos + batch.n_tokens \u003c n_prompt + n_predict; ) { // 1. 这里是forward pass 的实际计算，每生成一个token 前都需要一次forward 计算 llama_decode(ctx, batch) // 2. 这里都开始 采样了，所以forward pass 在其之前 new_token_id = llama_sampler_sample(smpl, ctx, -1); // is it an end of generation? if (llama_vocab_is_eog(vocab, new_token_id)) {break;} int n = llama_token_to_piece(vocab, new_token_id, buf,...) // show generated std::string s(buf, n); // 确保每个 token 立即打印到终端，适合实时交互或调试。 printf(\"%s\", s.c_str()); fflush(stdout); // 3. prepare the next batch // 包含这个 token 的新输入 batch = llama_batch_get_one(\u0026new_token_id, 1); } // perf 相关，clean up } 关于cuda的信息：\nllama_model_load_from_file_impl: using device CUDA0 (Orin) - 1082 MiB free load_tensors: offloading 28 repeating layers to GPU load_tensors: offloading output layer to GPU load_tensors: offloaded 29/29 layers to GPU load_tensors: CUDA0 model buffer size = 1050.43 MiB load_tensors: CPU_Mapped model buffer size = 166.92 MiB n_batch 是一次性调用 llama_decode 可处理的最多 token 数。\nllama_context * ctx = llama_init_from_model(model, ctx_params); 在其中 build-graph\n@ 如何逐个 token 计算生成，如何实际计算模型的推理（forward pass）的 三个核心步骤：\nforward pass 的实际计算，每生成一个token 前都需要一次forward 计算。对应code：llama_decode(ctx, batch)\n使用采样器，采样 token 作为当前步骤的新 token。code：new_token_id = llama_sampler_sample(smpl, ctx, -1);\n将新的 token 包含进下一个 batch。在生成每个新 token 后，都需要准备一个新的 batch 来包含这个新的 token 作为下一次计算的输入。所以需要创建一个只包含单个新 token 的 llama_batch 对象。code：batch = llama_batch_get_one(\u0026new_token_id, 1);\n当然，中间需要将 generated token 输出到屏幕。\n@ llama_batch 是什么 llama_batch 表示一批输入 tokens 的结构体。在文本生成过程中，每次调用 llama_decode 时都需要一个 batch 来提供当前的上下文信息给模型。这个 batch 可以包含多个 token，但在一次迭代中只处理一个新生成的 token。\n要创建一个仅包含单个新 token 的 llama_batch，你可以使用 llama_batch_get_one 函数，如下所示：\nint new_token_id = ...; // 新生成的 token ID const llama_token *tokens = \u0026new_token_id; size_t n_tokens = 1; // 创建新的 batch 只包含这一个 token llama_batch batch = llama_batch_get_one(tokens, n_tokens); 这样你就可以将这个新的 token 作为下一次调用的输入的一部分了。\n@ llama_decode 如何实际计算的？ 比如 matmul 等？ llama_decode 函数本身不直接执行实际的矩阵乘法等底层操作。相反，它是一个封装了所有关键步骤的接口，包括：\n准备数据：将当前 batch 中的 tokens 转换为适合模型处理的格式。 前向传播：调用模型的内部实现来进行实际的数学运算，如矩阵乘法和激活函数的计算。 输出处理：从模型中提取出用于下一步采样的概率分布或直接的 token ID。 具体的矩阵乘法和其他数值计算是在模型的内部实现的，通常是使用优化的库（例如 cuBLAS 或类似的高性能线性代数库），这些库能够利用 GPU 并行性来实现高效的计算。\n@ 如何进入具体计算的，比如 matmul 等 int32_t llama_decode(llama_context * ctx, llama_batch batch) { const int ret = ctx-\u003edecode(batch); if (ret != 0 \u0026\u0026 ret != 1) { LLAMA_LOG_ERROR(\"%s: failed to decode, ret = %d\\n\", __func__, ret); } return ret; } 可以看到，llama_decode 函数实际上只是调用了 ctx-\u003edecode(batch)。\n所有的实际计算应该是发生在这里了。\n@ ctx-\u003edecode 阅读, 大概做了什么 输入验证： 确保 batch 有效（token 或嵌入，非空）。确保输入 batch 要么包含 token（batch_inp.token），要么包含嵌入（batch_inp.embd），但不能两者都有，符合自回归推理或嵌入计算的互斥性。互斥是因为 两者的计算图不同。前者从 token ID 开始，通过嵌入层生成嵌入，再执行 Transformer 层；后者提供嵌入向量，跳过嵌入层直接输入 Transformer 或池化层。\n初始化模型参数（词汇表、嵌入维度）。内存检查，如果没有内存上下文（memory），调用 encode。\nbatch 初始化： 使用 balloc 分配 batch，设置 token/embedding，检查输出一致性。balloc-\u003einit(batch_inp, vocab, memory.get(), n_embd, cparams.kv_unified ? LLAMA_MAX_SEQ : cparams.n_seq_max, output_all)\nKV 缓存管理： 更新 KV 缓存，初始化 mctx，处理碎片整理。kv_self_update(false);。 处理待处理的 KV 缓存碎片整理或滑动窗口（kv_self_update），确保缓存状态正确。\nmemory-\u003einit_batch 初始化 ubatch。\n前向传播： output_reserve(n_outputs_all) 分配输出缓冲区。\nubatch 处理，构建计算图: const auto * res = process_ubatch(ubatch, LLM_GRAPH_TYPE_DECODER, mctx.get(), status); 包括步骤：详见下\n执行 Transformer 层（嵌入 → 多头注意力 → 层归一化 → 前馈网络），更新 KV 缓存。\n使用 ggml_graph_compute，根据 -ngl 选择 CPU（NEON/AVX2）或 GPU（CUDA）内核。\n结果提取： 提取 logits（用于采样）或嵌入（token 或序列级，基于池化类型）。 ggml_backend_tensor_get_async(backend_res, t_logits, logits_out, 0, n_outputs*n_vocab*sizeof(float)); 异步拷贝到输出缓冲区（logits 或 embd）。\n错误处理 和 输出排序 和 清理： 失败时回滚 KV 缓存。调整输出顺序，匹配输入 batch。\n重置调度器，为下次解码准备。 ggml_backend_sched_reset(sched.get());\n@ llama_context::process_ubatch 做了什么 llm_graph_result * llama_context::process_ubatch(const llama_ubatch \u0026 ubatch, llm_graph_type gtype, llama_memory_context_i * mctx, ggml_status \u0026 ret) { if (mctx \u0026\u0026 !mctx-\u003eapply()) { LLAMA_LOG_ERROR(\"%s: failed to apply memory context\\n\", __func__); ret = GGML_STATUS_FAILED; return nullptr; } // 获取上一次的计算图结果（gf_res_prev）和计算图（gf）。 auto * res = gf_res_prev.get(); auto * gf = res-\u003eget_gf(); // 根据 ubatch、mctx 和图类型生成新的 图参数（gparams）。 const auto gparams = graph_params(res, ubatch, mctx, gtype); if (!graph_reuse_disable \u0026\u0026 res-\u003ecan_reuse(gparams)) { n_reused++; } else { // 重置 结果 和 调度器 res-\u003ereset(); ggml_backend_sched_reset(sched.get()); ggml_backend_sched_set_eval_callback(sched.get(), cparams.cb_eval, cparams.cb_eval_user_data); // 用新的图参数构建新图 gf = model.build_graph(gparams); if (!gf) { LLAMA_LOG_ERROR(\"%s: failed to initialize graph\\n\", __func__); ret = GGML_STATUS_FAILED; return nullptr; } if (!ggml_backend_sched_alloc_graph(sched.get(), gf)) { LLAMA_LOG_ERROR(\"%s: failed to allocate graph\\n\", __func__); ret = GGML_STATUS_ALLOC_FAILED; return nullptr; } } // 这次计算的 数据作为input res-\u003eset_inputs(\u0026ubatch); // 计算图 执行计算图 const auto status = graph_compute(res-\u003eget_gf(), ubatch.n_tokens \u003e 1); if (status != GGML_STATUS_SUCCESS) { LLAMA_LOG_ERROR(\"%s: failed to compute graph, compute status: %d\\n\", __func__, status); ret = status; return nullptr; } ret = GGML_STATUS_SUCCESS; return res; } @ 如何构建计算图的 build_graph(gparams) 各个架构的组成是提前写好的，在 llama-model.cpp 中都有定义。对于 arch 是 QWEN3，其类型是 llm_build_qwen3 。最后 append 一个 pooling 层：\nllm = std::make_unique\u003cllm_build_qwen3\u003e(*this, params); llm-\u003ebuild_pooling(cls, cls_b, cls_out, cls_out_b); @ why要额外的 pooling 层 @ qwen3 28 层结构是如何搭建的 struct llm_build_qwen3 : public llm_graph_context { llm_build_qwen3(const llama_model \u0026 model, const llm_graph_params \u0026 params) : llm_graph_context(params) { const int64_t n_embd_head = hparams.n_embd_head_v; GGML_ASSERT(n_embd_head == hparams.n_embd_head_k); GGML_ASSERT(n_embd_head == hparams.n_rot); ggml_tensor * cur; ggml_tensor * inpL; // 将输入 token ID 转换为嵌入向量（n_tokens × n_embd） // build_inp_embd 使用 ggml_matmul 将 token ID 映射到嵌入矩阵（model.tok_embd） inpL = build_inp_embd(model.tok_embd); // 生成位置编码张量（inp_pos），用于 RoPE 编码 ggml_tensor * inp_pos = build_inp_pos(); // 初始化 KV 缓存输入（inp_attn），支持统一 KV 缓存管理（cparams.kv_unified） // build_attn_inp_kv_unified 为注意力机制准备 KV 缓存张量，存储历史键值对 auto * inp_attn = build_attn_inp_kv_unified(); // 构建输出 ID 索引（inp_out_ids），用于提取特定输出的嵌入向量 ggml_tensor * inp_out_ids = build_inp_out_ids(); // 遍历 28 层 Transformer，每层包含norm、self-attension、FFN 和归一化 for (int il = 0; il \u003c n_layer; ++il) { ggml_tensor * inpSA = inpL; // RMSNorm 归一化层, 根均方归一化, 用于注意力机制前的输入向量,减少梯度爆炸/消失 cur = build_norm(inpL, model.layers[il].attn_norm, NULL, LLM_NORM_RMS, il); cb(cur, \"attn_norm\", il); // self-attention { // build_lora_mm 使用 ggml_matmul，将输入 cur 与权重（wq, wk, wv）相乘，支持 LoRA ggml_tensor * Qcur = build_lora_mm(model.layers[il].wq, cur); cb(Qcur, \"Qcur\", il); ggml_tensor * Kcur = build_lora_mm(model.layers[il].wk, cur); cb(Kcur, \"Kcur\", il); ggml_tensor * Vcur = build_lora_mm(model.layers[il].wv, cur); cb(Vcur, \"Vcur\", il); Qcur = ggml_reshape_3d(ctx0, Qcur, n_embd_head, n_head, n_tokens); Kcur = ggml_reshape_3d(ctx0, Kcur, n_embd_head, n_head_kv, n_tokens); Vcur = ggml_reshape_3d(ctx0, Vcur, n_embd_head, n_head_kv, n_tokens); // 归一化 Qcur 和 Kcur, 提升注意力稳定性 Qcur = build_norm(Qcur, model.layers[il].attn_q_norm, NULL, LLM_NORM_RMS, il); cb(Qcur, \"Qcur_normed\", il); // 应用 RoPE 位置编码，旋转 Q、K 张量，融入位置信息, 提升模型对长文本的理解能力 Qcur = ggml_rope_ext( ctx0, Qcur, inp_pos, nullptr, n_rot, rope_type, n_ctx_orig, freq_base, freq_scale, ext_factor, attn_factor, beta_fast, beta_slow ); Kcur = build_norm(Kcur, model.layers[il].attn_k_norm, NULL, LLM_NORM_RMS, il); cb(Kcur, \"Kcur_normed\", il); Kcur = ggml_rope_ext( ctx0, Kcur, inp_pos, nullptr, n_rot, rope_type, n_ctx_orig, freq_base, freq_scale, ext_factor, attn_factor, beta_fast, beta_slow ); cb(Qcur, \"Qcur\", il); cb(Kcur, \"Kcur\", il); cb(Vcur, \"Vcur\", il); // 执行多头注意力，计算注意力分数，输出通过权重 wo 和偏置 bo 投影 // build_attn 调用 ggml_softmax 和 ggml_matmul，结合 KV 缓存完成注意力计算 cur = build_attn(inp_attn, model.layers[il].wo, model.layers[il].bo, Qcur, Kcur, Vcur, nullptr, nullptr, 1.0f/sqrtf(float(n_embd_head)), il); } // 如果当前层是最后一层，并且有输出 ID 索引（inp_out_ids），则只计算特定输出的嵌入向量 // 最后一层，选择特定 token 的输出（如 CLS 或最后 token） if (il == n_layer - 1 \u0026\u0026 inp_out_ids) { cur = ggml_get_rows(ctx0, cur, inp_out_ids); inpSA = ggml_get_rows(ctx0, inpSA, inp_out_ids); } // 计算前一层的输出与当前层输入的和，用于残差连接, 残差连接增强训练稳定性，符合 Transformer 设计 ggml_tensor * ffn_inp = ggml_add(ctx0, cur, inpSA); cb(ffn_inp, \"ffn_inp\", il); // 对 FFN 输入应用 RMSNorm cur = build_norm(ffn_inp, model.layers[il].ffn_norm, NULL, LLM_NORM_RMS, il); cb(cur, \"ffn_norm\", il); // 构建前馈网络（FFN），包括线性变换、激活函数和残差连接 // build_ffn 使用 ggml_matmul 和 ggml_silu cur = build_ffn(cur, model.layers[il].ffn_up, NULL, NULL, model.layers[il].ffn_gate, NULL, NULL, model.layers[il].ffn_down, NULL, NULL, NULL, LLM_FFN_SILU, LLM_FFN_PAR, il); cb(cur, \"ffn_out\", il); // 残差连接 cur = ggml_add(ctx0, cur, ffn_inp); cur = build_cvec(cur, il); cb(cur, \"l_out\", il); // 当前层输出作为下一层的输入 inpL = cur; } cur = inpL; cur = build_norm(cur, model.output_norm, NULL, LLM_NORM_RMS, -1); cb(cur, \"result_norm\", -1); res-\u003et_embd = cur; // lm_head cur = build_lora_mm(model.output, cur); cb(cur, \"result_output\", -1); res-\u003et_logits = cur; // 将所有节点加入计算图（gf），完成构建. 并没有计算 ggml_build_forward_expand(gf, cur); } }; build_xxx 函数就是在图添加一层。所以 Qwen3-1.7B 的结构是\n28层 Transformer每层包含：\nRMSNorm（Attention 前） build_norm multi self Attention（带 LoRA、RoPE、Q/K 归一化、KV 缓存） build_attn 残差连接 ggml_add(ctx0, cur, inpSA); RMSNorm（FFN 前） build_norm FFN（带 SiLU 激活、门控机制） build_ffn 残差连接 ggml_add(ctx0, cur, ffn_inp); 最终归一化：RMSNorm 应用于最后一层输出。 build_norm\n输出层：线性变换生成 logits，支持 LoRA。 build_lora_mm\n到此是 build_graph 没有涉及实际计算。实际计算在 compute_graph, 比如一个计算 kernel 见quant-cuda-kernel\n",
+  "wordCount" : "1270",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:49:40+08:00",
+  "dateModified": "2025-08-31T12:49:40+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/llm/5.7.llama.cpp-follow-code/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      5.7.llama.cpp Follow Code
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:49:40 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><p>【设Q找A，避免陷入细节陷阱】</p>
+<p><code>llama-simple -m ./models/Qwen3-1.7B-Q4_K_M.gguf -n 30 &quot;What is the result of 5/0 in math?&quot;</code></p>
+<h2 id="推理过程-in-code">推理过程 in code<a hidden class="anchor" aria-hidden="true" href="#推理过程-in-code">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">int</span> <span style="color:#a6e22e">main</span> () {
+</span></span><span style="display:flex;"><span>    ggml_backend_load_all();
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 初始化model 参数
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    llama_model_params model_params <span style="color:#f92672">=</span> llama_model_default_params();
+</span></span><span style="display:flex;"><span>    model_params.n_gpu_layers <span style="color:#f92672">=</span> ngl;
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 创建 model对象
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    llama_model <span style="color:#f92672">*</span> model <span style="color:#f92672">=</span> llama_model_load_from_file(model_path.c_str(), model_params);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 得到vocab, 得到tokenizer model 和 type，得到 特殊token id，得到token-to-id 列表，包括了padding token id
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// 得到id-to-token列表，得到 cached-token-to-piece 列表
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">const</span> llama_vocab <span style="color:#f92672">*</span> vocab <span style="color:#f92672">=</span> llama_model_get_vocab(model);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 将prompt tokenize，得到 id 表示的 prompt : prompt_tokens。
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    std<span style="color:#f92672">::</span>vector<span style="color:#f92672">&lt;</span>llama_token<span style="color:#f92672">&gt;</span> prompt_tokens(n_prompt);
+</span></span><span style="display:flex;"><span>    llama_tokenize(vocab, prompt.c_str(), prompt.size(), prompt_tokens.data(), prompt_tokens.size(), true, true)
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 首先得到 ctx 参数
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    llama_context_params ctx_params <span style="color:#f92672">=</span> llama_context_default_params();
+</span></span><span style="display:flex;"><span>    ctx_params.n_ctx <span style="color:#f92672">=</span> n_prompt <span style="color:#f92672">+</span> n_predict <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 用上述 ctx 参数创建一个 ctx 对象 ***********
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    llama_context <span style="color:#f92672">*</span> ctx <span style="color:#f92672">=</span> llama_init_from_model(model, ctx_params);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 初始化 sampler 参数
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">auto</span> sparams <span style="color:#f92672">=</span> llama_sampler_chain_default_params();
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 创建 samplers 对象 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    llama_sampler <span style="color:#f92672">*</span> smpl <span style="color:#f92672">=</span> llama_sampler_chain_init(sparams);
+</span></span><span style="display:flex;"><span>    llama_sampler_chain_add(smpl, llama_sampler_init_greedy());
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 输出 prompt one by one
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// 循环 prompt_tokens 中每一个id，
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">auto</span> id : prompt_tokens) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">char</span> buf[<span style="color:#ae81ff">128</span>];  <span style="color:#75715e">// 假设每个 token 至多 127 个字符
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#66d9ef">int</span> n <span style="color:#f92672">=</span> llama_token_to_piece(vocab, id, buf, <span style="color:#66d9ef">sizeof</span>(buf), <span style="color:#ae81ff">0</span>, true);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (n <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span>) {
+</span></span><span style="display:flex;"><span>            fprintf(stderr, <span style="color:#e6db74">&#34;%s: error: failed to convert token to piece</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, __func__);
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>        } 
+</span></span><span style="display:flex;"><span>        std<span style="color:#f92672">::</span>string s(buf, n);   <span style="color:#75715e">// 从 bug中读前n个写入s。
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        printf(<span style="color:#e6db74">&#34;%s&#34;</span>, s.c_str()); 
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// prepare a batch ？总不能是空的batch
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    llama_batch batch <span style="color:#f92672">=</span> llama_batch_get_one(prompt_tokens.data(), prompt_tokens.size());
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    llama_token new_token_id;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// generate token by token
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> n_pos <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; n_pos <span style="color:#f92672">+</span> batch.n_tokens <span style="color:#f92672">&lt;</span> n_prompt <span style="color:#f92672">+</span> n_predict; ) {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 1. 这里是forward pass 的实际计算，每生成一个token 前都需要一次forward 计算
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        llama_decode(ctx, batch)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 2. 这里都开始 采样了，所以forward pass 在其之前
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        new_token_id <span style="color:#f92672">=</span> llama_sampler_sample(smpl, ctx, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// is it an end of generation?
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#66d9ef">if</span> (llama_vocab_is_eog(vocab, new_token_id)) {<span style="color:#66d9ef">break</span>;}
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">int</span> n <span style="color:#f92672">=</span> llama_token_to_piece(vocab, new_token_id, buf,...)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// show generated
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        std<span style="color:#f92672">::</span>string s(buf, n); <span style="color:#75715e">// 确保每个 token 立即打印到终端，适合实时交互或调试。
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        printf(<span style="color:#e6db74">&#34;%s&#34;</span>, s.c_str());
+</span></span><span style="display:flex;"><span>        fflush(stdout);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 3. prepare the next batch 
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#75715e">// 包含这个 token 的新输入
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        batch <span style="color:#f92672">=</span> llama_batch_get_one(<span style="color:#f92672">&amp;</span>new_token_id, <span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// perf 相关，clean up
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>}
+</span></span></code></pre></div><p>关于cuda的信息：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>llama_model_load_from_file_impl: using device CUDA0 <span style="color:#f92672">(</span>Orin<span style="color:#f92672">)</span> - <span style="color:#ae81ff">1082</span> MiB free
+</span></span><span style="display:flex;"><span>load_tensors: offloading <span style="color:#ae81ff">28</span> repeating layers to GPU
+</span></span><span style="display:flex;"><span>load_tensors: offloading output layer to GPU
+</span></span><span style="display:flex;"><span>load_tensors: offloaded 29/29 layers to GPU
+</span></span><span style="display:flex;"><span>load_tensors:        CUDA0 model buffer size <span style="color:#f92672">=</span>  1050.43 MiB
+</span></span><span style="display:flex;"><span>load_tensors:   CPU_Mapped model buffer size <span style="color:#f92672">=</span>   166.92 MiB
+</span></span></code></pre></div><p><code>n_batch</code> 是一次性调用 <code>llama_decode</code> 可处理的最多 token 数。</p>
+<p><code>llama_context * ctx = llama_init_from_model(model, ctx_params);</code> 在其中 build-graph</p>
+<h2 id="-如何逐个-token-计算生成如何实际计算模型的推理forward-pass的">@ 如何逐个 token 计算生成，如何实际计算模型的推理（forward pass）的<a hidden class="anchor" aria-hidden="true" href="#-如何逐个-token-计算生成如何实际计算模型的推理forward-pass的">#</a></h2>
+<p>三个核心步骤：</p>
+<ol>
+<li>
+<p>forward pass 的实际计算，每生成一个token 前都需要一次forward 计算。对应code：<code>llama_decode(ctx, batch)</code></p>
+</li>
+<li>
+<p>使用采样器，采样 token 作为当前步骤的新 token。code：<code>new_token_id = llama_sampler_sample(smpl, ctx, -1);</code></p>
+</li>
+<li>
+<p>将新的 token 包含进下一个 batch。在生成每个新 token 后，都需要准备一个新的 batch 来<strong>包含这个新的 token</strong> 作为下一次计算的输入。所以需要创建一个<strong>只包含</strong>单个新 token 的 <code>llama_batch</code> 对象。code：<code>batch = llama_batch_get_one(&amp;new_token_id, 1);</code></p>
+</li>
+</ol>
+<p>当然，中间需要将 generated token 输出到屏幕。</p>
+<h2 id="-llama_batch-是什么">@ <code>llama_batch</code> 是什么<a hidden class="anchor" aria-hidden="true" href="#-llama_batch-是什么">#</a></h2>
+<p><code>llama_batch</code> 表示一批输入 tokens 的结构体。在文本生成过程中，每次调用 <code>llama_decode</code> 时都需要一个 batch 来提供当前的上下文信息给模型。这个 batch 可以包含多个 token，但在一次迭代中只处理一个新生成的 token。</p>
+<p>要创建一个仅包含单个新 token 的 <code>llama_batch</code>，你可以使用 <code>llama_batch_get_one</code> 函数，如下所示：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">int</span> new_token_id <span style="color:#f92672">=</span> ...; <span style="color:#75715e">// 新生成的 token ID
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">const</span> llama_token <span style="color:#f92672">*</span>tokens <span style="color:#f92672">=</span> <span style="color:#f92672">&amp;</span>new_token_id;
+</span></span><span style="display:flex;"><span>size_t n_tokens <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// 创建新的 batch 只包含这一个 token
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>llama_batch batch <span style="color:#f92672">=</span> llama_batch_get_one(tokens, n_tokens);
+</span></span></code></pre></div><p>这样你就可以将这个新的 token 作为下一次调用的输入的一部分了。</p>
+<h2 id="-llama_decode-如何实际计算的-比如-matmul-等">@ <code>llama_decode</code> 如何实际计算的？ 比如 matmul 等？<a hidden class="anchor" aria-hidden="true" href="#-llama_decode-如何实际计算的-比如-matmul-等">#</a></h2>
+<p><code>llama_decode</code> 函数本身不直接执行实际的矩阵乘法等底层操作。相反，它是一个封装了所有关键步骤的接口，包括：</p>
+<ol>
+<li><strong>准备数据</strong>：将当前 batch 中的 tokens 转换为适合模型处理的格式。</li>
+<li><strong>前向传播</strong>：调用模型的内部实现来进行实际的数学运算，如矩阵乘法和激活函数的计算。</li>
+<li><strong>输出处理</strong>：从模型中提取出用于下一步采样的概率分布或直接的 token ID。</li>
+</ol>
+<p>具体的矩阵乘法和其他数值计算是在模型的内部实现的，通常是使用优化的库（例如 cuBLAS 或类似的高性能线性代数库），这些库能够利用 GPU 并行性来实现高效的计算。</p>
+<h2 id="-如何进入具体计算的比如-matmul-等">@ 如何进入具体计算的，比如 matmul 等<a hidden class="anchor" aria-hidden="true" href="#-如何进入具体计算的比如-matmul-等">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">int32_t</span> <span style="color:#a6e22e">llama_decode</span>(llama_context <span style="color:#f92672">*</span> ctx, llama_batch   batch) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">int</span> ret <span style="color:#f92672">=</span> ctx<span style="color:#f92672">-&gt;</span>decode(batch);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (ret <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> ret <span style="color:#f92672">!=</span> <span style="color:#ae81ff">1</span>) {
+</span></span><span style="display:flex;"><span>        LLAMA_LOG_ERROR(<span style="color:#e6db74">&#34;%s: failed to decode, ret = %d</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, __func__, ret);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> ret;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>可以看到，<code>llama_decode</code> 函数实际上只是调用了 <code>ctx-&gt;decode(batch)</code>。</p>
+<p>所有的实际计算应该是发生在这里了。</p>
+<h2 id="-ctx-decode-阅读-大概做了什么">@ <code>ctx-&gt;decode</code> 阅读, 大概做了什么<a hidden class="anchor" aria-hidden="true" href="#-ctx-decode-阅读-大概做了什么">#</a></h2>
+<h3 id="输入验证">输入验证：<a hidden class="anchor" aria-hidden="true" href="#输入验证">#</a></h3>
+<p>确保 batch 有效（token 或嵌入，非空）。确保输入 batch 要么包含 token（batch_inp.token），要么包含嵌入（batch_inp.embd），但不能两者都有，符合自回归推理或嵌入计算的互斥性。互斥是因为 两者的计算图不同。前者从 token ID 开始，通过嵌入层生成嵌入，再执行 Transformer 层；后者提供嵌入向量，跳过嵌入层直接输入 Transformer 或池化层。</p>
+<p>初始化模型参数（词汇表、嵌入维度）。内存检查，如果没有内存上下文（memory），调用 encode。</p>
+<h3 id="batch-初始化">batch 初始化：<a hidden class="anchor" aria-hidden="true" href="#batch-初始化">#</a></h3>
+<p>使用 balloc 分配 batch，设置 token/embedding，检查输出一致性。<code>balloc-&gt;init(batch_inp, vocab, memory.get(), n_embd, cparams.kv_unified ? LLAMA_MAX_SEQ : cparams.n_seq_max, output_all)</code></p>
+<h3 id="kv-缓存管理">KV 缓存管理：<a hidden class="anchor" aria-hidden="true" href="#kv-缓存管理">#</a></h3>
+<p>更新 KV 缓存，初始化 mctx，处理碎片整理。<code>kv_self_update(false);</code>。 处理待处理的 KV 缓存碎片整理或滑动窗口（kv_self_update），确保缓存状态正确。</p>
+<p><code>memory-&gt;init_batch</code> 初始化 ubatch。</p>
+<h3 id="前向传播">前向传播：<a hidden class="anchor" aria-hidden="true" href="#前向传播">#</a></h3>
+<p><code>output_reserve(n_outputs_all)</code> 分配输出缓冲区。</p>
+<p><code>ubatch</code> 处理，构建计算图: <code>const auto * res = process_ubatch(ubatch, LLM_GRAPH_TYPE_DECODER, mctx.get(), status);</code> 包括步骤：详见下</p>
+<ul>
+<li>
+<p>执行 Transformer 层（嵌入 → 多头注意力 → 层归一化 → 前馈网络），更新 KV 缓存。</p>
+</li>
+<li>
+<p>使用 <code>ggml_graph_compute</code>，根据 <code>-ngl</code> 选择 CPU（NEON/AVX2）或 GPU（CUDA）内核。</p>
+</li>
+</ul>
+<h3 id="结果提取">结果提取：<a hidden class="anchor" aria-hidden="true" href="#结果提取">#</a></h3>
+<p>提取 logits（用于采样）或嵌入（token 或序列级，基于池化类型）。
+<code>ggml_backend_tensor_get_async(backend_res, t_logits, logits_out, 0, n_outputs*n_vocab*sizeof(float));</code> 异步拷贝到输出缓冲区（logits 或 embd）。</p>
+<h3 id="错误处理-和-输出排序-和-清理">错误处理 和 输出排序 和 清理：<a hidden class="anchor" aria-hidden="true" href="#错误处理-和-输出排序-和-清理">#</a></h3>
+<p>失败时回滚 KV 缓存。调整输出顺序，匹配输入 batch。</p>
+<p>重置调度器，为下次解码准备。 <code>ggml_backend_sched_reset(sched.get());</code></p>
+<h2 id="-llama_contextprocess_ubatch-做了什么">@ <code>llama_context::process_ubatch</code> 做了什么<a hidden class="anchor" aria-hidden="true" href="#-llama_contextprocess_ubatch-做了什么">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>llm_graph_result <span style="color:#f92672">*</span> llama_context<span style="color:#f92672">::</span>process_ubatch(<span style="color:#66d9ef">const</span> llama_ubatch <span style="color:#f92672">&amp;</span> ubatch, 
+</span></span><span style="display:flex;"><span>                                                 llm_graph_type gtype, 
+</span></span><span style="display:flex;"><span>                                                 llama_memory_context_i <span style="color:#f92672">*</span> mctx, 
+</span></span><span style="display:flex;"><span>                                                 ggml_status <span style="color:#f92672">&amp;</span> ret) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (mctx <span style="color:#f92672">&amp;&amp;</span> <span style="color:#f92672">!</span>mctx<span style="color:#f92672">-&gt;</span>apply()) {
+</span></span><span style="display:flex;"><span>        LLAMA_LOG_ERROR(<span style="color:#e6db74">&#34;%s: failed to apply memory context</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, __func__);
+</span></span><span style="display:flex;"><span>        ret <span style="color:#f92672">=</span> GGML_STATUS_FAILED;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nullptr</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 获取上一次的计算图结果（gf_res_prev）和计算图（gf）。
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">auto</span> <span style="color:#f92672">*</span> res <span style="color:#f92672">=</span> gf_res_prev.get();
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> <span style="color:#f92672">*</span> gf  <span style="color:#f92672">=</span> res<span style="color:#f92672">-&gt;</span>get_gf();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 根据 ubatch、mctx 和图类型生成新的 图参数（gparams）。
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">auto</span> gparams <span style="color:#f92672">=</span> graph_params(res, ubatch, mctx, gtype);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>graph_reuse_disable <span style="color:#f92672">&amp;&amp;</span> res<span style="color:#f92672">-&gt;</span>can_reuse(gparams)) {
+</span></span><span style="display:flex;"><span>        n_reused<span style="color:#f92672">++</span>;
+</span></span><span style="display:flex;"><span>    } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 重置 结果 和 调度器
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        res<span style="color:#f92672">-&gt;</span>reset();
+</span></span><span style="display:flex;"><span>        ggml_backend_sched_reset(sched.get());
+</span></span><span style="display:flex;"><span>        ggml_backend_sched_set_eval_callback(sched.get(), cparams.cb_eval, cparams.cb_eval_user_data);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 用新的图参数构建新图
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        gf <span style="color:#f92672">=</span> model.build_graph(gparams);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>gf) {
+</span></span><span style="display:flex;"><span>            LLAMA_LOG_ERROR(<span style="color:#e6db74">&#34;%s: failed to initialize graph</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, __func__);
+</span></span><span style="display:flex;"><span>            ret <span style="color:#f92672">=</span> GGML_STATUS_FAILED;
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nullptr</span>;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>ggml_backend_sched_alloc_graph(sched.get(), gf)) {
+</span></span><span style="display:flex;"><span>            LLAMA_LOG_ERROR(<span style="color:#e6db74">&#34;%s: failed to allocate graph</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, __func__);
+</span></span><span style="display:flex;"><span>            ret <span style="color:#f92672">=</span> GGML_STATUS_ALLOC_FAILED;
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nullptr</span>;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 这次计算的 数据作为input
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    res<span style="color:#f92672">-&gt;</span>set_inputs(<span style="color:#f92672">&amp;</span>ubatch);
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 计算图 执行计算图
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">auto</span> status <span style="color:#f92672">=</span> graph_compute(res<span style="color:#f92672">-&gt;</span>get_gf(), ubatch.n_tokens <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (status <span style="color:#f92672">!=</span> GGML_STATUS_SUCCESS) {
+</span></span><span style="display:flex;"><span>        LLAMA_LOG_ERROR(<span style="color:#e6db74">&#34;%s: failed to compute graph, compute status: %d</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, __func__, status);
+</span></span><span style="display:flex;"><span>        ret <span style="color:#f92672">=</span> status;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nullptr</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    ret <span style="color:#f92672">=</span> GGML_STATUS_SUCCESS;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> res;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="-如何构建计算图的-build_graphgparams">@ 如何构建计算图的 <code>build_graph(gparams)</code><a hidden class="anchor" aria-hidden="true" href="#-如何构建计算图的-build_graphgparams">#</a></h2>
+<p>各个架构的组成是提前写好的，在 <code>llama-model.cpp</code> 中都有定义。对于 arch 是 <code>QWEN3</code>，其类型是 <code>llm_build_qwen3</code> 。最后 append 一个 pooling 层：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>llm <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>make_unique<span style="color:#f92672">&lt;</span>llm_build_qwen3<span style="color:#f92672">&gt;</span>(<span style="color:#f92672">*</span><span style="color:#66d9ef">this</span>, params);
+</span></span><span style="display:flex;"><span>llm<span style="color:#f92672">-&gt;</span>build_pooling(cls, cls_b, cls_out, cls_out_b);
+</span></span></code></pre></div><h2 id="-why要额外的-pooling-层">@ why要额外的 pooling 层<a hidden class="anchor" aria-hidden="true" href="#-why要额外的-pooling-层">#</a></h2>
+<h2 id="-qwen3-28-层结构是如何搭建的">@ qwen3 28 层结构是如何搭建的<a hidden class="anchor" aria-hidden="true" href="#-qwen3-28-层结构是如何搭建的">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">llm_build_qwen3</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> llm_graph_context {
+</span></span><span style="display:flex;"><span>    llm_build_qwen3(<span style="color:#66d9ef">const</span> llama_model <span style="color:#f92672">&amp;</span> model, <span style="color:#66d9ef">const</span> llm_graph_params <span style="color:#f92672">&amp;</span> params) <span style="color:#f92672">:</span> llm_graph_context(params) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">int64_t</span> n_embd_head <span style="color:#f92672">=</span> hparams.n_embd_head_v;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        GGML_ASSERT(n_embd_head <span style="color:#f92672">==</span> hparams.n_embd_head_k);
+</span></span><span style="display:flex;"><span>        GGML_ASSERT(n_embd_head <span style="color:#f92672">==</span> hparams.n_rot);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        ggml_tensor <span style="color:#f92672">*</span> cur;
+</span></span><span style="display:flex;"><span>        ggml_tensor <span style="color:#f92672">*</span> inpL;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 将输入 token ID 转换为嵌入向量（n_tokens × n_embd）
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#75715e">// build_inp_embd 使用 ggml_matmul 将 token ID 映射到嵌入矩阵（model.tok_embd）
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        inpL <span style="color:#f92672">=</span> build_inp_embd(model.tok_embd);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 生成位置编码张量（inp_pos），用于 RoPE 编码
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        ggml_tensor <span style="color:#f92672">*</span> inp_pos <span style="color:#f92672">=</span> build_inp_pos();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 初始化 KV 缓存输入（inp_attn），支持统一 KV 缓存管理（cparams.kv_unified）
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#75715e">// build_attn_inp_kv_unified 为注意力机制准备 KV 缓存张量，存储历史键值对
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#66d9ef">auto</span> <span style="color:#f92672">*</span> inp_attn <span style="color:#f92672">=</span> build_attn_inp_kv_unified();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 构建输出 ID 索引（inp_out_ids），用于提取特定输出的嵌入向量
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        ggml_tensor <span style="color:#f92672">*</span> inp_out_ids <span style="color:#f92672">=</span> build_inp_out_ids();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 遍历 28 层 Transformer，每层包含norm、self-attension、FFN 和归一化
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> il <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; il <span style="color:#f92672">&lt;</span> n_layer; <span style="color:#f92672">++</span>il) {
+</span></span><span style="display:flex;"><span>            ggml_tensor <span style="color:#f92672">*</span> inpSA <span style="color:#f92672">=</span> inpL;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// RMSNorm 归一化层, 根均方归一化, 用于注意力机制前的输入向量,减少梯度爆炸/消失
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            cur <span style="color:#f92672">=</span> build_norm(inpL,
+</span></span><span style="display:flex;"><span>                    model.layers[il].attn_norm, NULL,
+</span></span><span style="display:flex;"><span>                    LLM_NORM_RMS, il);
+</span></span><span style="display:flex;"><span>            cb(cur, <span style="color:#e6db74">&#34;attn_norm&#34;</span>, il);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// self-attention
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            {
+</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// build_lora_mm 使用 ggml_matmul，将输入 cur 与权重（wq, wk, wv）相乘，支持 LoRA
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                ggml_tensor <span style="color:#f92672">*</span> Qcur <span style="color:#f92672">=</span> build_lora_mm(model.layers[il].wq, cur);
+</span></span><span style="display:flex;"><span>                cb(Qcur, <span style="color:#e6db74">&#34;Qcur&#34;</span>, il);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>                ggml_tensor <span style="color:#f92672">*</span> Kcur <span style="color:#f92672">=</span> build_lora_mm(model.layers[il].wk, cur);
+</span></span><span style="display:flex;"><span>                cb(Kcur, <span style="color:#e6db74">&#34;Kcur&#34;</span>, il);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>                ggml_tensor <span style="color:#f92672">*</span> Vcur <span style="color:#f92672">=</span> build_lora_mm(model.layers[il].wv, cur);
+</span></span><span style="display:flex;"><span>                cb(Vcur, <span style="color:#e6db74">&#34;Vcur&#34;</span>, il);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>                Qcur <span style="color:#f92672">=</span> ggml_reshape_3d(ctx0, Qcur, n_embd_head, n_head,    n_tokens);
+</span></span><span style="display:flex;"><span>                Kcur <span style="color:#f92672">=</span> ggml_reshape_3d(ctx0, Kcur, n_embd_head, n_head_kv, n_tokens);
+</span></span><span style="display:flex;"><span>                Vcur <span style="color:#f92672">=</span> ggml_reshape_3d(ctx0, Vcur, n_embd_head, n_head_kv, n_tokens);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// 归一化 Qcur 和 Kcur, 提升注意力稳定性
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                Qcur <span style="color:#f92672">=</span> build_norm(Qcur, model.layers[il].attn_q_norm, NULL, LLM_NORM_RMS, il);
+</span></span><span style="display:flex;"><span>                cb(Qcur, <span style="color:#e6db74">&#34;Qcur_normed&#34;</span>, il);
+</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// 应用 RoPE 位置编码，旋转 Q、K 张量，融入位置信息, 提升模型对长文本的理解能力
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                Qcur <span style="color:#f92672">=</span> ggml_rope_ext(
+</span></span><span style="display:flex;"><span>                        ctx0, Qcur, inp_pos, <span style="color:#66d9ef">nullptr</span>,
+</span></span><span style="display:flex;"><span>                        n_rot, rope_type, n_ctx_orig, freq_base, freq_scale,
+</span></span><span style="display:flex;"><span>                        ext_factor, attn_factor, beta_fast, beta_slow
+</span></span><span style="display:flex;"><span>                        );
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>                Kcur <span style="color:#f92672">=</span> build_norm(Kcur, model.layers[il].attn_k_norm, NULL, LLM_NORM_RMS, il);
+</span></span><span style="display:flex;"><span>                cb(Kcur, <span style="color:#e6db74">&#34;Kcur_normed&#34;</span>, il);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>                Kcur <span style="color:#f92672">=</span> ggml_rope_ext(
+</span></span><span style="display:flex;"><span>                        ctx0, Kcur, inp_pos, <span style="color:#66d9ef">nullptr</span>,
+</span></span><span style="display:flex;"><span>                        n_rot, rope_type, n_ctx_orig, freq_base, freq_scale,
+</span></span><span style="display:flex;"><span>                        ext_factor, attn_factor, beta_fast, beta_slow
+</span></span><span style="display:flex;"><span>                        );
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>                cb(Qcur, <span style="color:#e6db74">&#34;Qcur&#34;</span>, il);
+</span></span><span style="display:flex;"><span>                cb(Kcur, <span style="color:#e6db74">&#34;Kcur&#34;</span>, il);
+</span></span><span style="display:flex;"><span>                cb(Vcur, <span style="color:#e6db74">&#34;Vcur&#34;</span>, il);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// 执行多头注意力，计算注意力分数，输出通过权重 wo 和偏置 bo 投影
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                <span style="color:#75715e">// build_attn 调用 ggml_softmax 和 ggml_matmul，结合 KV 缓存完成注意力计算
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                cur <span style="color:#f92672">=</span> build_attn(inp_attn,
+</span></span><span style="display:flex;"><span>                        model.layers[il].wo, model.layers[il].bo,
+</span></span><span style="display:flex;"><span>                        Qcur, Kcur, Vcur, <span style="color:#66d9ef">nullptr</span>, <span style="color:#66d9ef">nullptr</span>, <span style="color:#ae81ff">1.0f</span><span style="color:#f92672">/</span>sqrtf(<span style="color:#66d9ef">float</span>(n_embd_head)), il);
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// 如果当前层是最后一层，并且有输出 ID 索引（inp_out_ids），则只计算特定输出的嵌入向量
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            <span style="color:#75715e">// 最后一层，选择特定 token 的输出（如 CLS 或最后 token）
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            <span style="color:#66d9ef">if</span> (il <span style="color:#f92672">==</span> n_layer <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">&amp;&amp;</span> inp_out_ids) {
+</span></span><span style="display:flex;"><span>                cur   <span style="color:#f92672">=</span> ggml_get_rows(ctx0,   cur, inp_out_ids);
+</span></span><span style="display:flex;"><span>                inpSA <span style="color:#f92672">=</span> ggml_get_rows(ctx0, inpSA, inp_out_ids);
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// 计算前一层的输出与当前层输入的和，用于残差连接, 残差连接增强训练稳定性，符合 Transformer 设计
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            ggml_tensor <span style="color:#f92672">*</span> ffn_inp <span style="color:#f92672">=</span> ggml_add(ctx0, cur, inpSA);
+</span></span><span style="display:flex;"><span>            cb(ffn_inp, <span style="color:#e6db74">&#34;ffn_inp&#34;</span>, il);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// 对 FFN 输入应用 RMSNorm
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            cur <span style="color:#f92672">=</span> build_norm(ffn_inp,
+</span></span><span style="display:flex;"><span>                    model.layers[il].ffn_norm, NULL,
+</span></span><span style="display:flex;"><span>                    LLM_NORM_RMS, il);
+</span></span><span style="display:flex;"><span>            cb(cur, <span style="color:#e6db74">&#34;ffn_norm&#34;</span>, il);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// 构建前馈网络（FFN），包括线性变换、激活函数和残差连接
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            <span style="color:#75715e">// build_ffn 使用 ggml_matmul 和 ggml_silu
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            cur <span style="color:#f92672">=</span> build_ffn(cur,
+</span></span><span style="display:flex;"><span>                    model.layers[il].ffn_up,   NULL, NULL,
+</span></span><span style="display:flex;"><span>                    model.layers[il].ffn_gate, NULL, NULL,
+</span></span><span style="display:flex;"><span>                    model.layers[il].ffn_down, NULL, NULL,
+</span></span><span style="display:flex;"><span>                    NULL,
+</span></span><span style="display:flex;"><span>                    LLM_FFN_SILU, LLM_FFN_PAR, il);
+</span></span><span style="display:flex;"><span>            cb(cur, <span style="color:#e6db74">&#34;ffn_out&#34;</span>, il);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// 残差连接
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            cur <span style="color:#f92672">=</span> ggml_add(ctx0, cur, ffn_inp);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            cur <span style="color:#f92672">=</span> build_cvec(cur, il);
+</span></span><span style="display:flex;"><span>            cb(cur, <span style="color:#e6db74">&#34;l_out&#34;</span>, il);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// 当前层输出作为下一层的输入
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>            inpL <span style="color:#f92672">=</span> cur;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        cur <span style="color:#f92672">=</span> inpL;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        cur <span style="color:#f92672">=</span> build_norm(cur,
+</span></span><span style="display:flex;"><span>                model.output_norm, NULL,
+</span></span><span style="display:flex;"><span>                LLM_NORM_RMS, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        cb(cur, <span style="color:#e6db74">&#34;result_norm&#34;</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>        res<span style="color:#f92672">-&gt;</span>t_embd <span style="color:#f92672">=</span> cur;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// lm_head
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        cur <span style="color:#f92672">=</span> build_lora_mm(model.output, cur);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        cb(cur, <span style="color:#e6db74">&#34;result_output&#34;</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>);
+</span></span><span style="display:flex;"><span>        res<span style="color:#f92672">-&gt;</span>t_logits <span style="color:#f92672">=</span> cur;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 将所有节点加入计算图（gf），完成构建. 并没有计算
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        ggml_build_forward_expand(gf, cur);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p><code>build_xxx</code> 函数就是在图添加一层。所以 Qwen3-1.7B 的结构是</p>
+<ul>
+<li>
+<p>28层 Transformer每层包含：</p>
+<ul>
+<li>RMSNorm（Attention 前） <code>build_norm</code></li>
+<li>multi self Attention（带 LoRA、RoPE、Q/K 归一化、KV 缓存） <code>build_attn</code></li>
+<li>残差连接  <code>ggml_add(ctx0, cur, inpSA);</code></li>
+<li>RMSNorm（FFN 前） <code>build_norm</code></li>
+<li>FFN（带 SiLU 激活、门控机制） <code>build_ffn</code></li>
+<li>残差连接 <code>ggml_add(ctx0, cur, ffn_inp);</code></li>
+</ul>
+</li>
+<li>
+<p>最终归一化：RMSNorm 应用于最后一层输出。 <code>build_norm</code></p>
+</li>
+<li>
+<p>输出层：线性变换生成 logits，支持 LoRA。  <code>build_lora_mm</code></p>
+</li>
+</ul>
+<h2 id="到此是-build_graph">到此是 build_graph<a hidden class="anchor" aria-hidden="true" href="#到此是-build_graph">#</a></h2>
+<p>没有涉及实际计算。实际计算在 compute_graph, 比如一个计算 kernel 见<a href="https://ashburnLee.github.io/blog-2-hugo/llm/5.8.llama.cpp-quant-cuda-kernel/">quant-cuda-kernel</a></p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llm/">LLM</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llama.cpp/">Llama.cpp</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

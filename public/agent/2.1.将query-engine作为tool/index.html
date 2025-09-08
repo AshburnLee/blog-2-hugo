@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>2.1.将query Engine作为tool | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="Agent, LlamaIndex, RAG">
+<meta name="description" content="使用 QueryEngineTool 转换 query engine 为 tool。
+LlamaIndex 有4类tools：
+
+
+FunctionTool ：将任何 Python 函数转换为 Agents 可以使用的工具。它自动推断出函数的工作原理。
+
+
+QueryEngineTool ：一个允许 Agents 使用 queryEngine 的工具。由于 Agents 是基于 queryEngine 构建的，它们也可以将其他 Agents 作为工具使用。
+
+
+Toolspecs ：由社区创建的工具集，通常包含针对特定服务的工具，如 Gmail。
+
+
+Utility Tools: 帮助处理 large amounts of data from other tools. 特指 OnDemandToolLoader &amp; LoadAndSearchToolSpec
+
+
+Functional Tool
+给出工具的 name 和 description 尤其重要，因为它有助于 Agent 理解什么时候应该使用该工具。
+from llama_index.core.tools import FunctionTool
+
+def get_weather(location: str) -&gt; str:
+    &#34;&#34;&#34;Useful for getting the weather for a given location.&#34;&#34;&#34;
+    print(f&#34;Getting weather for {location}&#34;)
+    return f&#34;The weather in {location} is sunny&#34;
+
+tool = FunctionTool.from_defaults(
+    get_weather,
+    name=&#34;my_weather_tool&#34;,
+    description=&#34;Useful for getting the weather for a given location.&#34;,
+)
+tool.call(&#34;Shanghai&#34;)
+QueryEngine Tool
+使用 QueryEngineTool 转换 QueryEngine 为 tool：">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/agent/2.1.%E5%B0%86query-engine%E4%BD%9C%E4%B8%BAtool/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/agent/2.1.%E5%B0%86query-engine%E4%BD%9C%E4%B8%BAtool/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/agent/2.1.%E5%B0%86query-engine%E4%BD%9C%E4%B8%BAtool/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="2.1.将query Engine作为tool">
+  <meta property="og:description" content="使用 QueryEngineTool 转换 query engine 为 tool。
+LlamaIndex 有4类tools： FunctionTool ：将任何 Python 函数转换为 Agents 可以使用的工具。它自动推断出函数的工作原理。
+QueryEngineTool ：一个允许 Agents 使用 queryEngine 的工具。由于 Agents 是基于 queryEngine 构建的，它们也可以将其他 Agents 作为工具使用。
+Toolspecs ：由社区创建的工具集，通常包含针对特定服务的工具，如 Gmail。
+Utility Tools: 帮助处理 large amounts of data from other tools. 特指 OnDemandToolLoader &amp; LoadAndSearchToolSpec
+Functional Tool 给出工具的 name 和 description 尤其重要，因为它有助于 Agent 理解什么时候应该使用该工具。
+from llama_index.core.tools import FunctionTool def get_weather(location: str) -&gt; str: &#34;&#34;&#34;Useful for getting the weather for a given location.&#34;&#34;&#34; print(f&#34;Getting weather for {location}&#34;) return f&#34;The weather in {location} is sunny&#34; tool = FunctionTool.from_defaults( get_weather, name=&#34;my_weather_tool&#34;, description=&#34;Useful for getting the weather for a given location.&#34;, ) tool.call(&#34;Shanghai&#34;) QueryEngine Tool 使用 QueryEngineTool 转换 QueryEngine 为 tool：">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="agent">
+    <meta property="article:published_time" content="2025-08-31T12:13:28+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:13:28+08:00">
+    <meta property="article:tag" content="Agent">
+    <meta property="article:tag" content="LlamaIndex">
+    <meta property="article:tag" content="RAG">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="2.1.将query Engine作为tool">
+<meta name="twitter:description" content="使用 QueryEngineTool 转换 query engine 为 tool。
+LlamaIndex 有4类tools：
+
+
+FunctionTool ：将任何 Python 函数转换为 Agents 可以使用的工具。它自动推断出函数的工作原理。
+
+
+QueryEngineTool ：一个允许 Agents 使用 queryEngine 的工具。由于 Agents 是基于 queryEngine 构建的，它们也可以将其他 Agents 作为工具使用。
+
+
+Toolspecs ：由社区创建的工具集，通常包含针对特定服务的工具，如 Gmail。
+
+
+Utility Tools: 帮助处理 large amounts of data from other tools. 特指 OnDemandToolLoader &amp; LoadAndSearchToolSpec
+
+
+Functional Tool
+给出工具的 name 和 description 尤其重要，因为它有助于 Agent 理解什么时候应该使用该工具。
+from llama_index.core.tools import FunctionTool
+
+def get_weather(location: str) -&gt; str:
+    &#34;&#34;&#34;Useful for getting the weather for a given location.&#34;&#34;&#34;
+    print(f&#34;Getting weather for {location}&#34;)
+    return f&#34;The weather in {location} is sunny&#34;
+
+tool = FunctionTool.from_defaults(
+    get_weather,
+    name=&#34;my_weather_tool&#34;,
+    description=&#34;Useful for getting the weather for a given location.&#34;,
+)
+tool.call(&#34;Shanghai&#34;)
+QueryEngine Tool
+使用 QueryEngineTool 转换 QueryEngine 为 tool：">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Agent",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/agent/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "2.1.将query Engine作为tool",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/agent/2.1.%E5%B0%86query-engine%E4%BD%9C%E4%B8%BAtool/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "2.1.将query Engine作为tool",
+  "name": "2.1.将query Engine作为tool",
+  "description": "使用 QueryEngineTool 转换 query engine 为 tool。\nLlamaIndex 有4类tools： FunctionTool ：将任何 Python 函数转换为 Agents 可以使用的工具。它自动推断出函数的工作原理。\nQueryEngineTool ：一个允许 Agents 使用 queryEngine 的工具。由于 Agents 是基于 queryEngine 构建的，它们也可以将其他 Agents 作为工具使用。\nToolspecs ：由社区创建的工具集，通常包含针对特定服务的工具，如 Gmail。\nUtility Tools: 帮助处理 large amounts of data from other tools. 特指 OnDemandToolLoader \u0026amp; LoadAndSearchToolSpec\nFunctional Tool 给出工具的 name 和 description 尤其重要，因为它有助于 Agent 理解什么时候应该使用该工具。\nfrom llama_index.core.tools import FunctionTool def get_weather(location: str) -\u0026gt; str: \u0026#34;\u0026#34;\u0026#34;Useful for getting the weather for a given location.\u0026#34;\u0026#34;\u0026#34; print(f\u0026#34;Getting weather for {location}\u0026#34;) return f\u0026#34;The weather in {location} is sunny\u0026#34; tool = FunctionTool.from_defaults( get_weather, name=\u0026#34;my_weather_tool\u0026#34;, description=\u0026#34;Useful for getting the weather for a given location.\u0026#34;, ) tool.call(\u0026#34;Shanghai\u0026#34;) QueryEngine Tool 使用 QueryEngineTool 转换 QueryEngine 为 tool：\n",
+  "keywords": [
+    "Agent", "LlamaIndex", "RAG"
+  ],
+  "articleBody": "使用 QueryEngineTool 转换 query engine 为 tool。\nLlamaIndex 有4类tools： FunctionTool ：将任何 Python 函数转换为 Agents 可以使用的工具。它自动推断出函数的工作原理。\nQueryEngineTool ：一个允许 Agents 使用 queryEngine 的工具。由于 Agents 是基于 queryEngine 构建的，它们也可以将其他 Agents 作为工具使用。\nToolspecs ：由社区创建的工具集，通常包含针对特定服务的工具，如 Gmail。\nUtility Tools: 帮助处理 large amounts of data from other tools. 特指 OnDemandToolLoader \u0026 LoadAndSearchToolSpec\nFunctional Tool 给出工具的 name 和 description 尤其重要，因为它有助于 Agent 理解什么时候应该使用该工具。\nfrom llama_index.core.tools import FunctionTool def get_weather(location: str) -\u003e str: \"\"\"Useful for getting the weather for a given location.\"\"\" print(f\"Getting weather for {location}\") return f\"The weather in {location} is sunny\" tool = FunctionTool.from_defaults( get_weather, name=\"my_weather_tool\", description=\"Useful for getting the weather for a given location.\", ) tool.call(\"Shanghai\") QueryEngine Tool 使用 QueryEngineTool 转换 QueryEngine 为 tool：\nimport chromadb from llama_index.core import VectorStoreIndex from llama_index.llms.huggingface_api import HuggingFaceInferenceAPI from llama_index.embeddings.huggingface import HuggingFaceEmbedding from llama_index.core.tools import QueryEngineTool from llama_index.vector_stores.chroma import ChromaVectorStore db = chromadb.PersistentClient(path=\"./alfred_chroma_db\") chroma_collection = db.get_or_create_collection(\"alfred\") vector_store = ChromaVectorStore(chroma_collection=chroma_collection) embed_model = HuggingFaceEmbedding(model_name=\"BAAI/bge-small-en-v1.5\") llm = HuggingFaceInferenceAPI(model_name=\"meta-llama/Llama-3.2-3B-Instruct\") # index 是 RAG 中的一个重要组件 index = VectorStoreIndex.from_vector_store( vector_store=vector_store, embed_model=embed_model ) # 通过index 创建 query Engine query_engine = index.as_query_engine(llm=llm) # 使用 QueryEngineTool 转换 query engine 为 tool tool = QueryEngineTool.from_defaults( query_engine=query_engine, name=\"some useful name\", description=\"some useful description\", ) await tool.acall( \"Responds about research on the impact of AI on the future of work and society?\" ) ToolSpecs tool spec 是一组相互协作的工具，像一个用于特定目的的专业工具箱。\nfrom llama_index.tools.google import GmailToolSpec tool_spec = GmailToolSpec() # 返回一个工具对象列表 tool_spec_list = tool_spec.to_tool_list() # 返回每个对象的 name 和描述 [print(tool.metadata.name, tool.metadata.description) for tool in tool_spec_list] 返回 一个列表，包含了所以与邮件发送相关的 tools （函数），输出如下：\nload_data load_data() -\u003e List[llama_index.core.schema.Document] Load emails from the user's account. search_messages search_messages(query: str, max_results: Optional[int] = None) Searches email messages given a query string and the maximum number of results requested by the user Returns: List of relevant message objects up to the maximum number of results. Args: query (str): The user's query max_results (Optional[int]): The maximum number of search results to return. create_draft create_draft(to: Optional[List[str]] = None, subject: Optional[str] = None, message: Optional[str] = None) -\u003e str Create and insert a draft email. Print the returned draft's message and id. Returns: Draft object, including draft id and message meta data. Args: to (Optional[str]): The email addresses to send the message to subject (Optional[str]): The subject for the event message (Optional[str]): The message for the event ... 这里显示了3个工具：load_data()，search_messages()，create_draft()。\nUtility tools 通常，直接查询 API 可能会返回大量数据，其中一些可能无关紧要，溢出 LLM 的上下文窗口，或无谓地增加用户使用 token 的数量。LlamaIndex 中的两个工具用于解决这个问题。\nOnDemandToolLoader 它将数据加载器（BaseReader 类）转换为代理可以使用的工具，允许你的 Agent 按需加载、索引和查询数据。\n数据加载器转换： 它接收一个 LlamaIndex 数据加载器（例如，用于读取 PDF、网站、数据库等）。 工具化： 将这个数据加载器包装成一个工具，这个工具可以被 Agent 调用。 按需加载：按需 (On-Demand)指数据不是预先加载和索引的，而是在 Agent 需要时才进行加载和索引。 加载、索引和查询： 工具在被调用时，会执行以下步骤： 加载数据： 使用数据加载器加载数据。 索引数据： 将加载的数据进行索引，通常使用向量存储（Vector Store）等方法，以便快速查询。 查询数据： 使用自然语言查询字符串来查询索引后的数据，并返回结果。 使用场景：\n大型数据集： 当你的数据集非常大，无法一次性加载到内存中时，可以使用 OnDemandToolLoader 按需加载数据。 动态数据： 当你的数据需要频繁更新时，可以使用 OnDemandToolLoader 确保 Agent 始终访问最新的数据。 Agent 工具集成： 当你希望将数据访问能力集成到你的 Agent 中时，可以使用 OnDemandToolLoader 将数据加载器转换为一个工具。 实例：\n# 1. 创建一个数据加载器 (例如，读取 PDF 文件) data_loader = SimpleDirectoryReader(input_dir=\"./data\") # 2. 创建 OnDemandToolLoader tool_loader = OnDemandToolLoader.from_loader(data_loader) # 3. 获取工具 tool = tool_loader.as_tool() # 4. Agent 可以调用这个工具来查询数据 # 假设 Agent 接收到查询 \"What is the main topic of this document?\" response = tool.run(\"What is the main topic of this document?\") print(response) LoadAndSearchToolSpec 它的作用是将一个现有的 Tool 转换为两个新的 Tool：一个用于加载数据并索引的 Tool，另一个用于搜索索引数据的 Tool。\n工作原理：\nTool 包装： 它接收一个现有的 Tool 作为输入。 这个 Tool 可以是任何 LlamaIndex 支持的 Tool，例如用于读取文件、访问 API 等。\n生成两个 Tool： LoadAndSearchToolSpec 将原始 Tool 包装成两个新的 Tool：\n加载 Tool (Loading Tool): 这个 Tool 的作用是调用原始 Tool，获取其输出结果，并将结果进行 Indexing （索引可以大大提高搜索效率，特别是对于大型数据集）。 默认情况下，它使用向量索引 (Vector Index) 来索引数据。 搜索 Tool (Search Tool): 这个 Tool 的作用是接收一个查询字符串作为输入，然后在加载 Tool 创建的索引中进行搜索，并返回结果。 to_tool_list 方法： LoadAndSearchToolSpec 实现了 to_tool_list 方法，该方法返回一个包含加载 Tool 和搜索 Tool 的列表。\nKAQ：为什么偏偏是Loading Tool 和 Search Tool，而不是其他功能的tools 是因为这两个工具对应了 Agent 在多数应用场景中都需要执行的两个关键步骤：获取信息 \u0026 利用信息。\n获取信息： Agent 需要从各种数据源获取信息，例如网页、文件、数据库、API 等。然后进行indexing处理。 利用信息： Agent 需要利用获取到的信息来回答用户的问题、执行用户的指令或完成其他任务。 ",
+  "wordCount" : "540",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:13:28+08:00",
+  "dateModified": "2025-08-31T12:13:28+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/agent/2.1.%E5%B0%86query-engine%E4%BD%9C%E4%B8%BAtool/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      2.1.将query Engine作为tool
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:13:28 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><p>使用 QueryEngineTool 转换 query engine 为 tool。</p>
+<h2 id="llamaindex-有4类tools">LlamaIndex 有4类tools：<a hidden class="anchor" aria-hidden="true" href="#llamaindex-有4类tools">#</a></h2>
+<ul>
+<li>
+<p><code>FunctionTool</code> ：将任何 Python 函数转换为 Agents 可以使用的工具。它自动推断出函数的工作原理。</p>
+</li>
+<li>
+<p><code>QueryEngineTool</code> ：一个允许 Agents 使用 queryEngine 的工具。由于 Agents 是基于 queryEngine 构建的，它们也可以将其他 Agents 作为工具使用。</p>
+</li>
+<li>
+<p><code>Toolspecs</code> ：由社区创建的工具集，通常包含针对特定服务的工具，如 Gmail。</p>
+</li>
+<li>
+<p><code>Utility Tools</code>: 帮助处理 <strong>large amounts of data</strong> from other tools. 特指 <code>OnDemandToolLoader</code> &amp; <code>LoadAndSearchToolSpec</code></p>
+</li>
+</ul>
+<h2 id="functional-tool">Functional Tool<a hidden class="anchor" aria-hidden="true" href="#functional-tool">#</a></h2>
+<p>给出工具的 name 和 description 尤其重要，因为它有助于 Agent 理解什么时候应该使用该工具。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.core.tools <span style="color:#f92672">import</span> FunctionTool
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_weather</span>(location: str) <span style="color:#f92672">-&gt;</span> str:
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;&#34;&#34;Useful for getting the weather for a given location.&#34;&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>    print(<span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;Getting weather for </span><span style="color:#e6db74">{</span>location<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;The weather in </span><span style="color:#e6db74">{</span>location<span style="color:#e6db74">}</span><span style="color:#e6db74"> is sunny&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>tool <span style="color:#f92672">=</span> FunctionTool<span style="color:#f92672">.</span>from_defaults(
+</span></span><span style="display:flex;"><span>    get_weather,
+</span></span><span style="display:flex;"><span>    name<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;my_weather_tool&#34;</span>,
+</span></span><span style="display:flex;"><span>    description<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;Useful for getting the weather for a given location.&#34;</span>,
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>tool<span style="color:#f92672">.</span>call(<span style="color:#e6db74">&#34;Shanghai&#34;</span>)
+</span></span></code></pre></div><h2 id="queryengine-tool">QueryEngine Tool<a hidden class="anchor" aria-hidden="true" href="#queryengine-tool">#</a></h2>
+<p>使用 <code>QueryEngineTool</code> 转换 <code>QueryEngine</code> 为 tool：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">import</span> chromadb
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.core <span style="color:#f92672">import</span> VectorStoreIndex
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.llms.huggingface_api <span style="color:#f92672">import</span> HuggingFaceInferenceAPI
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.embeddings.huggingface <span style="color:#f92672">import</span> HuggingFaceEmbedding
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.core.tools <span style="color:#f92672">import</span> QueryEngineTool
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.vector_stores.chroma <span style="color:#f92672">import</span> ChromaVectorStore
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>db <span style="color:#f92672">=</span> chromadb<span style="color:#f92672">.</span>PersistentClient(path<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;./alfred_chroma_db&#34;</span>)
+</span></span><span style="display:flex;"><span>chroma_collection <span style="color:#f92672">=</span> db<span style="color:#f92672">.</span>get_or_create_collection(<span style="color:#e6db74">&#34;alfred&#34;</span>)
+</span></span><span style="display:flex;"><span>vector_store <span style="color:#f92672">=</span> ChromaVectorStore(chroma_collection<span style="color:#f92672">=</span>chroma_collection)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>embed_model <span style="color:#f92672">=</span> HuggingFaceEmbedding(model_name<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;BAAI/bge-small-en-v1.5&#34;</span>)
+</span></span><span style="display:flex;"><span>llm <span style="color:#f92672">=</span> HuggingFaceInferenceAPI(model_name<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;meta-llama/Llama-3.2-3B-Instruct&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># index 是 RAG 中的一个重要组件</span>
+</span></span><span style="display:flex;"><span>index <span style="color:#f92672">=</span> VectorStoreIndex<span style="color:#f92672">.</span>from_vector_store(
+</span></span><span style="display:flex;"><span>    vector_store<span style="color:#f92672">=</span>vector_store, embed_model<span style="color:#f92672">=</span>embed_model
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 通过index 创建 query Engine</span>
+</span></span><span style="display:flex;"><span>query_engine <span style="color:#f92672">=</span> index<span style="color:#f92672">.</span>as_query_engine(llm<span style="color:#f92672">=</span>llm)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 使用 QueryEngineTool 转换 query engine 为 tool</span>
+</span></span><span style="display:flex;"><span>tool <span style="color:#f92672">=</span> QueryEngineTool<span style="color:#f92672">.</span>from_defaults(
+</span></span><span style="display:flex;"><span>    query_engine<span style="color:#f92672">=</span>query_engine,
+</span></span><span style="display:flex;"><span>    name<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;some useful name&#34;</span>,
+</span></span><span style="display:flex;"><span>    description<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;some useful description&#34;</span>,
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">await</span> tool<span style="color:#f92672">.</span>acall(
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;Responds about research on the impact of AI on the future of work and society?&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><h2 id="toolspecs">ToolSpecs<a hidden class="anchor" aria-hidden="true" href="#toolspecs">#</a></h2>
+<p>tool spec 是一组相互协作的工具，像一个用于<strong>特定目的的专业工具箱</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.tools.google <span style="color:#f92672">import</span> GmailToolSpec
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>tool_spec <span style="color:#f92672">=</span> GmailToolSpec()
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 返回一个工具对象列表</span>
+</span></span><span style="display:flex;"><span>tool_spec_list <span style="color:#f92672">=</span> tool_spec<span style="color:#f92672">.</span>to_tool_list() 
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 返回每个对象的 name 和描述</span>
+</span></span><span style="display:flex;"><span>[print(tool<span style="color:#f92672">.</span>metadata<span style="color:#f92672">.</span>name, tool<span style="color:#f92672">.</span>metadata<span style="color:#f92672">.</span>description) <span style="color:#66d9ef">for</span> tool <span style="color:#f92672">in</span> tool_spec_list]
+</span></span></code></pre></div><p>返回 一个列表，包含了所以与邮件发送相关的 tools （函数），输出如下：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-txt" data-lang="txt"><span style="display:flex;"><span>load_data load_data() -&gt; List[llama_index.core.schema.Document]
+</span></span><span style="display:flex;"><span>Load emails from the user&#39;s account.
+</span></span><span style="display:flex;"><span>search_messages search_messages(query: str, max_results: Optional[int] = None)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        Searches email messages given a query string and the maximum number
+</span></span><span style="display:flex;"><span>        of results requested by the user
+</span></span><span style="display:flex;"><span>           Returns: List of relevant message objects up to the maximum number of results.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        Args:
+</span></span><span style="display:flex;"><span>            query (str): The user&#39;s query
+</span></span><span style="display:flex;"><span>            max_results (Optional[int]): The maximum number of search results
+</span></span><span style="display:flex;"><span>            to return.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>create_draft create_draft(to: Optional[List[str]] = None, subject: Optional[str] = None, message: Optional[str] = None) -&gt; str
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        Create and insert a draft email.
+</span></span><span style="display:flex;"><span>           Print the returned draft&#39;s message and id.
+</span></span><span style="display:flex;"><span>           Returns: Draft object, including draft id and message meta data.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        Args:
+</span></span><span style="display:flex;"><span>            to (Optional[str]): The email addresses to send the message to
+</span></span><span style="display:flex;"><span>            subject (Optional[str]): The subject for the event
+</span></span><span style="display:flex;"><span>            message (Optional[str]): The message for the event
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><p>这里显示了3个工具：<code>load_data()</code>，<code>search_messages()</code>，<code>create_draft()</code>。</p>
+<h2 id="utility-tools">Utility tools<a hidden class="anchor" aria-hidden="true" href="#utility-tools">#</a></h2>
+<p>通常，直接查询 API 可能会返回大量数据，其中一些可能无关紧要，溢出 LLM 的上下文窗口，或无谓地增加用户使用 token 的数量。LlamaIndex 中的<a href="https://llamahub.ai/">两个工具</a>用于解决这个问题。</p>
+<h3 id="ondemandtoolloader"><code>OnDemandToolLoader</code><a hidden class="anchor" aria-hidden="true" href="#ondemandtoolloader">#</a></h3>
+<p>它将数据加载器（<code>BaseReader</code> 类）转换为代理可以使用的工具，允许你的 Agent 按需加载、索引和查询数据。</p>
+<ul>
+<li>数据加载器转换： 它接收一个 LlamaIndex 数据加载器（例如，用于读取 PDF、网站、数据库等）。</li>
+<li>工具化： 将这个数据加载器包装成一个工具，这个工具可以被 Agent 调用。</li>
+<li>按需加载：按需 (On-Demand)指数据不是预先加载和索引的，而是在 Agent 需要时才进行加载和索引。</li>
+<li>加载、索引和查询： 工具在被调用时，会执行以下步骤：
+<ol>
+<li>加载数据： 使用数据加载器加载数据。</li>
+<li>索引数据： 将加载的数据进行索引，通常使用向量存储（Vector Store）等方法，以便快速查询。</li>
+<li>查询数据： 使用自然语言查询字符串来查询索引后的数据，并返回结果。</li>
+</ol>
+</li>
+</ul>
+<p>使用场景：</p>
+<ul>
+<li>大型数据集： 当你的数据集非常大，无法一次性加载到内存中时，可以使用 <code>OnDemandToolLoader</code> 按需加载数据。</li>
+<li>动态数据： 当你的数据需要频繁更新时，可以使用 <code>OnDemandToolLoader</code> 确保 Agent 始终访问最新的数据。</li>
+<li>Agent 工具集成： 当你希望将数据访问能力集成到你的 Agent 中时，可以使用 <code>OnDemandToolLoader</code> 将数据加载器转换为一个工具。</li>
+</ul>
+<p>实例：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 1. 创建一个数据加载器 (例如，读取 PDF 文件)</span>
+</span></span><span style="display:flex;"><span>data_loader <span style="color:#f92672">=</span> SimpleDirectoryReader(input_dir<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;./data&#34;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 2. 创建 OnDemandToolLoader</span>
+</span></span><span style="display:flex;"><span>tool_loader <span style="color:#f92672">=</span> OnDemandToolLoader<span style="color:#f92672">.</span>from_loader(data_loader)
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 3. 获取工具</span>
+</span></span><span style="display:flex;"><span>tool <span style="color:#f92672">=</span> tool_loader<span style="color:#f92672">.</span>as_tool()
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 4. Agent 可以调用这个工具来查询数据</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 假设 Agent 接收到查询 &#34;What is the main topic of this document?&#34;</span>
+</span></span><span style="display:flex;"><span>response <span style="color:#f92672">=</span> tool<span style="color:#f92672">.</span>run(<span style="color:#e6db74">&#34;What is the main topic of this document?&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>print(response)
+</span></span></code></pre></div><h3 id="loadandsearchtoolspec"><code>LoadAndSearchToolSpec</code><a hidden class="anchor" aria-hidden="true" href="#loadandsearchtoolspec">#</a></h3>
+<p>它的作用是将一个现有的 Tool 转换为两个新的 Tool：一个用于加载数据并索引的 Tool，另一个用于搜索索引数据的 Tool。</p>
+<p>工作原理：</p>
+<ul>
+<li>
+<p>Tool 包装： 它接收一个现有的 Tool 作为输入。 这个 Tool 可以是任何 LlamaIndex 支持的 Tool，例如用于读取文件、访问 API 等。</p>
+</li>
+<li>
+<p>生成两个 Tool： LoadAndSearchToolSpec 将原始 Tool 包装成两个新的 Tool：</p>
+<ol>
+<li>加载 Tool (Loading Tool): 这个 Tool 的作用是调用原始 Tool，获取其输出结果，并将结果进行 Indexing （<strong>索引可以大大提高搜索效率</strong>，特别是对于大型数据集）。 默认情况下，它使用向量索引 (Vector Index) 来索引数据。</li>
+<li>搜索 Tool (Search Tool): 这个 Tool 的作用是接收一个查询字符串作为输入，然后在加载 Tool 创建的索引中进行搜索，并返回结果。</li>
+</ol>
+</li>
+<li>
+<p>to_tool_list 方法： LoadAndSearchToolSpec 实现了 to_tool_list 方法，该方法返回一个包含加载 Tool 和搜索 Tool 的列表。</p>
+</li>
+</ul>
+<h2 id="kaq为什么偏偏是loading-tool-和-search-tool而不是其他功能的tools">KAQ：为什么偏偏是Loading Tool 和 Search Tool，而不是其他功能的tools<a hidden class="anchor" aria-hidden="true" href="#kaq为什么偏偏是loading-tool-和-search-tool而不是其他功能的tools">#</a></h2>
+<p>是因为这两个工具对应了 Agent 在<strong>多数应用场景</strong>中都需要执行的两个关键步骤：获取信息 &amp; 利用信息。</p>
+<ul>
+<li>获取信息： Agent 需要从各种数据源获取信息，例如网页、文件、数据库、API 等。然后进行indexing处理。</li>
+<li>利用信息： Agent 需要利用获取到的信息来回答用户的问题、执行用户的指令或完成其他任务。</li>
+</ul>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/agent/">Agent</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llamaindex/">LlamaIndex</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/rag/">RAG</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

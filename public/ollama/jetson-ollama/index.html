@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Jetson Ollama | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="Ollama, Jetson">
+<meta name="description" content="NVIDIA Orin 是一款专为自动驾驶汽车和机器人设计的高性能系统级芯片，包含新一代 Ampere GPU 架构和 Arm Hercules CPU 内核，以及深度学习加速器和计算机视觉加速器。
+应用领域：Orin 芯片不仅适用于自动驾驶汽车，还广泛应用于机器人、工业边缘计算等领域。
+支持C/C&#43;&#43;, python, cuda, pytorch, ROS (Robot Operating System), JetPack SDK, DeepStream, VScode
+TensorRT 是 NVIDIA 开发的一个高性能深度学习推理 SDK。它不是完全开源的.
+Linux for Tegra (L4T) 是 NVIDIA 为其 Tegra 系列系统芯片 (SoC) 开发的嵌入式 Linux 发行版。它主要用于 NVIDIA Jetson 系列开发套件等嵌入式系统。L4T 提供了运行在 Tegra SoC 上的内核、驱动程序、库和工具，支持各种应用，包括机器人、人工智能、自动驾驶和媒体处理等。 它包含了 NVIDIA 专有的驱动程序，以充分利用 Tegra SoC 的硬件加速功能。不同的 L4T 版本支持不同的 Tegra 系列芯片和功能。 例如，较新的版本可能支持 Vulkan 和更新的 CUDA 版本。 开发者可以使用 L4T 来构建和部署各种嵌入式应用。
+部署 Ollama
+Ollama 中的大模型（如 Llama、Qwen、DeepSeek、Gemma 等）本身与 Ollama 框架的本地使用是完全免费的。你可以免费下载、部署这些开源大模型在自己的设备上，运行、推理和本地开发时都免费，唯一成本是自己的硬件资源，如 Jetson 设备。">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/ollama/jetson-ollama/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/ollama/jetson-ollama/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/ollama/jetson-ollama/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="Jetson Ollama">
+  <meta property="og:description" content="NVIDIA Orin 是一款专为自动驾驶汽车和机器人设计的高性能系统级芯片，包含新一代 Ampere GPU 架构和 Arm Hercules CPU 内核，以及深度学习加速器和计算机视觉加速器。
+应用领域：Orin 芯片不仅适用于自动驾驶汽车，还广泛应用于机器人、工业边缘计算等领域。
+支持C/C&#43;&#43;, python, cuda, pytorch, ROS (Robot Operating System), JetPack SDK, DeepStream, VScode
+TensorRT 是 NVIDIA 开发的一个高性能深度学习推理 SDK。它不是完全开源的.
+Linux for Tegra (L4T) 是 NVIDIA 为其 Tegra 系列系统芯片 (SoC) 开发的嵌入式 Linux 发行版。它主要用于 NVIDIA Jetson 系列开发套件等嵌入式系统。L4T 提供了运行在 Tegra SoC 上的内核、驱动程序、库和工具，支持各种应用，包括机器人、人工智能、自动驾驶和媒体处理等。 它包含了 NVIDIA 专有的驱动程序，以充分利用 Tegra SoC 的硬件加速功能。不同的 L4T 版本支持不同的 Tegra 系列芯片和功能。 例如，较新的版本可能支持 Vulkan 和更新的 CUDA 版本。 开发者可以使用 L4T 来构建和部署各种嵌入式应用。
+部署 Ollama Ollama 中的大模型（如 Llama、Qwen、DeepSeek、Gemma 等）本身与 Ollama 框架的本地使用是完全免费的。你可以免费下载、部署这些开源大模型在自己的设备上，运行、推理和本地开发时都免费，唯一成本是自己的硬件资源，如 Jetson 设备。">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="ollama">
+    <meta property="article:published_time" content="2025-08-31T12:50:42+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:50:42+08:00">
+    <meta property="article:tag" content="Ollama">
+    <meta property="article:tag" content="Jetson">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Jetson Ollama">
+<meta name="twitter:description" content="NVIDIA Orin 是一款专为自动驾驶汽车和机器人设计的高性能系统级芯片，包含新一代 Ampere GPU 架构和 Arm Hercules CPU 内核，以及深度学习加速器和计算机视觉加速器。
+应用领域：Orin 芯片不仅适用于自动驾驶汽车，还广泛应用于机器人、工业边缘计算等领域。
+支持C/C&#43;&#43;, python, cuda, pytorch, ROS (Robot Operating System), JetPack SDK, DeepStream, VScode
+TensorRT 是 NVIDIA 开发的一个高性能深度学习推理 SDK。它不是完全开源的.
+Linux for Tegra (L4T) 是 NVIDIA 为其 Tegra 系列系统芯片 (SoC) 开发的嵌入式 Linux 发行版。它主要用于 NVIDIA Jetson 系列开发套件等嵌入式系统。L4T 提供了运行在 Tegra SoC 上的内核、驱动程序、库和工具，支持各种应用，包括机器人、人工智能、自动驾驶和媒体处理等。 它包含了 NVIDIA 专有的驱动程序，以充分利用 Tegra SoC 的硬件加速功能。不同的 L4T 版本支持不同的 Tegra 系列芯片和功能。 例如，较新的版本可能支持 Vulkan 和更新的 CUDA 版本。 开发者可以使用 L4T 来构建和部署各种嵌入式应用。
+部署 Ollama
+Ollama 中的大模型（如 Llama、Qwen、DeepSeek、Gemma 等）本身与 Ollama 框架的本地使用是完全免费的。你可以免费下载、部署这些开源大模型在自己的设备上，运行、推理和本地开发时都免费，唯一成本是自己的硬件资源，如 Jetson 设备。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Ollama",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/ollama/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Jetson Ollama",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/ollama/jetson-ollama/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Jetson Ollama",
+  "name": "Jetson Ollama",
+  "description": "NVIDIA Orin 是一款专为自动驾驶汽车和机器人设计的高性能系统级芯片，包含新一代 Ampere GPU 架构和 Arm Hercules CPU 内核，以及深度学习加速器和计算机视觉加速器。\n应用领域：Orin 芯片不仅适用于自动驾驶汽车，还广泛应用于机器人、工业边缘计算等领域。\n支持C/C++, python, cuda, pytorch, ROS (Robot Operating System), JetPack SDK, DeepStream, VScode\nTensorRT 是 NVIDIA 开发的一个高性能深度学习推理 SDK。它不是完全开源的.\nLinux for Tegra (L4T) 是 NVIDIA 为其 Tegra 系列系统芯片 (SoC) 开发的嵌入式 Linux 发行版。它主要用于 NVIDIA Jetson 系列开发套件等嵌入式系统。L4T 提供了运行在 Tegra SoC 上的内核、驱动程序、库和工具，支持各种应用，包括机器人、人工智能、自动驾驶和媒体处理等。 它包含了 NVIDIA 专有的驱动程序，以充分利用 Tegra SoC 的硬件加速功能。不同的 L4T 版本支持不同的 Tegra 系列芯片和功能。 例如，较新的版本可能支持 Vulkan 和更新的 CUDA 版本。 开发者可以使用 L4T 来构建和部署各种嵌入式应用。\n部署 Ollama Ollama 中的大模型（如 Llama、Qwen、DeepSeek、Gemma 等）本身与 Ollama 框架的本地使用是完全免费的。你可以免费下载、部署这些开源大模型在自己的设备上，运行、推理和本地开发时都免费，唯一成本是自己的硬件资源，如 Jetson 设备。\n",
+  "keywords": [
+    "Ollama", "Jetson"
+  ],
+  "articleBody": "NVIDIA Orin 是一款专为自动驾驶汽车和机器人设计的高性能系统级芯片，包含新一代 Ampere GPU 架构和 Arm Hercules CPU 内核，以及深度学习加速器和计算机视觉加速器。\n应用领域：Orin 芯片不仅适用于自动驾驶汽车，还广泛应用于机器人、工业边缘计算等领域。\n支持C/C++, python, cuda, pytorch, ROS (Robot Operating System), JetPack SDK, DeepStream, VScode\nTensorRT 是 NVIDIA 开发的一个高性能深度学习推理 SDK。它不是完全开源的.\nLinux for Tegra (L4T) 是 NVIDIA 为其 Tegra 系列系统芯片 (SoC) 开发的嵌入式 Linux 发行版。它主要用于 NVIDIA Jetson 系列开发套件等嵌入式系统。L4T 提供了运行在 Tegra SoC 上的内核、驱动程序、库和工具，支持各种应用，包括机器人、人工智能、自动驾驶和媒体处理等。 它包含了 NVIDIA 专有的驱动程序，以充分利用 Tegra SoC 的硬件加速功能。不同的 L4T 版本支持不同的 Tegra 系列芯片和功能。 例如，较新的版本可能支持 Vulkan 和更新的 CUDA 版本。 开发者可以使用 L4T 来构建和部署各种嵌入式应用。\n部署 Ollama Ollama 中的大模型（如 Llama、Qwen、DeepSeek、Gemma 等）本身与 Ollama 框架的本地使用是完全免费的。你可以免费下载、部署这些开源大模型在自己的设备上，运行、推理和本地开发时都免费，唯一成本是自己的硬件资源，如 Jetson 设备。\n1. 安装 ollama \u0026\u0026 下载 Ollama 模型 # 下载安装或者是 update ollama curl -fsSL https://ollama.com/install.sh | sh # 如果网络有问题，那么下载文件后解压 # 找到指定版本和平台的 压缩包：https://github.com/ollama/ollama/releases sudo tar -C /usr -xzf ollama-linux-arm64.tgz # 下载或更新 docker 什么时候使用：\n# 第一次先下载 image, 代理配置好后，就能正确下载了 sudo docker pull dustynv/ollama:r36.4.3 # models cached under your user's home directory docker run --runtime nvidia --rm --network=host -v ~/ollama:/ollama -e OLLAMA_MODELS=/ollama dustynv/ollama:r36.4.3 2. 下载 image 后，运行 ollama 在一个 terminal 中开启 ollama microserve 服务： ollama serve\n检查服务是否开启： ollama ps\n在另一个terminal中 执行模型： ollama run deepseek-r1:1.5b\n常用命令：\nollama list # 列出已有的模型及其大小 ollama pull deepseek-r1:1.5b # 更新已有的模型 ollama rm model_name # 删除已安装的 模型命令祥见：https://ollama.com/library/deepseek-r1:1.5b\n3. 在 Agent 脚本中使用本地 LLM 的片段 import os os.environ[\"http_proxy\"] = \"http://127.0.0.1:11434\" os.environ[\"https_proxy\"] = \"http://127.0.0.1:11434\" infer_server_url = \"http://localhost:11434/v1\" model_name = \"deepseek-r1:1.5b\" # # 保留了 openai 相关的参数名，保持接口一致和兼容 vision_llm = ChatOllama( model=model_name, openai_api_base=infer_server_url, openai_api_key=\"none\", # Ollama 本地模型不需要云端 Key 授权 temperature=0, ) 其中 /v1 表示 Ollama 兼容的 OpenAI API 第1版（version 1）接口路径，是一个标准的API路径版本控制与规范。\n探索 ollama 的 LLM （所有可得到的 1GB 左右的 LLM）！ qwen3:1.7b 1.4GB 输入是TEXT only（所有大小）【可】中英日翻译、有实用工具，验证确实可以 tool calling！\nllama3.2:1b 1.3GB 输入是TEXT only，有 tool calling，此外它的能力有些弱。有 llama3.2-vision, 但最小是 7.8GB。\nmoondream:1.8b 1.7GB 输入是TEXT、Image。轻量级的 vision language model。【可】图片文字提取能力。你需要在使用时提供图片作为输入。ollama run moondream:1.8b \"这个图中有什么内容？ ./btm.png\"。功能太单一，只能描述图片的内容，不支持提取文字。\nPhi-3 Vision 4.2B 。。。。。 试试有OCR功能否\ndeepseek-r1:1.5b 没有调用 tools 的能力，不能用\ngemma3:1b 0.8GB 输入是TEXT（其他大Size可输入Image）可以中日问翻译、当前版本只有 TEXT 输入。不支持tool calling。vision能力（Describe images、Recognize visual features、Understand visual concepts）\ndeepseek-r1:8b 5.2GB，（model requires more system memory (4.3 GiB) than is available (2.7 GiB)）\ngemma3:4b 3.3GB 输入 TEXT、Image。。（model requires more system memory (4.3 GiB) than is available (2.9 GiB)）\n各个模型的 ollama 主页中有 Huggingface 页面，进入就有这个模型的使用方法。\n调用 LLM 的方法 *** 两个端点：\nhttp://localhost:11434/v1 是用于兼容 openAI version 1 的接口，来源 http://localhost:11434/api 是 Ollama 原生的，字Ollama 开始，这个端点就是其核心功能的接口。来源 Ollama API 端点 http://localhost:11434/api/ 路径下包含多个子端点，用于与模型交互、管理模型和执行其他具体操作。\ncurl http://localhost:11434/api/generate 用于生成文本。 curl http://localhost:11434/api/chat 用于对话模式，生成基于聊天历史的响应 curl http://localhost:11434/api/tags 列出所有可用的模型标签（tags）。 curl http://localhost:11434/api/show -d '{\"name\": \"llama3.2:1b\"}' 显示指定模型的详细信息 curl http://localhost:11434/api/pull -d '{\"name\": \"llama3.2:1b\"}' 从远程仓库拉取模型到本地 curl http://localhost:11434/api/embed -d '{...}' 生成文本的嵌入向量 其他。。。 1. Ollama API 的 cml 【端点api】 命令行中与模型交互：\ncurl http://localhost:11434/api/generate -d '{ \"model\": \"llama3.2:1b\", \"prompt\": \"Why is the sky blue?\", \"stream\": false }' 2. REST API 【端点api】 这是目前运行和集成大量语言模型推理的通用标准接口方式。\nrequests.post 是 Python 中 requests 库的函数，用于向指定 URL（这里是 infer_server_url 本地 Ollama 服务）发送 HTTP POST 请求，请求体是 JSON 格式的 payload。 你提交给服务器的是一段文本提示（prompt）和生成参数，服务器运行 LLM 模型生成文本回应。\n这里的 payload 对应具体模型的。。。，具体见模型的定义。\nimport requests infer_server_url = \"http://localhost:11434/api/generate\" # 本地 Ollama 模型服务地址 model_name = \"deepseek-r1:1.5b\" payload = { \"model\": model_name, \"messages\": [ {\"role\": \"user\", \"content\": \"明天天气如何？\"} ] } response = requests.post(infer_server_url, json=payload) result = response.json() 其中的payload如何提供？它们是 Ollama /api/generate 端点的核心参数，用于定义输入、输出格式和响应方式。所有参数见这里\n其中有个参数是 options: 当前模型参数，存在于 Modelfile 中，比如 temperature。\n3. 通过兼容 OpenAI 的 API 即 Python 库【端点v1】 当你使用支持 openAI api 的 Python 库，如 LangChain、LlamaIndex 时，可以使用兼容的 OpenAI API: 比如 ChatOllama 使用 OpenAI 的 API 结构（例如 /v1/chat/completions 端点）。优点是可以从ChatGPT 等 openAI的模型切换到Ollama 本地模型。如下：\nfrom langchain_ollama import ChatOllama infer_server_url = \"http://localhost:11434/v1\" # openai api 的端点 model_name = \"qwen3:1.7b\" qw_llm = ChatOllama( model=model_name, openai_api_base=infer_server_url, openai_api_key=\"none\", # Ollama 本地模型不需要云端 Key 授权 temperature=0, ) # 以 message 形式发送对话请求 response = qw_llm.invoke([ {\"role\": \"user\", \"content\": \"Why is the sky blue?\"} ]) print(response.content) 看，你需要提供 openai_api_base 参数值，所以这种方法是原本支持 openAI API 的，你需要提供设置 API 的基础 URL: http://localhost:11434/v1。同时 openai_api_key 的对，于 Ollama 的本地部署，通常不需要，故设置 none。\nUnder the hood，ChatOllama 的调用方式实际上是对 Ollama 的 /v1/chat/completions 端点的封装。\n调用方式: 通过 ChatOllama 实例调用模型，发送对话请求，请求通常是 messages 格式，包含 role 和 content，然后并接收模型的响应。\n然后 ChatOllama 会将请求转换为 OpenAI 兼容的 JSON 格式，发送到 http://localhost:11434/v1/chat/completions 端点。Ollama 服务处理请求并返回响应，ChatOllama 再将响应解析为 Python 对象。\n4. 端点 api 和端点 v1 的区别 端点 v1 原生支持 tools 和 tool_choice；专为多轮对话设计; 支持 OpenAI 客户端库（如 openai Python SDK）; 适合与 LangChain、LlamaIndex 集成，工具调用。\n端点 api 无原生支持 tools 调用，需通过 prompt 和 format: “json” 模拟；/api/chat 支持对话，/api/generate 适合单次生成; 需要 Ollama 客户端或手动 HTTP 请求; 适合简单生成任务、模型管理或自定义逻辑\n总结：端点 v1 更强大。\n5. JavaScript library 略\n更多关于 Ollama llama4:latest\nSize: 67GB 模型文件本身的磁盘大小\nContext: 10M 模型最大的上下文窗口（Context Window）容量约为 10M tokens（Token）。\nInput: Text, Image 支持多模态输入，文本和图片\npull 模型到本地之后，模型文件位于 ~/.ollama/models，包括 manifest 和 blobs（权重文件）\n关于 ollama serve 模型的信息 这些环境变量是影响 Ollama 本地推理服务行为的配置参数，通过启动 serve 时，设置这些系统环境变量控制\nINFO server config env=\" map[CUDA_VISIBLE_DEVICES: 指定可见的 CUDA GPU 设备编号，空代表不限制，通常用于多GPU选择。例如设置0表示只使用第0号GPU GPU_DEVICE_ORDINAL: HIP_VISIBLE_DEVICES: 针对 AMD GPU 的对应环境变量 HSA_OVERRIDE_GFX_VERSION: HTTPS_PROXY: HTTP_PROXY: NO_PROXY: OLLAMA_CONTEXT_LENGTH:2048 模型的上下文窗口大小，表示模型一次可以处理的最大Token长度，默认是2048。 OLLAMA_DEBUG:false 是否开启调试模式，开启后会输出更详细的日志，默认关闭 OLLAMA_FLASH_ATTENTION:false 是否启用闪存注意力机制，这通常是某些高效推理优化，默认关闭。 OLLAMA_GPU_OVERHEAD:0 给 GPU 资源预留的额外开销比例，0 表示无预留，方便调度资源。 OLLAMA_HOST:http://127.0.0.1:11434 Ollama 服务监听的 HTTP 地址和端口，本地默认11434端口。 OLLAMA_INTEL_GPU:false OLLAMA_KEEP_ALIVE:5m0s 模型加载后缓存保持时间，默认为 5 分钟，超过此时间模型将被卸载释放资源。 OLLAMA_KV_CACHE_TYPE: OLLAMA_LLM_LIBRARY: 指定底层LLM推理库（如 llama.cpp、ggml等），空表示默认 OLLAMA_LOAD_TIMEOUT:5m0s OLLAMA_MAX_LOADED_MODELS:0 OLLAMA_MAX_QUEUE:512 OLLAMA_MODELS:/home/junhui/.ollama/models 模型文件存放目录路径。 OLLAMA_MULTIUSER_CACHE:false OLLAMA_NEW_ENGINE:false OLLAMA_NOHISTORY:false 是否关闭会话历史记录保存，默认保存。 OLLAMA_NOPRUNE:false 是否禁止模型自动剪枝（释放内存的机制），默认允许自动剪枝。 OLLAMA_NUM_PARALLEL:0 支持的最大并发请求数，0 可能表示没有限制或默认串行。 OLLAMA_ORIGINS:[http://localhost https://localhost http://localhost:* https://localhost:* http://127.0.0.1 https://127.0.0.1 http://127.0.0.1:* https://127.0.0.1:* http://0.0.0.0 https://0.0.0.0 http://0.0.0.0:* https://0.0.0.0:* app://* file://* tauri://* vscode-webview://* vscode-file://*] OLLAMA_SCHED_SPREAD:false ROCR_VISIBLE_DEVICES: http_proxy: https_proxy: no_proxy:]\" ollama上的每个模型有 model 、template 、license、params 等信息 我有个本地的大模型，如何将它发布到 ollama Ollama 使用 GGUF 格式（由 LLaMA.cpp 开发）作为其模型文件格式。如果你的本地模型不是 GGUF 格式（例如 PyTorch、Hugging Face 格式），需要先将其转换为 GGUF。\nOllama 使用 Modelfile 定义模型的元数据、参数和提示模板。这是发布模型的关键步骤。\n将本地模型导入 Ollama 注册表，创建自定义模型。\n在本地测试模型以确保其正常运行。ollama run 。\n如果只是本地使用，导入后即可；若需分发给其他设备，可以打包模型文件。\n在本地测试模型以确保其正常运行：\n创建 Ollama 账户 推送模型：ollama push registry.ollama.ai//my-custom-model 问题 CPU 是满载的，GPU是空闲的。【todo】 执行模型也需要 proxy 开启 模型回答有些混乱，我问第二个问题时，它还在想第一个问题。 jetson-containers 【todo】 Jetson 共享 windows 代理 查看 Windows 局域网IP， Jetson 接入相同的局域网 Jetson 设置变量: export http_proxy=\":7890\" Clash 开启\"允许局域网连接\" Clash 开启 TUN模式 配置 docker 文件：sudo vim /etc/systemd/system/docker.service.d/http-proxy.conf，添加上述 http_proxy。 重启 Daemon \u0026 docker ",
+  "wordCount" : "795",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:50:42+08:00",
+  "dateModified": "2025-08-31T12:50:42+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/ollama/jetson-ollama/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      Jetson Ollama
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:50:42 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><p>NVIDIA Orin 是一款专为<strong>自动驾驶汽车</strong>和<strong>机器人</strong>设计的高性能系统级芯片，包含新一代 Ampere GPU 架构和 Arm Hercules CPU 内核，以及深度学习加速器和计算机视觉加速器。</p>
+<p>应用领域：Orin 芯片不仅适用于自动驾驶汽车，还广泛应用于机器人、工业边缘计算等领域。</p>
+<p>支持C/C++, python, cuda, pytorch, ROS (Robot Operating System), JetPack SDK, DeepStream, VScode</p>
+<p>TensorRT 是 NVIDIA 开发的一个高性能深度学习推理 SDK。它不是完全开源的.</p>
+<p><code>Linux for Tegra (L4T) </code>是 NVIDIA 为其 Tegra 系列系统芯片 (SoC) 开发的嵌入式 Linux 发行版。它主要用于 NVIDIA Jetson 系列开发套件等嵌入式系统。L4T 提供了运行在 Tegra SoC 上的内核、驱动程序、库和工具，支持各种应用，包括机器人、人工智能、自动驾驶和媒体处理等。 它包含了 NVIDIA 专有的驱动程序，以充分利用 Tegra SoC 的硬件加速功能。不同的 L4T 版本支持不同的 Tegra 系列芯片和功能。 例如，较新的版本可能支持 Vulkan 和更新的 CUDA 版本。 开发者可以使用 L4T 来构建和部署各种嵌入式应用。</p>
+<h1 id="部署-ollama">部署 Ollama<a hidden class="anchor" aria-hidden="true" href="#部署-ollama">#</a></h1>
+<p>Ollama 中的大模型（如 Llama、Qwen、DeepSeek、Gemma 等）本身与 Ollama 框架的本地使用是完全免费的。你可以免费下载、部署这些开源大模型在自己的设备上，运行、推理和本地开发时都免费，唯一成本是自己的硬件资源，如 Jetson 设备。</p>
+<h2 id="1-安装-ollama--下载-ollama-模型">1. 安装 ollama &amp;&amp; 下载 Ollama 模型<a hidden class="anchor" aria-hidden="true" href="#1-安装-ollama--下载-ollama-模型">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span><span style="color:#75715e"># 下载安装或者是 update ollama</span>
+</span></span><span style="display:flex;"><span>curl -fsSL https://ollama.com/install.sh | sh
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 如果网络有问题，那么下载文件后解压</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 找到指定版本和平台的 压缩包：https://github.com/ollama/ollama/releases</span>
+</span></span><span style="display:flex;"><span>sudo tar -C /usr -xzf ollama-linux-arm64.tgz  <span style="color:#75715e"># 下载或更新</span>
+</span></span></code></pre></div><p>docker 什么时候使用：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span><span style="color:#75715e"># 第一次先下载 image, 代理配置好后，就能正确下载了</span>
+</span></span><span style="display:flex;"><span>sudo docker pull dustynv/ollama:r36.4.3
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># models cached under your user&#39;s home directory</span>
+</span></span><span style="display:flex;"><span>docker run --runtime nvidia --rm --network<span style="color:#f92672">=</span>host -v ~/ollama:/ollama -e OLLAMA_MODELS<span style="color:#f92672">=</span>/ollama dustynv/ollama:r36.4.3
+</span></span></code></pre></div><h2 id="2-下载-image-后运行-ollama">2. 下载 image 后，运行 ollama<a hidden class="anchor" aria-hidden="true" href="#2-下载-image-后运行-ollama">#</a></h2>
+<p>在一个 terminal 中开启 ollama microserve 服务：
+<code>ollama serve</code></p>
+<p>检查服务是否开启：
+<code>ollama ps</code></p>
+<p>在另一个terminal中 执行模型：
+<code>ollama run deepseek-r1:1.5b</code></p>
+<p>常用命令：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>ollama list <span style="color:#75715e"># 列出已有的模型及其大小</span>
+</span></span><span style="display:flex;"><span>ollama pull deepseek-r1:1.5b  <span style="color:#75715e"># 更新已有的模型</span>
+</span></span><span style="display:flex;"><span>ollama rm model_name <span style="color:#75715e"># 删除已安装的</span>
+</span></span></code></pre></div><p>模型命令祥见：https://ollama.com/library/deepseek-r1:1.5b</p>
+<h2 id="3-在-agent-脚本中使用本地-llm-的片段">3. 在 Agent 脚本中使用本地 LLM 的片段<a hidden class="anchor" aria-hidden="true" href="#3-在-agent-脚本中使用本地-llm-的片段">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">import</span> os
+</span></span><span style="display:flex;"><span>os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74">&#34;http_proxy&#34;</span>] <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;http://127.0.0.1:11434&#34;</span>
+</span></span><span style="display:flex;"><span>os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74">&#34;https_proxy&#34;</span>] <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;http://127.0.0.1:11434&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>infer_server_url <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;http://localhost:11434/v1&#34;</span>
+</span></span><span style="display:flex;"><span>model_name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;deepseek-r1:1.5b&#34;</span>  <span style="color:#75715e">#</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 保留了 openai 相关的参数名，保持接口一致和兼容</span>
+</span></span><span style="display:flex;"><span>vision_llm <span style="color:#f92672">=</span> ChatOllama(
+</span></span><span style="display:flex;"><span>    model<span style="color:#f92672">=</span>model_name,
+</span></span><span style="display:flex;"><span>    openai_api_base<span style="color:#f92672">=</span>infer_server_url,
+</span></span><span style="display:flex;"><span>    openai_api_key<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;none&#34;</span>,  <span style="color:#75715e"># Ollama 本地模型不需要云端 Key 授权</span>
+</span></span><span style="display:flex;"><span>    temperature<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>,
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><p>其中 <code>/v1</code> 表示 Ollama 兼容的 OpenAI API 第1版（version 1）接口路径，是一个标准的API路径版本控制与规范。</p>
+<h1 id="探索-ollama-的-llm-所有可得到的-1gb-左右的-llm">探索 ollama 的 LLM （所有可得到的 1GB 左右的 LLM）！<a hidden class="anchor" aria-hidden="true" href="#探索-ollama-的-llm-所有可得到的-1gb-左右的-llm">#</a></h1>
+<ol>
+<li>
+<p>qwen3:1.7b          1.4GB 输入是TEXT only（所有大小）【可】中英日翻译、有实用工具，验证确实可以 tool calling！</p>
+</li>
+<li>
+<p>llama3.2:1b         1.3GB 输入是TEXT only，有 tool calling，此外它的能力有些弱。有 llama3.2-vision, 但最小是 7.8GB。</p>
+</li>
+<li>
+<p>moondream:1.8b      1.7GB 输入是TEXT、Image。轻量级的 vision language model。【可】图片文字提取能力。你需要在使用时提供图片作为输入。<code>ollama run moondream:1.8b &quot;这个图中有什么内容？ ./btm.png&quot;</code>。功能太单一，只能描述图片的内容，不支持提取文字。</p>
+</li>
+<li>
+<p><del>Phi-3 Vision 4.2B  。。。。。 试试有OCR功能否</del></p>
+</li>
+<li>
+<p>deepseek-r1:1.5b    没有调用 tools 的能力，不能用</p>
+</li>
+<li>
+<p>gemma3:1b           0.8GB 输入是TEXT（其他大Size可输入Image）可以中日问翻译、当前版本只有 TEXT 输入。不支持tool calling。vision能力（Describe images、Recognize visual features、Understand visual concepts）</p>
+</li>
+<li>
+<p>deepseek-r1:8b      5.2GB，（model requires more system memory (4.3 GiB) than is available (2.7 GiB)）</p>
+</li>
+<li>
+<p>gemma3:4b           3.3GB 输入 TEXT、Image。。（model requires more system memory (4.3 GiB) than is available (2.9 GiB)）</p>
+</li>
+</ol>
+<p>各个模型的 ollama 主页中有 <strong>Huggingface 页面</strong>，进入就有这个模型的使用方法。</p>
+<h1 id="调用-llm-的方法-">调用 LLM 的方法 ***<a hidden class="anchor" aria-hidden="true" href="#调用-llm-的方法-">#</a></h1>
+<p>两个端点：</p>
+<ol>
+<li><code>http://localhost:11434/v1</code> 是用于兼容 openAI version 1 的接口，<a href="https://github.com/ollama/ollama/blob/main/docs/openai.md">来源</a></li>
+<li><code>http://localhost:11434/api</code> 是 Ollama 原生的，字Ollama 开始，这个端点就是其核心功能的接口。<a href="https://github.com/ollama/ollama/blob/main/docs/api.md">来源</a></li>
+</ol>
+<p>Ollama API 端点 <code>http://localhost:11434/api/</code> 路径下<strong>包含多个子端点</strong>，用于<strong>与模型交互、管理模型和执行其他具体</strong>操作。</p>
+<ul>
+<li><code>curl http://localhost:11434/api/generate</code> 用于生成文本。</li>
+<li><code>curl http://localhost:11434/api/chat</code>  用于对话模式，生成基于聊天历史的响应</li>
+<li><code>curl http://localhost:11434/api/tags</code> 列出所有可用的模型标签（tags）。</li>
+<li><code>curl http://localhost:11434/api/show -d '{&quot;name&quot;: &quot;llama3.2:1b&quot;}'</code> 显示指定模型的详细信息</li>
+<li><code>curl http://localhost:11434/api/pull -d '{&quot;name&quot;: &quot;llama3.2:1b&quot;}'</code> 从远程仓库拉取模型到本地</li>
+<li><code>curl http://localhost:11434/api/embed -d '{...}'</code>  生成文本的嵌入向量</li>
+<li>其他。。。</li>
+</ul>
+<h2 id="1-ollama-api-的-cml--端点api">1. Ollama API 的 cml  【端点api】<a hidden class="anchor" aria-hidden="true" href="#1-ollama-api-的-cml--端点api">#</a></h2>
+<p>命令行中与模型交互：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>curl http://localhost:11434/api/generate -d <span style="color:#e6db74">&#39;{
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">  &#34;model&#34;: &#34;llama3.2:1b&#34;,
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">  &#34;prompt&#34;: &#34;Why is the sky blue?&#34;,
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">  &#34;stream&#34;: false
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">}&#39;</span>
+</span></span></code></pre></div><h2 id="2-rest-api--端点api">2. REST API  【端点api】<a hidden class="anchor" aria-hidden="true" href="#2-rest-api--端点api">#</a></h2>
+<p>这是目前运行和集成大量语言模型推理的<strong>通用标准接口</strong>方式。</p>
+<p>requests.post 是 Python 中 requests 库的函数，用于向指定 URL（这里是 infer_server_url 本地 Ollama 服务）发送 HTTP POST 请求，请求体是 JSON 格式的 payload。
+你提交给服务器的是一段文本提示（prompt）和生成参数，服务器运行 LLM 模型生成文本回应。</p>
+<p>这里的 payload 对应具体模型的。。。，具体见模型的定义。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">import</span> requests
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>infer_server_url <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;http://localhost:11434/api/generate&#34;</span>  <span style="color:#75715e"># 本地 Ollama 模型服务地址</span>
+</span></span><span style="display:flex;"><span>model_name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;deepseek-r1:1.5b&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>payload <span style="color:#f92672">=</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;model&#34;</span>: model_name,
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;messages&#34;</span>: [
+</span></span><span style="display:flex;"><span>        {<span style="color:#e6db74">&#34;role&#34;</span>: <span style="color:#e6db74">&#34;user&#34;</span>, <span style="color:#e6db74">&#34;content&#34;</span>: <span style="color:#e6db74">&#34;明天天气如何？&#34;</span>}
+</span></span><span style="display:flex;"><span>    ]
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>response <span style="color:#f92672">=</span> requests<span style="color:#f92672">.</span>post(infer_server_url, json<span style="color:#f92672">=</span>payload)
+</span></span><span style="display:flex;"><span>result <span style="color:#f92672">=</span> response<span style="color:#f92672">.</span>json()
+</span></span></code></pre></div><p>其中的<code>payload</code>如何提供？它们是 Ollama <code>/api/generate</code> 端点的核心参数，用于定义输入、输出格式和响应方式。<a href="https://github.com/ollama/ollama/blob/main/docs/api.md#generate-a-completion">所有参数见这里</a></p>
+<p>其中有个参数是 <code>options</code>: 当前模型参数，存在于 <strong>Modelfile</strong> 中，比如 <code>temperature</code>。</p>
+<h2 id="3-通过兼容-openai-的-api-即-python-库端点v1">3. 通过兼容 OpenAI 的 API 即 Python 库【端点v1】<a hidden class="anchor" aria-hidden="true" href="#3-通过兼容-openai-的-api-即-python-库端点v1">#</a></h2>
+<p>当你使用支持 openAI api 的 Python 库，如 LangChain、LlamaIndex 时，可以使用兼容的 OpenAI API: 比如 ChatOllama 使用 OpenAI 的 API 结构（例如 <code>/v1/chat/completions</code> 端点）。优点是可以从ChatGPT 等 openAI的模型切换到Ollama 本地模型。如下：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> langchain_ollama <span style="color:#f92672">import</span> ChatOllama
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>infer_server_url <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;http://localhost:11434/v1&#34;</span>  <span style="color:#75715e"># openai api 的端点</span>
+</span></span><span style="display:flex;"><span>model_name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;qwen3:1.7b&#34;</span>
+</span></span><span style="display:flex;"><span>qw_llm <span style="color:#f92672">=</span> ChatOllama(
+</span></span><span style="display:flex;"><span>    model<span style="color:#f92672">=</span>model_name,
+</span></span><span style="display:flex;"><span>    openai_api_base<span style="color:#f92672">=</span>infer_server_url,
+</span></span><span style="display:flex;"><span>    openai_api_key<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;none&#34;</span>,  <span style="color:#75715e"># Ollama 本地模型不需要云端 Key 授权</span>
+</span></span><span style="display:flex;"><span>    temperature<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>,
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 以 message 形式发送对话请求</span>
+</span></span><span style="display:flex;"><span>response <span style="color:#f92672">=</span> qw_llm<span style="color:#f92672">.</span>invoke([
+</span></span><span style="display:flex;"><span>    {<span style="color:#e6db74">&#34;role&#34;</span>: <span style="color:#e6db74">&#34;user&#34;</span>, <span style="color:#e6db74">&#34;content&#34;</span>: <span style="color:#e6db74">&#34;Why is the sky blue?&#34;</span>}
+</span></span><span style="display:flex;"><span>])
+</span></span><span style="display:flex;"><span>print(response<span style="color:#f92672">.</span>content)
+</span></span></code></pre></div><p>看，你需要提供 <code>openai_api_base</code> 参数值，所以这种方法是原本支持 openAI API 的，你需要提供设置 API 的基础 URL: <code>http://localhost:11434/v1</code>。同时 <code>openai_api_key</code> 的对，于 Ollama 的本地部署，通常不需要，故设置 none。</p>
+<p>Under the hood，<strong>ChatOllama 的调用方式实际上是对 Ollama 的 <code>/v1/chat/completions</code> 端点的封装</strong>。</p>
+<p>调用方式: 通过 ChatOllama 实例调用模型，发送对话请求，请求通常是 <code>messages</code> 格式，包含 <code>role</code> 和 <code>content</code>，然后并接收模型的响应。</p>
+<p>然后 ChatOllama 会将请求转换为 OpenAI 兼容的 JSON 格式，发送到 <code>http://localhost:11434/v1/chat/completions</code> 端点。Ollama 服务处理请求并返回响应，ChatOllama 再将响应解析为 Python 对象。</p>
+<h2 id="4-端点-api-和端点-v1-的区别">4. 端点 api 和端点 v1 的区别<a hidden class="anchor" aria-hidden="true" href="#4-端点-api-和端点-v1-的区别">#</a></h2>
+<p>端点 v1 原生支持 tools 和 tool_choice；专为多轮对话设计; 支持 OpenAI 客户端库（如 openai Python SDK）; 适合与 LangChain、LlamaIndex 集成，工具调用。</p>
+<p>端点 api 无原生支持 tools 调用，需通过 prompt 和 format: &ldquo;json&rdquo; 模拟；<code>/api/chat</code> 支持对话，<code>/api/generate</code> 适合单次生成; 需要 Ollama 客户端或手动 HTTP 请求; 适合简单生成任务、模型管理或自定义逻辑</p>
+<p>总结：端点 v1 更强大。</p>
+<h2 id="5-javascript-library">5. JavaScript library<a hidden class="anchor" aria-hidden="true" href="#5-javascript-library">#</a></h2>
+<p>略</p>
+<h1 id="更多关于-ollama">更多关于 Ollama<a hidden class="anchor" aria-hidden="true" href="#更多关于-ollama">#</a></h1>
+<p>llama4:latest</p>
+<p>Size: 67GB          模型文件本身的磁盘大小</p>
+<p>Context: 10M        模型最大的上下文窗口（Context Window）容量约为 10M tokens（Token）。</p>
+<p>Input: Text, Image  支持多模态输入，文本和图片</p>
+<p>pull 模型到本地之后，模型文件位于 <code>~/.ollama/models</code>，包括 manifest 和 blobs（权重文件）</p>
+<h2 id="关于-ollama-serve-模型的信息">关于 ollama serve 模型的信息<a hidden class="anchor" aria-hidden="true" href="#关于-ollama-serve-模型的信息">#</a></h2>
+<p>这些环境变量是影响 Ollama 本地推理服务行为的配置参数，通过启动 serve 时，设置这些系统环境变量控制</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-txt" data-lang="txt"><span style="display:flex;"><span>INFO server config env=&#34;
+</span></span><span style="display:flex;"><span>map[CUDA_VISIBLE_DEVICES:                          指定可见的 CUDA GPU 设备编号，空代表不限制，通常用于多GPU选择。例如设置0表示只使用第0号GPU
+</span></span><span style="display:flex;"><span>GPU_DEVICE_ORDINAL: 
+</span></span><span style="display:flex;"><span>HIP_VISIBLE_DEVICES:                               针对 AMD GPU 的对应环境变量
+</span></span><span style="display:flex;"><span>HSA_OVERRIDE_GFX_VERSION: 
+</span></span><span style="display:flex;"><span>HTTPS_PROXY: 
+</span></span><span style="display:flex;"><span>HTTP_PROXY: 
+</span></span><span style="display:flex;"><span>NO_PROXY: 
+</span></span><span style="display:flex;"><span>OLLAMA_CONTEXT_LENGTH:2048                         模型的上下文窗口大小，表示模型一次可以处理的最大Token长度，默认是2048。
+</span></span><span style="display:flex;"><span>OLLAMA_DEBUG:false                                 是否开启调试模式，开启后会输出更详细的日志，默认关闭
+</span></span><span style="display:flex;"><span>OLLAMA_FLASH_ATTENTION:false                       是否启用闪存注意力机制，这通常是某些高效推理优化，默认关闭。
+</span></span><span style="display:flex;"><span>OLLAMA_GPU_OVERHEAD:0                              给 GPU 资源预留的额外开销比例，0 表示无预留，方便调度资源。
+</span></span><span style="display:flex;"><span>OLLAMA_HOST:http://127.0.0.1:11434                 Ollama 服务监听的 HTTP 地址和端口，本地默认11434端口。
+</span></span><span style="display:flex;"><span>OLLAMA_INTEL_GPU:false 
+</span></span><span style="display:flex;"><span>OLLAMA_KEEP_ALIVE:5m0s                             模型加载后缓存保持时间，默认为 5 分钟，超过此时间模型将被卸载释放资源。
+</span></span><span style="display:flex;"><span>OLLAMA_KV_CACHE_TYPE: 
+</span></span><span style="display:flex;"><span>OLLAMA_LLM_LIBRARY:                                指定底层LLM推理库（如 llama.cpp、ggml等），空表示默认 
+</span></span><span style="display:flex;"><span>OLLAMA_LOAD_TIMEOUT:5m0s 
+</span></span><span style="display:flex;"><span>OLLAMA_MAX_LOADED_MODELS:0 
+</span></span><span style="display:flex;"><span>OLLAMA_MAX_QUEUE:512 
+</span></span><span style="display:flex;"><span>OLLAMA_MODELS:/home/junhui/.ollama/models          模型文件存放目录路径。
+</span></span><span style="display:flex;"><span>OLLAMA_MULTIUSER_CACHE:false 
+</span></span><span style="display:flex;"><span>OLLAMA_NEW_ENGINE:false 
+</span></span><span style="display:flex;"><span>OLLAMA_NOHISTORY:false                             是否关闭会话历史记录保存，默认保存。 
+</span></span><span style="display:flex;"><span>OLLAMA_NOPRUNE:false                               是否禁止模型自动剪枝（释放内存的机制），默认允许自动剪枝。
+</span></span><span style="display:flex;"><span>OLLAMA_NUM_PARALLEL:0                              支持的最大并发请求数，0 可能表示没有限制或默认串行。
+</span></span><span style="display:flex;"><span>OLLAMA_ORIGINS:[http://localhost https://localhost http://localhost:* https://localhost:* http://127.0.0.1 https://127.0.0.1 http://127.0.0.1:* https://127.0.0.1:* http://0.0.0.0 https://0.0.0.0 http://0.0.0.0:* https://0.0.0.0:* app://* file://* tauri://* vscode-webview://* vscode-file://*] OLLAMA_SCHED_SPREAD:false ROCR_VISIBLE_DEVICES: http_proxy: https_proxy: no_proxy:]&#34;
+</span></span></code></pre></div><h2 id="ollama上的每个模型有-model-template-licenseparams-等信息">ollama上的每个模型有 model 、template 、license、params 等信息<a hidden class="anchor" aria-hidden="true" href="#ollama上的每个模型有-model-template-licenseparams-等信息">#</a></h2>
+<h2 id="我有个本地的大模型如何将它发布到-ollama">我有个本地的大模型，如何将它发布到 ollama<a hidden class="anchor" aria-hidden="true" href="#我有个本地的大模型如何将它发布到-ollama">#</a></h2>
+<ol>
+<li>
+<p>Ollama 使用 GGUF 格式（由 LLaMA.cpp 开发）作为其模型文件格式。如果你的本地模型不是 GGUF 格式（例如 PyTorch、Hugging Face 格式），需要先将其转换为 GGUF。</p>
+</li>
+<li>
+<p>Ollama 使用 Modelfile 定义模型的元数据、参数和提示模板。这是发布模型的关键步骤。</p>
+</li>
+<li>
+<p>将本地模型导入 Ollama 注册表，创建自定义模型。</p>
+</li>
+<li>
+<p>在本地测试模型以确保其正常运行。<code>ollama run &lt;model_name&gt;</code>。</p>
+</li>
+<li>
+<p>如果只是本地使用，导入后即可；若需分发给其他设备，可以打包模型文件。</p>
+</li>
+<li>
+<p>在本地测试模型以确保其正常运行：</p>
+<ul>
+<li>创建 Ollama 账户</li>
+<li>推送模型：<code>ollama push registry.ollama.ai/&lt;your-username&gt;/my-custom-model</code></li>
+</ul>
+</li>
+</ol>
+<h1 id="问题">问题<a hidden class="anchor" aria-hidden="true" href="#问题">#</a></h1>
+<ul>
+<li>CPU 是满载的，GPU是空闲的。【todo】</li>
+<li>执行模型也需要 proxy 开启</li>
+<li>模型回答有些混乱，我问第二个问题时，它还在想第一个问题。</li>
+<li>jetson-containers  【todo】</li>
+</ul>
+<h2 id="jetson-共享-windows-代理">Jetson 共享 windows 代理<a hidden class="anchor" aria-hidden="true" href="#jetson-共享-windows-代理">#</a></h2>
+<ol>
+<li>查看 Windows 局域网IP，<code>&lt;windows-ip&gt;</code></li>
+<li>Jetson 接入相同的局域网</li>
+<li>Jetson 设置变量: <code>export http_proxy=&quot;&lt;windows-ip&gt;:7890&quot;</code></li>
+<li>Clash 开启&quot;允许局域网连接&quot;</li>
+<li>Clash 开启 TUN模式</li>
+<li>配置 docker 文件：<code>sudo vim /etc/systemd/system/docker.service.d/http-proxy.conf</code>，添加上述 http_proxy。</li>
+<li>重启 Daemon &amp; docker</li>
+</ol>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/ollama/">Ollama</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/jetson/">Jetson</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

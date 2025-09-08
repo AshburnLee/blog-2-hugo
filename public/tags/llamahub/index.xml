@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>LlamaHub on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/llamahub/</link>
+    <description>Recent content in LlamaHub on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:13:28 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/llamahub/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>2.0.LlamaIndex</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/2.0.llamaindex/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:28 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/2.0.llamaindex/</guid>
+      <description>&lt;p&gt;LlamaIndex 是一个用于连接自定义数据源到 LLM 的框架。 简单来说，它可以让你用你自己的数据来增强 LLM，让 LLM 能够回答关于这些数据的更具体、更准确的问题。它被设计为实现 RAG（Retrieval-Augmented Generation）的 Agent。&lt;/p&gt;
+&lt;h2 id=&#34;llamaindex-核心功能和作用&#34;&gt;LlamaIndex 核心功能和作用&lt;/h2&gt;
+&lt;h3 id=&#34;1-数据连接&#34;&gt;1. 数据连接：&lt;/h3&gt;
+&lt;p&gt;LlamaIndex 提供了各种数据连接器 (Data Connectors)，可以从不同的数据源加载数据，例如：文档 (PDF, Word, Text, Markdown 等)，网站，数据库，知识图谱，API。这些连接器负责将数据转换为 LlamaIndex 可以处理的文档格式。&lt;/p&gt;
+&lt;h3 id=&#34;2-数据索引&#34;&gt;2. 数据索引：&lt;/h3&gt;
+&lt;p&gt;LlamaIndex 将加载的数据构建成索引 (Index)，以便 LLM 可以高效地查询和检索相关信息。LlamaIndex 提供了多种索引类型，例如：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;列表索引 (List Index): 简单地将文档列表存储起来。&lt;/li&gt;
+&lt;li&gt;向量索引 (Vector Store Index): 将文档嵌入到向量空间中，以便进行语义搜索。&lt;/li&gt;
+&lt;li&gt;树索引 (Tree Index): 将文档组织成树状结构，以便进行分层搜索。&lt;/li&gt;
+&lt;li&gt;关键词表索引 (Keyword Table Index): 使用关键词来索引文档。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;你可以根据你的数据和查询需求选择合适的索引类型&lt;/p&gt;
+&lt;h3 id=&#34;3-查询引擎&#34;&gt;3. 查询引擎：&lt;/h3&gt;
+&lt;p&gt;LlamaIndex 提供了查询引擎 (Query Engine)，用于&lt;strong&gt;接收用户的查询&lt;/strong&gt;，&lt;strong&gt;并从索引中检索&lt;/strong&gt;相关信息。查询引擎使用 LLM 来理解用户的查询，并生成合适的查询语句。查询引擎还可以对检索到的信息进行排序、过滤和聚合，以便提供更准确的答案。&lt;/p&gt;
+&lt;h3 id=&#34;4-数据代理-data-agents&#34;&gt;4. 数据代理 (Data Agents):&lt;/h3&gt;
+&lt;p&gt;LlamaIndex 允许你创建数据代理，这些代理可以自动执行各种任务，例如：回答问题，生成文本，总结文档，等等。数据代理可以根据你的需求进行定制，以便更好地完成特定任务。&lt;/p&gt;
+&lt;h2 id=&#34;3个重要部分&#34;&gt;3个重要部分&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Components&lt;/strong&gt;： 最基本的构建块。这些包括提示、模型和数据库等。组件通常有助于将 LlamaIndex 与其他工具和库连接起来。比如指定模型。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Agents and Tools&lt;/strong&gt;：让 Agent 执行动作的组件，如搜索、计算或访问外部服务；Agent 是能够使用工具并做出决策的自主组件。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Workflows&lt;/strong&gt;：是逐步处理逻辑的过程。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;llamahub&#34;&gt;LlamaHub&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;LlamaHub&lt;/strong&gt; 是一个包含数百个 &lt;strong&gt;integrations&lt;/strong&gt;、Agents 和 Tools 的注册中心，属于 LlamaIndex。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

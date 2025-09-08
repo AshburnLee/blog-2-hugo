@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>1.4.DQN | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="Reinforcement Learning, DQN">
+<meta name="description" content="Deep-Q-learning (DQN)
+环境
+与环境有关，简单的环境中，state的可选个数（state space）是有限的， (16 different states for FrozenLake-v1 and 500 for Taxi-v3)，但是对于大部分都环境，State space 非常大，比如 10^9 到 10^11 个可选state。如此以来，更新 Q-table 就会非常低效。
+所以最好的方法是使用一个参数化的 Q-function（ Qθ​(s,a)，theta 是网络参数 ）来估计 Q-value。
+Deep Q-learning，不适用 Q-table ，而是通过一个NN，这个NN 根据一个state，给出这个 state 时不同 Action 的Q-value。
+
+  
+      
+          
+      
+  
+  
+      
+          Q vs deep Q
+      
+  
+
+Loss function
+创建一个损失函数，比较 Q-value预测 和 Q-target，并使用梯度下降来更新深度 Q 网络的权重以更好地近似 Q-value。
+
+  
+      
+          
+      
+  
+  
+      
+          Q-loss 这样计算
+      
+  
+
+相同与Q-learning
+还是会用到 epsilon-greedy policy 确定在当前 state 执行哪个Action。
+输入预处理
+减少不必要的计算量，减少输入的不必要信息。通常，讲reduce frame 的尺寸，并且讲frame 灰度化（这个场景下，颜色并不会指导Agent的行为，反而增加不用计算量）。即将RGB 3通道改为1个通道。">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/rl/1-4.dqn/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/rl/1-4.dqn/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/rl/1-4.dqn/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="1.4.DQN">
+  <meta property="og:description" content="Deep-Q-learning (DQN) 环境 与环境有关，简单的环境中，state的可选个数（state space）是有限的， (16 different states for FrozenLake-v1 and 500 for Taxi-v3)，但是对于大部分都环境，State space 非常大，比如 10^9 到 10^11 个可选state。如此以来，更新 Q-table 就会非常低效。
+所以最好的方法是使用一个参数化的 Q-function（ Qθ​(s,a)，theta 是网络参数 ）来估计 Q-value。
+Deep Q-learning，不适用 Q-table ，而是通过一个NN，这个NN 根据一个state，给出这个 state 时不同 Action 的Q-value。
+Q vs deep Q Loss function 创建一个损失函数，比较 Q-value预测 和 Q-target，并使用梯度下降来更新深度 Q 网络的权重以更好地近似 Q-value。
+Q-loss 这样计算 相同与Q-learning 还是会用到 epsilon-greedy policy 确定在当前 state 执行哪个Action。
+输入预处理 减少不必要的计算量，减少输入的不必要信息。通常，讲reduce frame 的尺寸，并且讲frame 灰度化（这个场景下，颜色并不会指导Agent的行为，反而增加不用计算量）。即将RGB 3通道改为1个通道。">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="rl">
+    <meta property="article:published_time" content="2025-08-31T12:52:04+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:52:04+08:00">
+    <meta property="article:tag" content="Reinforcement Learning">
+    <meta property="article:tag" content="DQN">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="1.4.DQN">
+<meta name="twitter:description" content="Deep-Q-learning (DQN)
+环境
+与环境有关，简单的环境中，state的可选个数（state space）是有限的， (16 different states for FrozenLake-v1 and 500 for Taxi-v3)，但是对于大部分都环境，State space 非常大，比如 10^9 到 10^11 个可选state。如此以来，更新 Q-table 就会非常低效。
+所以最好的方法是使用一个参数化的 Q-function（ Qθ​(s,a)，theta 是网络参数 ）来估计 Q-value。
+Deep Q-learning，不适用 Q-table ，而是通过一个NN，这个NN 根据一个state，给出这个 state 时不同 Action 的Q-value。
+
+  
+      
+          
+      
+  
+  
+      
+          Q vs deep Q
+      
+  
+
+Loss function
+创建一个损失函数，比较 Q-value预测 和 Q-target，并使用梯度下降来更新深度 Q 网络的权重以更好地近似 Q-value。
+
+  
+      
+          
+      
+  
+  
+      
+          Q-loss 这样计算
+      
+  
+
+相同与Q-learning
+还是会用到 epsilon-greedy policy 确定在当前 state 执行哪个Action。
+输入预处理
+减少不必要的计算量，减少输入的不必要信息。通常，讲reduce frame 的尺寸，并且讲frame 灰度化（这个场景下，颜色并不会指导Agent的行为，反而增加不用计算量）。即将RGB 3通道改为1个通道。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "RL",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/rl/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "1.4.DQN",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/rl/1-4.dqn/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "1.4.DQN",
+  "name": "1.4.DQN",
+  "description": "Deep-Q-learning (DQN) 环境 与环境有关，简单的环境中，state的可选个数（state space）是有限的， (16 different states for FrozenLake-v1 and 500 for Taxi-v3)，但是对于大部分都环境，State space 非常大，比如 10^9 到 10^11 个可选state。如此以来，更新 Q-table 就会非常低效。\n所以最好的方法是使用一个参数化的 Q-function（ Qθ​(s,a)，theta 是网络参数 ）来估计 Q-value。\nDeep Q-learning，不适用 Q-table ，而是通过一个NN，这个NN 根据一个state，给出这个 state 时不同 Action 的Q-value。\nQ vs deep Q Loss function 创建一个损失函数，比较 Q-value预测 和 Q-target，并使用梯度下降来更新深度 Q 网络的权重以更好地近似 Q-value。\nQ-loss 这样计算 相同与Q-learning 还是会用到 epsilon-greedy policy 确定在当前 state 执行哪个Action。\n输入预处理 减少不必要的计算量，减少输入的不必要信息。通常，讲reduce frame 的尺寸，并且讲frame 灰度化（这个场景下，颜色并不会指导Agent的行为，反而增加不用计算量）。即将RGB 3通道改为1个通道。\n",
+  "keywords": [
+    "Reinforcement Learning", "DQN"
+  ],
+  "articleBody": "Deep-Q-learning (DQN) 环境 与环境有关，简单的环境中，state的可选个数（state space）是有限的， (16 different states for FrozenLake-v1 and 500 for Taxi-v3)，但是对于大部分都环境，State space 非常大，比如 10^9 到 10^11 个可选state。如此以来，更新 Q-table 就会非常低效。\n所以最好的方法是使用一个参数化的 Q-function（ Qθ​(s,a)，theta 是网络参数 ）来估计 Q-value。\nDeep Q-learning，不适用 Q-table ，而是通过一个NN，这个NN 根据一个state，给出这个 state 时不同 Action 的Q-value。\nQ vs deep Q Loss function 创建一个损失函数，比较 Q-value预测 和 Q-target，并使用梯度下降来更新深度 Q 网络的权重以更好地近似 Q-value。\nQ-loss 这样计算 相同与Q-learning 还是会用到 epsilon-greedy policy 确定在当前 state 执行哪个Action。\n输入预处理 减少不必要的计算量，减少输入的不必要信息。通常，讲reduce frame 的尺寸，并且讲frame 灰度化（这个场景下，颜色并不会指导Agent的行为，反而增加不用计算量）。即将RGB 3通道改为1个通道。\nTemporal Limitation 接着处理输入，将减少信息了的 input 堆叠到一起。为什么这样做？为了处理 Temporal Limitation。\n什么意思？一帧图像不能给你位置信息，至少通过 2、3 帧才能获得方向信息。（神经网络如何处理方向信息？）\n神经网络 这个神经网络包含一个卷积层 + 若干个全链接层，如此才能输出在某一个state时，每个Action的 Q-value。\nQ-target 和 当前 Q-value 之间的相关性 我们想要计算TD误差（即损失）时，我们计算Q目标与当前Q值之间的差异（对Q的估计）。\n问题是，我们使用相同的参数（权重）来估计TD目标和Q值时，这导致，TD目标与我们要改变的参数之间存在显著的相关性。打个比方，就像是 在训练的每一步，我们的Q值和目标值都在变化。我们正在接近我们的目标，但目标也在移动。\n这个问题会通过 双重深度 Q 网络 解决。想见下。\nDeep-Q-Algorithm Deep Q-Learning (DQN) 训练算法的两个主要阶段：采样 (Sampling) 和 训练 (Training)\nDeep-Q-Algorithm 1. 采样 (Sampling)： 目的：\n通过与环境交互，收集经验数据，用于后续的训练。 过程：\nAgent 在当前状态下，根据某种策略 (例如 ε-greedy 策略) 选择一个动作。 Agent 执行该动作，与环境交互，观察到奖励 (reward) 和下一个状态 (next state)。 将 (状态, 动作, 奖励, 下一个状态) 作为一个经验元组 (experience tuple) 存储到回放记忆 (replay memory) 中。 重复以上步骤，直到收集到足够多的经验。 所以这里的“下一个状态” 是阶段性学习到的东西。 回放记忆 (Replay Memory)：\n回放记忆是一个缓冲区，用于存储 Agent 与环境交互的经验元组。\n回放记忆通常有一个容量上限，当存储的经验元组数量超过容量上限时，会移除最早的经验元组。\n回放记忆的作用是：\n打破经验之间的相关性： 连续的经验通常是相关的，如果直接使用这些经验来训练网络，会导致训练不稳定。通过随机抽取经验，可以打破经验之间的相关性。 提高样本利用率： 同一个经验可以被多次使用，从而提高样本利用率。 避免 灾难性遗忘。 2. 训练 (Training)： 目的：\n使用采样阶段收集到的经验数据，更新神经网络的参数，使得神经网络能够更准确地估计 Q 值。 过程：\n从回放记忆中随机选择一小批 (mini-batch) 经验元组。 对于每个经验元组 (s, a, r, s')，计算 TD 目标 (TD target)：TD_target = r + γ * max_a' Q(s', a'; θ)。 计算损失函数 (loss function)，例如均方误差 (mean squared error)：loss = (TD_target - Q(s, a; θ))^2。 使用梯度下降 (gradient descent) 算法，更新神经网络的参数，使得损失函数最小化。 重复以上步骤，直到训练完成。 梯度下降 (Gradient Descent)：\n梯度下降是一种优化算法，用于寻找损失函数的最小值。 梯度下降通过计算损失函数对参数的梯度，并沿着梯度的反方向更新参数，从而使得损失函数逐渐减小。 两个阶段的形式 交替式：在循环的每一步中，先采样后训练，更适合于在线学习 (online learning)，Agent 可以根据最新的经验来更新策略。\n分阶段式：先循环采样，后循环训练，更适合于离线学习 (offline learning)，可以充分利用已有的数据来训练网络。\nDeep Q-learning 训练中的不稳定性 原因：\n非线性函数近似 (Non-linear Function Approximation)： DQN 使用神经网络来近似 Q 函数，而神经网络是非线性模型。非线性模型在训练过程中容易出现不稳定现象，例如梯度消失、梯度爆炸等。 自举 (Bootstrapping)： DQN 使用自举的方法来更新 Q 值，即使用 Q 值来估计 Q 值。这种方法容易导致误差累积，从而影响训练的稳定性。 TD 目标的移动性 (Moving Target)： DQN 使用 TD 目标来更新 Q 值，而 TD 目标本身也是通过神经网络估计的。由于神经网络的参数在不断更新，TD 目标也在不断变化，这使得训练过程变得不稳定。 经验相关性 (Correlation of Experiences)： Agent 与环境交互产生的经验通常是相关的，如果直接使用这些经验来训练网络，会导致训练不稳定。 灾难性遗忘 在传统的在线强化学习中，智能体与环境交互，获取经验（状态、动作、奖励、下一个状态），然后立即用这些经验更新神经网络，并丢弃这些经验 。如果智能体连续遇到新的经验序列，神经网络可能会倾向于忘记之前的经验，尤其是在新经验与旧经验差异较大时。例如，智能体先在一个关卡中训练，然后进入另一个完全不同的关卡，它可能会忘记如何在第一个关卡中行动。\n解决方法是经验回放：经验回放机制维护一个回放缓冲区（Replay Buffer），用于存储智能体与环境交互产生的经验元组 (state, action, reward, next state, done)。在训练时，从回放缓冲区中随机抽取一批经验样本来更新 Q 网络 。这样，网络就不会只学习最近的经验，而是可以从过去的经验中学习，从而避免灾难性遗忘\n表现：\nQ 值震荡 (Oscillation)：Q 值在真实值附近震荡，难以收敛。 Q 值发散 (Divergence)：Q 值不断增大或减小，最终导致训练失败。 策略不稳定 (Unstable Policy)：Agent 的策略在训练过程中不断变化，难以找到最优策略。 不稳定性的解决方案: 为了解决 DQN 训练过程中的不稳定性问题，通常采用以下三种解决方案：\n方案一：经验回放 (Experience Replay)： 目的：打破经验之间的相关性，提高样本利用率。\n原理：\n将 Agent 与环境交互的经验 (状态、动作、奖励、下一个状态) 存储在一个回放缓冲区中。 在更新 Q 值时，从回放缓冲区中随机抽取一批经验来训练网络。而不是马上扔掉这个经验。 优点：\n打破经验之间的相关性，减少 TD 目标的变化。 提高样本利用率，同一个经验可以被多次使用。 平滑数据分布，减少训练过程中的方差。 方案二：固定 Q 目标 (Fixed Q-Target)： 目的： 稳定 TD 目标，减少 TD 目标和参数之间的相关性。\n原理：\n使用两个神经网络：一个用于估计当前的 Q 值 (Q 网络)，另一个用于估计 TD 目标 (目标网络)。 目标网络的参数定期从 Q 网络的参数复制过来，但更新频率较低。 优点：\n使得 TD 目标在一段时间内保持稳定，减少 TD 目标和参数之间的相关性。 提高训练的稳定性，减少 Q 值震荡和发散的风险。 方案三：双重深度 Q 网络 (Double Deep Q-Learning)： 目的： 解决 Q 值过估计 (Overestimation) 问题。\n原理：\n在计算 TD 目标时，使用 Q 网络选择动作。使用目标网络估计 Q 值。 这样可以减少 Q 值过估计带来的偏差。 优点：\n减少 Q 值过估计，提高策略的准确性。 提高训练的稳定性，减少 Q 值震荡和发散的风险。 除了上述三种解决方法，还有：\nPrioritized Experience Replay Dueling Deep Q-Learning Double DQN Double DQN 帮助我们减少Q值的过度估计，因此它可以帮助我们更快、更稳定地训练。\nQ 网络 (Q-Network / Online Network / Policy Network)：\n作用：\n选择动作 (Action Selection)： 用于在给定状态下选择最优的动作。\n更新参数 (Parameter Update)： 用于根据 TD 目标更新自身的参数。\n具体来说：\n在给定状态 s 下，Q 网络会输出每个动作 a 对应的 Q 值 Q(s, a; θ)，其中 θ 是 Q 网络的参数。 根据某种策略 (例如 ε-greedy 策略)，选择 Q 值最大的动作 a* = argmax_a Q(s, a; θ)。 在计算 TD 目标时，Q 网络用于选择下一个状态 s' 下的最优动作 a' = argmax_a' Q(s', a'; θ)。 根据 TD 目标和 Q 网络的输出，计算损失函数，并使用梯度下降算法更新 Q 网络的参数 θ。 目标网络 (Target Network)：\n作用：估计 TD 目标 (TD Target Estimation)： 用于估计 TD 目标中的 Q 值，从而稳定训练过程。\n具体来说：\n在计算 TD 目标时，目标网络用于估计下一个状态 s' 下，采取动作 a' 的 Q 值 Q(s', a'; θ')，其中 θ' 是目标网络的参数。 TD 目标的计算公式为：TD_target = r + γ * Q(s', argmax_a' Q(s', a'; θ); θ')，注意这里使用了 Q 网络选择的动作 argmax_a' Q(s', a'; θ)，但使用了目标网络估计的 Q 值 Q(s', a'; θ')。 目标网络的参数 θ' 定期从 Q 网络的参数 θ 复制过来，但更新频率较低，例如每隔 N 步更新一次。 将动作选择和 Q 值估计分离，从而减少 Q 值过估计带来的偏差\n【再理解吧】\nDQN 的extension Prioritized Experience Replay \u0026\u0026 Dueling Deep Q-Learning\nKAQ 1. 灾难性遗忘中，agent 已经在这一步中学习到了，丢其这些经验为什么不行？经验是以什么形式存储的？ 神经网络的权重更新：DQN 使用神经网络来近似 Q 函数。神经网络通过梯度下降算法来更新权重，以最小化预测 Q 值与目标 Q 值之间的误差。每次更新都会调整网络的权重，使其更好地拟合当前的训练数据。\n在没有经验回放的情况下，DQN 采用在线学习的方式，即每获得一个新经验，就立即用它来更新网络。这种方式的问题在于，神经网络的权重会不断地被最近的经验所调整，而逐渐忘记之前的经验。经验表现在权值中。\n如果智能体最初学习了如何向左走以获得奖励，然后开始学习如何向右走，那么神经网络可能会调整权重，使得向右走的 Q 值变高，而向左走的 Q 值变低，从而导致智能体忘记了如何向左走。\n在强化学习中，智能体与环境交互产生的数据分布是不断变化的。如果只使用最近的经验来训练网络，那么网络可能会过拟合当前的数据分布，而无法泛化到其他状态。\nKAQ 2. 为什么会遗忘之前的经验？ 梯度更新的局部性：每次梯度更新只会影响神经网络中与当前经验相关的权重。如果某个权重对于之前的经验很重要，但与当前的经验无关，那么这个权重可能会逐渐被调整到不适合之前的经验的值。\n学习率的影响：学习率控制着每次权重更新的幅度。如果学习率过大，那么神经网络可能会快速地适应新的经验，但也会更容易忘记之前的经验。\n神经网络的容量限制：神经网络的容量有限，它只能存储有限的知识。当新的知识不断涌入时，旧的知识可能会被覆盖。\nKAQ 3. 经验回放如何解决问题？ 设置缓冲区：将所有经验存储在回放缓冲区中，而不是立即丢弃。\n随机抽样：从回放缓冲区中随机抽取经验样本来训练神经网络。这样，神经网络就不会只学习最近的经验，而是可以从过去的经验中学习。\n平滑数据分布：随机抽样可以平滑数据分布，减少数据之间的相关性，从而提高训练的稳定性\nKAQ 4. 如何理解随机抽取经验样本？ 随机抽取的经验样本 (state, action, reward, next_state, done) 包含了 agent 在过去某个时间点所处的状态 state，采取的动作 action，获得的奖励 reward，以及进入的下一个状态 next_state。这相当于在训练过程中，让 agent “回忆” 起过去某个时刻的局部环境信息和行为结果。\n但，这并不是一个完整的环境模拟。agent 并没有真正回到过去，重新体验整个过程。它只是利用存储的经验数据来更新 Q 网络。\n比喻：\n错题本 (Replay Buffer)：学生将做错的题目记录在错题本上。 随机复习 (Random Sampling)：学生随机选择错题本上的题目进行复习。 回顾错误 (Experience)：每道错题都包含了题目内容 (state)、学生的错误答案 (action)、正确答案 (reward) 和解题思路 (next_state)。 学习修正 (Q-learning)：通过回顾这些错题，学生可以发现自己的错误，并学习正确的解题方法，从而提高考试成绩。 ",
+  "wordCount" : "590",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:52:04+08:00",
+  "dateModified": "2025-08-31T12:52:04+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/rl/1-4.dqn/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      1.4.DQN
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:52:04 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><h2 id="deep-q-learning-dqn">Deep-Q-learning (DQN)<a hidden class="anchor" aria-hidden="true" href="#deep-q-learning-dqn">#</a></h2>
+<h3 id="环境">环境<a hidden class="anchor" aria-hidden="true" href="#环境">#</a></h3>
+<p>与环境有关，简单的环境中，state的可选个数（state space）是有限的， (16 different states for FrozenLake-v1 and 500 for Taxi-v3)，但是对于大部分都环境，State space 非常大，比如 10^9 到 10^11 个可选state。如此以来，更新 Q-table 就会非常低效。</p>
+<p>所以最好的方法是使用一个参数化的 Q-function（ Qθ​(s,a)，theta 是网络参数 ）来估计 Q-value。</p>
+<p>Deep Q-learning，不适用 Q-table ，而是通过一个NN，这个NN 根据一个state，给出这个 state 时不同 Action 的Q-value。</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: center"><img alt="Q vs deep Q" loading="lazy" src="/pics/deep.jpg"></th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: center"><em>Q vs deep Q</em></td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="loss-function">Loss function<a hidden class="anchor" aria-hidden="true" href="#loss-function">#</a></h3>
+<p>创建一个损失函数，比较 Q-value预测 和 Q-target，并使用梯度下降来更新深度 Q 网络的权重以更好地近似 Q-value。</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: center"><img alt="图片描述" loading="lazy" src="/pics/Q-target.jpg"></th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: center"><em>Q-loss 这样计算</em></td>
+      </tr>
+  </tbody>
+</table>
+<h2 id="相同与q-learning">相同与Q-learning<a hidden class="anchor" aria-hidden="true" href="#相同与q-learning">#</a></h2>
+<p>还是会用到 epsilon-greedy policy 确定在当前 state 执行哪个Action。</p>
+<h2 id="输入预处理">输入预处理<a hidden class="anchor" aria-hidden="true" href="#输入预处理">#</a></h2>
+<p>减少不必要的计算量，减少输入的不必要信息。通常，讲reduce frame 的尺寸，并且讲frame 灰度化（这个场景下，颜色并不会指导Agent的行为，反而增加不用计算量）。即将RGB 3通道改为1个通道。</p>
+<h2 id="temporal-limitation">Temporal Limitation<a hidden class="anchor" aria-hidden="true" href="#temporal-limitation">#</a></h2>
+<p>接着处理输入，将减少信息了的 input 堆叠到一起。为什么这样做？为了处理 Temporal Limitation。</p>
+<p>什么意思？<strong>一帧图像不能给你位置信息，至少通过 2、3 帧才能获得方向信息</strong>。（神经网络如何处理方向信息？）</p>
+<h2 id="神经网络">神经网络<a hidden class="anchor" aria-hidden="true" href="#神经网络">#</a></h2>
+<p>这个神经网络包含一个卷积层 + 若干个全链接层，如此才能输出在某一个state时，每个Action的 Q-value。</p>
+<h2 id="q-target-和-当前-q-value-之间的相关性">Q-target 和 当前 Q-value 之间的相关性<a hidden class="anchor" aria-hidden="true" href="#q-target-和-当前-q-value-之间的相关性">#</a></h2>
+<p>我们想要计算TD误差（即损失）时，我们计算Q目标与当前Q值之间的差异（对Q的估计）。</p>
+<p>问题是，我们使用相同的参数（权重）来估计TD目标和Q值时，这导致，TD目标与我们要改变的参数之间存在显著的相关性。打个比方，就像是 在训练的每一步，我们的Q值和目标值都在变化。我们正在接近我们的目标，但目标也在移动。</p>
+<p>这个问题会通过 双重深度 Q 网络 解决。想见下。</p>
+<h1 id="deep-q-algorithm">Deep-Q-Algorithm<a hidden class="anchor" aria-hidden="true" href="#deep-q-algorithm">#</a></h1>
+<p>Deep Q-Learning (DQN) 训练算法的两个主要阶段：采样 (Sampling) 和 训练 (Training)</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: center"><img alt="Deep-Q-Algorithm" loading="lazy" src="/pics/sampling-training.jpg"></th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: center"><em>Deep-Q-Algorithm</em></td>
+      </tr>
+  </tbody>
+</table>
+<h2 id="1-采样-sampling">1. 采样 (Sampling)：<a hidden class="anchor" aria-hidden="true" href="#1-采样-sampling">#</a></h2>
+<ul>
+<li>
+<p>目的：</p>
+<ul>
+<li>通过与环境交互，收集经验数据，用于后续的训练。</li>
+</ul>
+</li>
+<li>
+<p>过程：</p>
+<ul>
+<li>Agent 在当前状态下，根据某种策略 (例如 ε-greedy 策略) 选择一个动作。</li>
+<li>Agent 执行该动作，与环境交互，观察到奖励 (reward) 和下一个状态 (next state)。</li>
+<li>将 (状态, 动作, 奖励, 下一个状态) 作为一个经验元组 (experience tuple) 存储到回放记忆 (replay memory) 中。</li>
+<li>重复以上步骤，直到收集到足够多的经验。</li>
+<li>所以这里的“下一个状态” 是阶段性学习到的东西。</li>
+</ul>
+</li>
+<li>
+<p>回放记忆 (Replay Memory)：</p>
+<ul>
+<li>
+<p>回放记忆是一个缓冲区，用于存储 Agent 与环境交互的经验元组。</p>
+</li>
+<li>
+<p>回放记忆通常有一个容量上限，当存储的经验元组数量超过容量上限时，会移除最早的经验元组。</p>
+</li>
+<li>
+<p>回放记忆的作用是：</p>
+<ul>
+<li>打破经验之间的相关性： 连续的经验通常是相关的，如果直接使用这些经验来训练网络，会导致训练不稳定。通过随机抽取经验，可以打破经验之间的相关性。</li>
+<li>提高样本利用率： 同一个经验可以被多次使用，从而提高样本利用率。</li>
+<li>避免 灾难性遗忘。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="2-训练-training">2. 训练 (Training)：<a hidden class="anchor" aria-hidden="true" href="#2-训练-training">#</a></h2>
+<ul>
+<li>
+<p>目的：</p>
+<ul>
+<li>使用采样阶段收集到的经验数据，更新神经网络的参数，使得神经网络能够更准确地估计 Q 值。</li>
+</ul>
+</li>
+<li>
+<p>过程：</p>
+<ul>
+<li>从回放记忆中随机选择一小批 (mini-batch) 经验元组。</li>
+<li>对于每个经验元组 <code>(s, a, r, s')</code>，计算 TD 目标 (TD target)：<code>TD_target = r + γ * max_a' Q(s', a'; θ)</code>。</li>
+<li>计算损失函数 (loss function)，例如均方误差 (mean squared error)：<code>loss = (TD_target - Q(s, a; θ))^2</code>。</li>
+<li>使用梯度下降 (gradient descent) 算法，更新神经网络的参数，使得损失函数最小化。</li>
+<li>重复以上步骤，直到训练完成。</li>
+</ul>
+</li>
+<li>
+<p>梯度下降 (Gradient Descent)：</p>
+<ul>
+<li>梯度下降是一种优化算法，用于寻找损失函数的最小值。</li>
+<li>梯度下降通过计算损失函数对参数的梯度，并沿着梯度的反方向更新参数，从而使得损失函数逐渐减小。</li>
+</ul>
+</li>
+</ul>
+<h2 id="两个阶段的形式">两个阶段的形式<a hidden class="anchor" aria-hidden="true" href="#两个阶段的形式">#</a></h2>
+<p><strong>交替式</strong>：在循环的每一步中，先采样后训练，更适合于在线学习 (online learning)，Agent 可以根据最新的经验来更新策略。</p>
+<p><strong>分阶段式</strong>：先循环采样，后循环训练，更适合于离线学习 (offline learning)，可以充分利用已有的数据来训练网络。</p>
+<h2 id="deep-q-learning-训练中的不稳定性">Deep Q-learning 训练中的不稳定性<a hidden class="anchor" aria-hidden="true" href="#deep-q-learning-训练中的不稳定性">#</a></h2>
+<p>原因：</p>
+<ul>
+<li>非线性函数近似 (Non-linear Function Approximation)： DQN 使用神经网络来近似 Q 函数，而神经网络是非线性模型。非线性模型在训练过程中容易出现不稳定现象，例如梯度消失、梯度爆炸等。</li>
+<li>自举 (Bootstrapping)： DQN 使用自举的方法来更新 Q 值，即使用 Q 值来估计 Q 值。这种方法容易导致误差累积，从而影响训练的稳定性。</li>
+<li>TD 目标的移动性 (Moving Target)： DQN 使用 TD 目标来更新 Q 值，而 TD 目标本身也是通过神经网络估计的。由于神经网络的参数在不断更新，TD 目标也在不断变化，这使得训练过程变得不稳定。</li>
+<li>经验相关性 (Correlation of Experiences)： Agent 与环境交互产生的经验通常是相关的，如果直接使用这些经验来训练网络，会导致训练不稳定。</li>
+<li>灾难性遗忘
+<ul>
+<li>
+<p>在传统的在线强化学习中，智能体与环境交互，获取经验（状态、动作、奖励、下一个状态），然后立即用这些经验更新神经网络，并丢弃这些经验 。如果智能体连续遇到新的经验序列，神经网络可能会倾向于忘记之前的经验，尤其是在新经验与旧经验差异较大时。例如，智能体先在一个关卡中训练，然后进入另一个完全不同的关卡，它可能会忘记如何在第一个关卡中行动。</p>
+</li>
+<li>
+<p>解决方法是经验回放：经验回放机制维护一个回放缓冲区（Replay Buffer），用于存储智能体与环境交互产生的经验元组 (state, action, reward, next state, done)。在训练时，从回放缓冲区中随机抽取一批经验样本来更新 Q 网络 。这样，网络就不会只学习最近的经验，而是可以从过去的经验中学习，从而避免灾难性遗忘</p>
+</li>
+</ul>
+</li>
+</ul>
+<p>表现：</p>
+<ul>
+<li>Q 值震荡 (Oscillation)：Q 值在真实值附近震荡，难以收敛。</li>
+<li>Q 值发散 (Divergence)：Q 值不断增大或减小，最终导致训练失败。</li>
+<li>策略不稳定 (Unstable Policy)：Agent 的策略在训练过程中不断变化，难以找到最优策略。</li>
+</ul>
+<p>不稳定性的解决方案: 为了解决 DQN 训练过程中的不稳定性问题，通常采用以下三种解决方案：</p>
+<h3 id="方案一经验回放-experience-replay">方案一：经验回放 (Experience Replay)：<a hidden class="anchor" aria-hidden="true" href="#方案一经验回放-experience-replay">#</a></h3>
+<ul>
+<li>
+<p>目的：打破经验之间的相关性，提高样本利用率。</p>
+</li>
+<li>
+<p>原理：</p>
+<ul>
+<li>将 Agent 与环境交互的经验 (状态、动作、奖励、下一个状态) 存储在一个回放缓冲区中。</li>
+<li>在更新 Q 值时，从回放缓冲区中随机抽取一批经验来训练网络。而不是马上扔掉这个经验。</li>
+</ul>
+</li>
+<li>
+<p>优点：</p>
+<ul>
+<li>打破经验之间的相关性，减少 TD 目标的变化。</li>
+<li>提高样本利用率，同一个经验可以被多次使用。</li>
+<li>平滑数据分布，减少训练过程中的方差。</li>
+</ul>
+</li>
+</ul>
+<h3 id="方案二固定-q-目标-fixed-q-target">方案二：固定 Q 目标 (Fixed Q-Target)：<a hidden class="anchor" aria-hidden="true" href="#方案二固定-q-目标-fixed-q-target">#</a></h3>
+<ul>
+<li>
+<p>目的： 稳定 TD 目标，减少 TD 目标和参数之间的相关性。</p>
+</li>
+<li>
+<p>原理：</p>
+<ul>
+<li>使用两个神经网络：一个用于估计当前的 Q 值 (Q 网络)，另一个用于估计 TD 目标 (目标网络)。</li>
+<li>目标网络的参数定期从 Q 网络的参数复制过来，但更新频率较低。</li>
+</ul>
+</li>
+<li>
+<p>优点：</p>
+<ul>
+<li>使得 TD 目标在一段时间内保持稳定，减少 TD 目标和参数之间的相关性。</li>
+<li>提高训练的稳定性，减少 Q 值震荡和发散的风险。</li>
+</ul>
+</li>
+</ul>
+<h3 id="方案三双重深度-q-网络-double-deep-q-learning">方案三：双重深度 Q 网络 (Double Deep Q-Learning)：<a hidden class="anchor" aria-hidden="true" href="#方案三双重深度-q-网络-double-deep-q-learning">#</a></h3>
+<ul>
+<li>
+<p>目的： 解决 Q 值过估计 (Overestimation) 问题。</p>
+</li>
+<li>
+<p>原理：</p>
+<ul>
+<li>在计算 TD 目标时，使用 Q 网络选择动作。使用目标网络估计 Q 值。</li>
+<li>这样可以减少 Q 值过估计带来的偏差。</li>
+</ul>
+</li>
+<li>
+<p>优点：</p>
+<ul>
+<li>减少 Q 值过估计，提高策略的准确性。</li>
+<li>提高训练的稳定性，减少 Q 值震荡和发散的风险。</li>
+</ul>
+</li>
+</ul>
+<p>除了上述三种解决方法，还有：</p>
+<ul>
+<li>Prioritized Experience Replay</li>
+<li>Dueling Deep Q-Learning</li>
+</ul>
+<h2 id="double-dqn">Double DQN<a hidden class="anchor" aria-hidden="true" href="#double-dqn">#</a></h2>
+<p>Double DQN 帮助我们减少Q值的过度估计，因此它可以帮助我们更快、更稳定地训练。</p>
+<ul>
+<li>
+<p>Q 网络 (Q-Network / Online Network / Policy Network)：</p>
+<p>作用：</p>
+<ul>
+<li>
+<p>选择动作 (Action Selection)： 用于在给定状态下选择最优的动作。</p>
+</li>
+<li>
+<p>更新参数 (Parameter Update)： 用于根据 TD 目标更新自身的参数。</p>
+</li>
+<li>
+<p>具体来说：</p>
+<ul>
+<li>在给定状态 <code>s</code> 下，Q 网络会输出每个动作 <code>a</code> 对应的 Q 值 <code>Q(s, a; θ)</code>，其中 <code>θ</code> 是 Q 网络的参数。</li>
+<li>根据某种策略 (例如 ε-greedy 策略)，选择 Q 值最大的动作 <code>a* = argmax_a Q(s, a; θ)</code>。</li>
+<li>在计算 TD 目标时，Q 网络用于选择下一个状态 <code>s'</code> 下的最优动作 <code>a' = argmax_a' Q(s', a'; θ)</code>。</li>
+<li>根据 TD 目标和 Q 网络的输出，计算损失函数，并使用梯度下降算法更新 Q 网络的参数 <code>θ</code>。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p>目标网络 (Target Network)：</p>
+<ul>
+<li>
+<p>作用：估计 TD 目标 (TD Target Estimation)： 用于估计 TD 目标中的 Q 值，从而稳定训练过程。</p>
+</li>
+<li>
+<p>具体来说：</p>
+<ul>
+<li>在计算 TD 目标时，目标网络用于估计下一个状态 <code>s'</code> 下，采取动作 <code>a'</code> 的 Q 值 <code>Q(s', a'; θ')</code>，其中 <code>θ'</code> 是目标网络的参数。</li>
+<li>TD 目标的计算公式为：<code>TD_target = r + γ * Q(s', argmax_a' Q(s', a'; θ); θ')</code>，注意这里使用了 Q 网络选择的动作 <code>argmax_a' Q(s', a'; θ)</code>，但使用了目标网络估计的 Q 值 <code>Q(s', a'; θ')</code>。</li>
+<li><strong>目标网络的参数 <code>θ'</code> 定期从 Q 网络的参数 <code>θ</code> 复制过来</strong>，但更新频率较低，例如每隔 N 步更新一次。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>将动作选择和 Q 值估计分离，从而减少 Q 值过估计带来的偏差</p>
+<p>【再理解吧】</p>
+<h2 id="dqn-的extension">DQN 的extension<a hidden class="anchor" aria-hidden="true" href="#dqn-的extension">#</a></h2>
+<p>Prioritized Experience Replay &amp;&amp; Dueling Deep Q-Learning</p>
+<h2 id="kaq-1-灾难性遗忘中agent-已经在这一步中学习到了丢其这些经验为什么不行经验是以什么形式存储的">KAQ 1. 灾难性遗忘中，agent 已经在这一步中学习到了，丢其这些经验为什么不行？经验是以什么形式存储的？<a hidden class="anchor" aria-hidden="true" href="#kaq-1-灾难性遗忘中agent-已经在这一步中学习到了丢其这些经验为什么不行经验是以什么形式存储的">#</a></h2>
+<p>神经网络的权重更新：DQN 使用神经网络来近似 Q 函数。神经网络通过梯度下降算法来更新权重，以最小化预测 Q 值与目标 Q 值之间的误差。<strong>每次更新都会调整网络的权重</strong>，使其更好地拟合当前的训练数据。</p>
+<p>在没有经验回放的情况下，DQN 采用在线学习的方式，即每获得一个新经验，就立即用它来更新网络。这种方式的问题在于，神经网络的权重会不断地被最近的经验所调整，而<strong>逐渐忘记之前的经验</strong>。经验表现在权值中。</p>
+<p>如果智能体最初学习了如何向左走以获得奖励，然后开始学习如何向右走，那么神经网络可能会调整权重，<strong>使得向右走的 Q 值变高，而向左走的 Q 值变低，从而导致智能体忘记了如何向左走</strong>。</p>
+<p>在强化学习中，智能体与环境交互产生的<strong>数据分布是不断变化</strong>的。如果<strong>只使用最近的经验来训练网络，那么网络可能会过拟合当前的数据分布</strong>，而无法泛化到其他状态。</p>
+<h2 id="kaq-2-为什么会遗忘之前的经验">KAQ 2. 为什么会遗忘之前的经验？<a hidden class="anchor" aria-hidden="true" href="#kaq-2-为什么会遗忘之前的经验">#</a></h2>
+<p>梯度更新的局部性：每次梯度更新只会影响神经网络中与当前经验相关的权重。<strong>如果某个权重对于之前的经验很重要，但与当前的经验无关，那么这个权重可能会逐渐被调整到不适合之前的经验的值。</strong></p>
+<p>学习率的影响：学习率控制着每次权重更新的幅度。如果学习率过大，那么神经网络可能会快速地适应新的经验，但也会更容易忘记之前的经验。</p>
+<p>神经网络的容量限制：神经网络的容量有限，它只能存储有限的知识。当新的知识不断涌入时，旧的知识可能会被覆盖。</p>
+<h2 id="kaq-3-经验回放如何解决问题">KAQ 3. 经验回放如何解决问题？<a hidden class="anchor" aria-hidden="true" href="#kaq-3-经验回放如何解决问题">#</a></h2>
+<p>设置缓冲区：将所有经验存储在回放缓冲区中，而不是立即丢弃。</p>
+<p>随机抽样：从回放缓冲区中<strong>随机抽取经验样本来训练神经网络</strong>。这样，神经网络就不会只学习最近的经验，而是可以从过去的经验中学习。</p>
+<p>平滑数据分布：<strong>随机抽样可以平滑数据分布，减少数据之间的相关性</strong>，从而提高训练的稳定性</p>
+<h2 id="kaq-4-如何理解随机抽取经验样本">KAQ 4. 如何理解随机抽取经验样本？<a hidden class="anchor" aria-hidden="true" href="#kaq-4-如何理解随机抽取经验样本">#</a></h2>
+<p>随机抽取的经验样本 (state, action, reward, next_state, done) 包含了 agent 在过去某个时间点所处的状态 state，采取的动作 action，获得的奖励 reward，以及进入的下一个状态 next_state。这相当于在训练过程中，让 agent &ldquo;回忆&rdquo; 起过去某个时刻的局部环境信息和行为结果。</p>
+<p>但，这并不是一个完整的环境模拟。agent 并没有真正回到过去，重新体验整个过程。它只是利用存储的经验数据来更新 Q 网络。</p>
+<p>比喻：</p>
+<ul>
+<li><strong>错题本</strong> (Replay Buffer)：学生将做错的题目记录在错题本上。</li>
+<li><strong>随机复习</strong> (Random Sampling)：学生随机选择错题本上的题目进行复习。</li>
+<li>回顾错误 (Experience)：每道错题都包含了题目内容 (state)、学生的错误答案 (action)、<strong>正确答案 (reward) 和解题思路 (next_state)</strong>。</li>
+<li>学习修正 (Q-learning)：通过回顾这些错题，学生可以发现自己的错误，并学习正确的解题方法，从而提高考试成绩。</li>
+</ul>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/reinforcement-learning/">Reinforcement Learning</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/dqn/">DQN</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

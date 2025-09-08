@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>MARL on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/marl/</link>
+    <description>Recent content in MARL on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:52:03 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/marl/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>1.11.MARL</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/1-11.marl/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:03 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/1-11.marl/</guid>
+      <description>&lt;p&gt;之前的内容，我们的环境中的只有一个 Agent，现实中，一个人是会与环境和环境中的其他 Agent 交互的。&lt;/p&gt;
+&lt;p&gt;所以实际的需求是，我们希望可以在一个 Multi-agent system 中训练一个更加鲁棒的，可以适应并与其他 Agent 或人类合作。&lt;/p&gt;
+&lt;h2 id=&#34;marl&#34;&gt;MARL&lt;/h2&gt;
+&lt;p&gt;一个 Agent 只是与环境交互，多个 Agent 除了与环境交互，还要和其他 Agent 交互，所以Agent之间的交互可以分为以下：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;合作：Agents 需要最大化 common 收益。&lt;/li&gt;
+&lt;li&gt;竞争：Agents 需要最大化自己的收益，同时尽可能减少其他Agent的收益。&lt;/li&gt;
+&lt;li&gt;混合：Agent 需要最大化己方的收益，同时减少敌队的收益。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;在-multi-agent-中-如何训练我们的-agent&#34;&gt;在 Multi-Agent 中 如何训练我们的 Agent&lt;/h2&gt;
+&lt;p&gt;两种解决方法来设计 MARL&lt;/p&gt;
+&lt;h3 id=&#34;1-去中心化的&#34;&gt;1. 去中心化的&lt;/h3&gt;
+&lt;p&gt;每个 Agent 独立训练，就行之前的single agent一样，其他agent作为环境的一部分，只不过对于这个agent而言，这个环境变为动态的了。去中心化的设计，是 Non-Stationary 的， Markov decision process 一直在变化，导致agent永远不能学习到全局最优解。&lt;/p&gt;
+&lt;h3 id=&#34;2-中心化的&#34;&gt;2. 中心化的&lt;/h3&gt;
+&lt;p&gt;讲多个 Agents 视为一个 Entity ，他们共同学习一个相同的Policy。这时代 Reward 是全局的。&lt;/p&gt;
+&lt;h2 id=&#34;self-play&#34;&gt;Self-Play&lt;/h2&gt;
+&lt;p&gt;当对手太强时，你的Agent 总是会失败，是学习不到任何东西的。当对手它弱时，你的Agent总是胜利，总是 overlearn 一些没有用的行为。这两种情况，你的Agent都不能学习到好的Policy。&lt;/p&gt;
+&lt;p&gt;最好的解决方案是有一个对手，它的水平和你一样，并且随着你的水平的提升而升级。这就是 Self_play。&lt;/p&gt;
+&lt;p&gt;将自己拷贝一份作为自己的 对手，如此一来，你的Agent 的对手的水平就和你的水平是一样的（打败它会有挑战，但是不会太困难）。也就是，对手的Policy也是在逐渐变好（增强）的，你的Agent的policy也是逐渐增强的。&lt;/p&gt;
+&lt;p&gt;这种机制是很自然的。没啥新的东西。&lt;/p&gt;
+&lt;p&gt;Self_play 已经集成在了 Multi-Agent 库中，我们要关注的是超参数。这是个实例：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-yml&#34; data-lang=&#34;yml&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#f92672&#34;&gt;self_play&lt;/span&gt;:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;save_steps&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;50000&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;team_change&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;200000&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;swap_steps&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;2000&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;window&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;play_against_latest_model_ratio&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;0.5&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;initial_elo&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;1200.0&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;elo-score&#34;&gt;ELO Score&lt;/h2&gt;
+&lt;p&gt;在对抗游戏中，通常使用 ELO Score 来评估 Agent 的水平。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

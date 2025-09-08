@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Jetson Orin Chip | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="Jetson">
+<meta name="description" content="NVIDIA Jetson Orin Nano 4GB版本的芯片使用的是NVIDIA Ampere架构，配备512个CUDA核心和16个Tensor Cores。具体的芯片型号是 GA10B
+Jetson Orin Nano 4GB
+GPU name: GA10B
+Architechture: NVIDIA Ampere
+算力：34 TOPS
+GPU：NVIDIA Ampere architecture
+SM 个数：4
+Tensor cores/SM：4
+CUDA core/SM：128
+总 Tensor Cores：16
+总 CUDA core：512
+GPU 最大频率：1020MHz
+CPU：6-core Arm® Cortex®-A78AE v8.2 64-bit CPU 1.5MB L2 &#43; 4MB L3
+CPU 最大频率：1.7 GHz
+内存：4GB 64-bit LPDDR5 51 GB/s
+功耗：7W - 10W - 25W
+吞吐：512 * 611.35 * 1000000 * 10^9 * 2(flops) = 34 TOPS">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/jetson/jetson-orin-chip/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/jetson/jetson-orin-chip/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/jetson/jetson-orin-chip/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="Jetson Orin Chip">
+  <meta property="og:description" content="NVIDIA Jetson Orin Nano 4GB版本的芯片使用的是NVIDIA Ampere架构，配备512个CUDA核心和16个Tensor Cores。具体的芯片型号是 GA10B
+Jetson Orin Nano 4GB GPU name: GA10B
+Architechture: NVIDIA Ampere
+算力：34 TOPS
+GPU：NVIDIA Ampere architecture
+SM 个数：4
+Tensor cores/SM：4
+CUDA core/SM：128
+总 Tensor Cores：16
+总 CUDA core：512
+GPU 最大频率：1020MHz
+CPU：6-core Arm® Cortex®-A78AE v8.2 64-bit CPU 1.5MB L2 &#43; 4MB L3
+CPU 最大频率：1.7 GHz
+内存：4GB 64-bit LPDDR5 51 GB/s
+功耗：7W - 10W - 25W
+吞吐：512 * 611.35 * 1000000 * 10^9 * 2(flops) = 34 TOPS">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="jetson">
+    <meta property="article:published_time" content="2025-08-31T12:47:01+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:47:01+08:00">
+    <meta property="article:tag" content="Jetson">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Jetson Orin Chip">
+<meta name="twitter:description" content="NVIDIA Jetson Orin Nano 4GB版本的芯片使用的是NVIDIA Ampere架构，配备512个CUDA核心和16个Tensor Cores。具体的芯片型号是 GA10B
+Jetson Orin Nano 4GB
+GPU name: GA10B
+Architechture: NVIDIA Ampere
+算力：34 TOPS
+GPU：NVIDIA Ampere architecture
+SM 个数：4
+Tensor cores/SM：4
+CUDA core/SM：128
+总 Tensor Cores：16
+总 CUDA core：512
+GPU 最大频率：1020MHz
+CPU：6-core Arm® Cortex®-A78AE v8.2 64-bit CPU 1.5MB L2 &#43; 4MB L3
+CPU 最大频率：1.7 GHz
+内存：4GB 64-bit LPDDR5 51 GB/s
+功耗：7W - 10W - 25W
+吞吐：512 * 611.35 * 1000000 * 10^9 * 2(flops) = 34 TOPS">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Jetson",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/jetson/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Jetson Orin Chip",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/jetson/jetson-orin-chip/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Jetson Orin Chip",
+  "name": "Jetson Orin Chip",
+  "description": "NVIDIA Jetson Orin Nano 4GB版本的芯片使用的是NVIDIA Ampere架构，配备512个CUDA核心和16个Tensor Cores。具体的芯片型号是 GA10B\nJetson Orin Nano 4GB GPU name: GA10B\nArchitechture: NVIDIA Ampere\n算力：34 TOPS\nGPU：NVIDIA Ampere architecture\nSM 个数：4\nTensor cores/SM：4\nCUDA core/SM：128\n总 Tensor Cores：16\n总 CUDA core：512\nGPU 最大频率：1020MHz\nCPU：6-core Arm® Cortex®-A78AE v8.2 64-bit CPU 1.5MB L2 + 4MB L3\nCPU 最大频率：1.7 GHz\n内存：4GB 64-bit LPDDR5 51 GB/s\n功耗：7W - 10W - 25W\n吞吐：512 * 611.35 * 1000000 * 10^9 * 2(flops) = 34 TOPS\n",
+  "keywords": [
+    "Jetson"
+  ],
+  "articleBody": "NVIDIA Jetson Orin Nano 4GB版本的芯片使用的是NVIDIA Ampere架构，配备512个CUDA核心和16个Tensor Cores。具体的芯片型号是 GA10B\nJetson Orin Nano 4GB GPU name: GA10B\nArchitechture: NVIDIA Ampere\n算力：34 TOPS\nGPU：NVIDIA Ampere architecture\nSM 个数：4\nTensor cores/SM：4\nCUDA core/SM：128\n总 Tensor Cores：16\n总 CUDA core：512\nGPU 最大频率：1020MHz\nCPU：6-core Arm® Cortex®-A78AE v8.2 64-bit CPU 1.5MB L2 + 4MB L3\nCPU 最大频率：1.7 GHz\n内存：4GB 64-bit LPDDR5 51 GB/s\n功耗：7W - 10W - 25W\n吞吐：512 * 611.35 * 1000000 * 10^9 * 2(flops) = 34 TOPS\n芯片 SM 架构 L1 instruction cache\nL1 data cache / shared memory\nL0 instruction cache\nWarp scheduler (32 threads /clk) clk表示时钟周期，1~2 纳秒，于每个 warp 包含32个线程，这些线程在同一时钟周期内执行相同的指令。所以是 32.\nDispatch unit (32 threads /clk)\nRegister file (16348个 x 32bit)：片上内存空间。寄存器文件和共享内存通常被认为是片上内存，因为它们与 SM（Streaming Multiprocessor）集成在同一块芯片上。\nLD/ST：单元负责内存访问和数据传输，\nSFU：则专门用于执行复杂的数学函数，如sin，cos，log等。\nINT32/FP32/FP64: CUDA core 被组织为FP32和INT32两类，两类1：1，可以并发。\nGigaThread 引擎是 NVIDIA GPU 中的一个硬件调度器，负责管理和调度线程的执行。它在 GPU 上下文切换和数据传输方面起着关键作用。\nMIG 是 NVIDIA Ampere 架构引入的一项技术，允许将单个物理 GPU 分割成多个独立的 GPU 实例。每个实例都有其自己的专用资源，例如内存、计算单元和 I/O 带宽。\nGigathread engine with MIG Control：在 MIG 环境中，GigaThread 引擎负责在不同的 GPU 实例之间调度线程和管理资源，从而提高 GPU 利用率和性能。\n硬件待从Orin上确认 GPU 包含多个 GPC，GPC 之间共享 L2 cache，每个 GPC 包含多个 SM 。每个 GPC 含有多个 TPC ，每个 TPC 包含多个 SM。每个 SM 有自己的 L1 和 shared memory。\nFrom device query CUDA Driver Version / Runtime Version 11.4 / 11.4 CUDA Capability Major/Minor version number: 8.7 Total amount of global memory: 3311 MBytes (3471556608 bytes) (004) Multiprocessors, (128) CUDA Cores/MP: 512 CUDA Cores GPU Max Clock rate: 624 MHz (0.62 GHz) Memory Clock rate: 624 Mhz Memory Bus Width: 64-bit L2 Cache Size: 2097152 bytes = 2 MB Maximum Texture Dimension Size (x,y,z) 1D=(131072), 2D=(131072, 65536), 3D=(16384, 16384, 16384) Maximum Layered 1D Texture Size, (num) layers 1D=(32768), 2048 layers Maximum Layered 2D Texture Size, (num) layers 2D=(32768, 32768), 2048 layers Total amount of constant memory: 65536 bytes Total amount of shared memory per block: 49152 bytes Total shared memory per multiprocessor: 167936 bytes Total number of registers available per block: 65536 Warp size: 32 Maximum number of threads per multiprocessor: 1536 Maximum number of threads per block: 1024 Max dimension size of a thread block (x,y,z): (1024, 1024, 64) Max dimension size of a grid size (x,y,z): (2147483647, 65535, 65535) Maximum memory pitch: 2147483647 bytes Texture alignment: 512 bytes shared memory bank 宽度 没有找到相关文档，但是 Ampere GPU的共享内存（Shared Memory）架构与其他 NVIDIA GPU类似，共享内存的 bank 宽度通常为32位，每个 bank 在每个时钟周期可以处理32位数据。4bytes\nhardware info From ncu fp32 优化得好 该 GPU 的单精度浮点（FP32）峰值性能是双精度浮点（FP64）峰值性能的 64 倍。如果需要 FP64 操作，性能将受限，因为 FP64 硬件单元较少（仅 1/64 的 FP32 吞吐量）\nSM 个数 = 4 每个SM 可用的shared memory = 16KB ",
+  "wordCount" : "383",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:47:01+08:00",
+  "dateModified": "2025-08-31T12:47:01+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/jetson/jetson-orin-chip/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      Jetson Orin Chip
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:47:01 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><p>NVIDIA Jetson Orin Nano 4GB版本的芯片使用的是NVIDIA Ampere架构，配备512个CUDA核心和16个Tensor Cores。具体的芯片型号是 GA10B</p>
+<h1 id="jetson-orin-nano-4gb">Jetson Orin Nano 4GB<a hidden class="anchor" aria-hidden="true" href="#jetson-orin-nano-4gb">#</a></h1>
+<p>GPU name: GA10B</p>
+<p>Architechture: NVIDIA Ampere</p>
+<p>算力：34 TOPS</p>
+<p>GPU：NVIDIA Ampere architecture</p>
+<p>SM 个数：4</p>
+<p>Tensor cores/SM：4</p>
+<p>CUDA core/SM：128</p>
+<p>总 Tensor Cores：16</p>
+<p>总 CUDA core：512</p>
+<p>GPU 最大频率：1020MHz</p>
+<p>CPU：6-core Arm® Cortex®-A78AE v8.2 64-bit CPU 1.5MB L2 + 4MB L3</p>
+<p>CPU 最大频率：1.7 GHz</p>
+<p>内存：4GB 64-bit LPDDR5 51 GB/s</p>
+<p>功耗：7W - 10W - 25W</p>
+<p>吞吐：512 * 611.35 * 1000000 * 10^9 * 2(flops) = 34 TOPS</p>
+<h1 id="芯片-sm-架构">芯片 SM 架构<a hidden class="anchor" aria-hidden="true" href="#芯片-sm-架构">#</a></h1>
+<ul>
+<li>
+<p>L1 instruction cache</p>
+</li>
+<li>
+<p>L1 data cache / shared memory</p>
+</li>
+<li>
+<p>L0 instruction cache</p>
+</li>
+<li>
+<p>Warp scheduler (32 threads /clk) clk表示时钟周期，1~2 纳秒，于每个 warp 包含32个线程，这些线程在同一时钟周期内执行相同的指令。所以是 32.</p>
+</li>
+<li>
+<p>Dispatch unit (32 threads /clk)</p>
+</li>
+<li>
+<p>Register file (16348个 x 32bit)：片上内存空间。寄存器文件和共享内存通常被认为是片上内存，因为它们与 SM（Streaming Multiprocessor）集成在同一块芯片上。</p>
+</li>
+<li>
+<p>LD/ST：单元负责内存访问和数据传输，</p>
+</li>
+<li>
+<p>SFU：则专门用于执行复杂的数学函数，如sin，cos，log等。</p>
+</li>
+<li>
+<p>INT32/FP32/FP64: CUDA core 被组织为FP32和INT32两类，两类1：1，可以并发。</p>
+</li>
+<li>
+<p><code>GigaThread</code> 引擎是 NVIDIA GPU 中的一个硬件调度器，负责管理和调度线程的执行。它在 GPU 上下文切换和数据传输方面起着关键作用。</p>
+</li>
+<li>
+<p><code>MIG</code> 是 NVIDIA Ampere 架构引入的一项技术，允许将单个物理 GPU 分割成多个独立的 GPU 实例。每个实例都有其自己的专用资源，例如内存、计算单元和 I/O 带宽。</p>
+</li>
+<li>
+<p><code>Gigathread engine with MIG Control</code>：在 MIG 环境中，GigaThread 引擎负责在不同的 GPU 实例之间调度线程和管理资源，从而提高 GPU 利用率和性能。</p>
+</li>
+</ul>
+<h1 id="硬件待从orin上确认">硬件待从Orin上确认<a hidden class="anchor" aria-hidden="true" href="#硬件待从orin上确认">#</a></h1>
+<p>GPU 包含多个 GPC，GPC 之间共享 L2 cache，每个 GPC 包含多个 SM 。每个 GPC 含有多个 TPC ，每个 TPC 包含多个 SM。每个 SM 有自己的 L1 和 shared memory。</p>
+<h1 id="from-device-query">From device query<a hidden class="anchor" aria-hidden="true" href="#from-device-query">#</a></h1>
+<ul>
+<li>CUDA Driver Version / Runtime Version          11.4 / 11.4</li>
+<li>CUDA Capability Major/Minor version number:    <strong>8.7</strong></li>
+<li>Total amount of global memory:                 3311 MBytes (3471556608 bytes)</li>
+<li>(004) Multiprocessors, (128) CUDA Cores/MP:    512 CUDA Cores</li>
+<li>GPU Max Clock rate:                            624 MHz (0.62 GHz)</li>
+<li>Memory Clock rate:                             624 Mhz</li>
+<li>Memory Bus Width:                              64-bit</li>
+<li>L2 Cache Size:                                 2097152 bytes = <strong>2 MB</strong></li>
+<li>Maximum Texture Dimension Size (x,y,z)         1D=(131072), 2D=(131072, 65536), 3D=(16384, 16384, 16384)</li>
+<li>Maximum Layered 1D Texture Size, (num) layers  1D=(32768), 2048 layers</li>
+<li>Maximum Layered 2D Texture Size, (num) layers  2D=(32768, 32768), 2048 layers</li>
+<li>Total amount of constant memory:               65536 bytes</li>
+<li>Total amount of shared memory per block:       49152 bytes</li>
+<li>Total <strong>shared memory</strong> per multiprocessor:    167936 bytes</li>
+<li>Total number of registers available per block: 65536</li>
+<li>Warp size:                                     32</li>
+<li>Maximum number of threads per multiprocessor:  1536</li>
+<li>Maximum number of threads per block:           1024</li>
+<li>Max dimension size of a thread block (x,y,z): (1024, 1024, 64)</li>
+<li>Max dimension size of a grid size    (x,y,z): (2147483647, 65535, 65535)</li>
+<li>Maximum memory pitch:                          2147483647 bytes</li>
+<li>Texture alignment:                             512 bytes</li>
+</ul>
+<h1 id="shared-memory-bank-宽度">shared memory bank 宽度<a hidden class="anchor" aria-hidden="true" href="#shared-memory-bank-宽度">#</a></h1>
+<p>没有找到相关文档，但是 Ampere GPU的共享内存（Shared Memory）架构与其他 NVIDIA GPU类似，共享内存的 bank 宽度通常为32位，每个 bank 在每个时钟周期可以处理32位数据。4bytes</p>
+<h1 id="hardware-info-from-ncu">hardware info From ncu<a hidden class="anchor" aria-hidden="true" href="#hardware-info-from-ncu">#</a></h1>
+<h2 id="fp32-优化得好">fp32 优化得好<a hidden class="anchor" aria-hidden="true" href="#fp32-优化得好">#</a></h2>
+<p>该 GPU 的单精度浮点（FP32）峰值性能是双精度浮点（FP64）峰值性能的 64 倍。如果需要 FP64 操作，性能将受限，因为 FP64 硬件单元较少（仅 1/64 的 FP32 吞吐量）</p>
+<h2 id="sm-个数--4">SM 个数 = 4<a hidden class="anchor" aria-hidden="true" href="#sm-个数--4">#</a></h2>
+<h2 id="每个sm-可用的shared-memory--16kb">每个SM 可用的shared memory = 16KB<a hidden class="anchor" aria-hidden="true" href="#每个sm-可用的shared-memory--16kb">#</a></h2>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/jetson/">Jetson</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

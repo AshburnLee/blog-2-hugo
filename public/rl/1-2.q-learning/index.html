@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>1.2.Q Learning | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="Reinforcement Learning, Q-learning">
+<meta name="description" content="Q-learning中的元素
+Q-learning 算法中的 Q-function 就是 value-based 方法中的价值函数。Q-table 存储了 Q-function 的价值估计。
+Q-table 是一种表示 Q-function 的一种具体实现方式。适用于状态空间和动作空间都是离散且有限的情况。当状态空间或动作空间很大时，需要使用其他函数逼近方法 来表示Q-function。Q-learning 更新规则就是更新 Q-table，即 Q-Learning 的更新规则直接作用于 Q-table，用于更新 Q-table 中存储的价值估计。通过不断地更新 Q-table，Q-Learning 可以学习到最优的 Q-function，从而帮助 Agent 做出最优的决策。
+Q-learning 是一种 TD approach 来训练Agent的 action-value function。使用全零初始化 Q-table，通过学习，将得到 optimal 的 Q-table 作为 Agent 的 cheat-sheet.
+Recap: Cumulative Reward VS Immediate Reward
+一个 State 的 Value，或者 Q-table 中的 State-action 对儿，是 Agent 从当前 State 开始到结束的 Cumulative Reward
+Reward 是 Agent 在某个状态下执行操作后，从当前 State 中得到的及时反馈。
+Q-learning 算法
+">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/rl/1-2.q-learning/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/rl/1-2.q-learning/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/rl/1-2.q-learning/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="1.2.Q Learning">
+  <meta property="og:description" content="Q-learning中的元素 Q-learning 算法中的 Q-function 就是 value-based 方法中的价值函数。Q-table 存储了 Q-function 的价值估计。
+Q-table 是一种表示 Q-function 的一种具体实现方式。适用于状态空间和动作空间都是离散且有限的情况。当状态空间或动作空间很大时，需要使用其他函数逼近方法 来表示Q-function。Q-learning 更新规则就是更新 Q-table，即 Q-Learning 的更新规则直接作用于 Q-table，用于更新 Q-table 中存储的价值估计。通过不断地更新 Q-table，Q-Learning 可以学习到最优的 Q-function，从而帮助 Agent 做出最优的决策。
+Q-learning 是一种 TD approach 来训练Agent的 action-value function。使用全零初始化 Q-table，通过学习，将得到 optimal 的 Q-table 作为 Agent 的 cheat-sheet.
+Recap: Cumulative Reward VS Immediate Reward 一个 State 的 Value，或者 Q-table 中的 State-action 对儿，是 Agent 从当前 State 开始到结束的 Cumulative Reward
+Reward 是 Agent 在某个状态下执行操作后，从当前 State 中得到的及时反馈。
+Q-learning 算法 ">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="rl">
+    <meta property="article:published_time" content="2025-08-31T12:52:03+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:52:03+08:00">
+    <meta property="article:tag" content="Reinforcement Learning">
+    <meta property="article:tag" content="Q-Learning">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="1.2.Q Learning">
+<meta name="twitter:description" content="Q-learning中的元素
+Q-learning 算法中的 Q-function 就是 value-based 方法中的价值函数。Q-table 存储了 Q-function 的价值估计。
+Q-table 是一种表示 Q-function 的一种具体实现方式。适用于状态空间和动作空间都是离散且有限的情况。当状态空间或动作空间很大时，需要使用其他函数逼近方法 来表示Q-function。Q-learning 更新规则就是更新 Q-table，即 Q-Learning 的更新规则直接作用于 Q-table，用于更新 Q-table 中存储的价值估计。通过不断地更新 Q-table，Q-Learning 可以学习到最优的 Q-function，从而帮助 Agent 做出最优的决策。
+Q-learning 是一种 TD approach 来训练Agent的 action-value function。使用全零初始化 Q-table，通过学习，将得到 optimal 的 Q-table 作为 Agent 的 cheat-sheet.
+Recap: Cumulative Reward VS Immediate Reward
+一个 State 的 Value，或者 Q-table 中的 State-action 对儿，是 Agent 从当前 State 开始到结束的 Cumulative Reward
+Reward 是 Agent 在某个状态下执行操作后，从当前 State 中得到的及时反馈。
+Q-learning 算法
+">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "RL",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/rl/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "1.2.Q Learning",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/rl/1-2.q-learning/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "1.2.Q Learning",
+  "name": "1.2.Q Learning",
+  "description": "Q-learning中的元素 Q-learning 算法中的 Q-function 就是 value-based 方法中的价值函数。Q-table 存储了 Q-function 的价值估计。\nQ-table 是一种表示 Q-function 的一种具体实现方式。适用于状态空间和动作空间都是离散且有限的情况。当状态空间或动作空间很大时，需要使用其他函数逼近方法 来表示Q-function。Q-learning 更新规则就是更新 Q-table，即 Q-Learning 的更新规则直接作用于 Q-table，用于更新 Q-table 中存储的价值估计。通过不断地更新 Q-table，Q-Learning 可以学习到最优的 Q-function，从而帮助 Agent 做出最优的决策。\nQ-learning 是一种 TD approach 来训练Agent的 action-value function。使用全零初始化 Q-table，通过学习，将得到 optimal 的 Q-table 作为 Agent 的 cheat-sheet.\nRecap: Cumulative Reward VS Immediate Reward 一个 State 的 Value，或者 Q-table 中的 State-action 对儿，是 Agent 从当前 State 开始到结束的 Cumulative Reward\nReward 是 Agent 在某个状态下执行操作后，从当前 State 中得到的及时反馈。\nQ-learning 算法 ",
+  "keywords": [
+    "Reinforcement Learning", "Q-learning"
+  ],
+  "articleBody": "Q-learning中的元素 Q-learning 算法中的 Q-function 就是 value-based 方法中的价值函数。Q-table 存储了 Q-function 的价值估计。\nQ-table 是一种表示 Q-function 的一种具体实现方式。适用于状态空间和动作空间都是离散且有限的情况。当状态空间或动作空间很大时，需要使用其他函数逼近方法 来表示Q-function。Q-learning 更新规则就是更新 Q-table，即 Q-Learning 的更新规则直接作用于 Q-table，用于更新 Q-table 中存储的价值估计。通过不断地更新 Q-table，Q-Learning 可以学习到最优的 Q-function，从而帮助 Agent 做出最优的决策。\nQ-learning 是一种 TD approach 来训练Agent的 action-value function。使用全零初始化 Q-table，通过学习，将得到 optimal 的 Q-table 作为 Agent 的 cheat-sheet.\nRecap: Cumulative Reward VS Immediate Reward 一个 State 的 Value，或者 Q-table 中的 State-action 对儿，是 Agent 从当前 State 开始到结束的 Cumulative Reward\nReward 是 Agent 在某个状态下执行操作后，从当前 State 中得到的及时反馈。\nQ-learning 算法 步骤2是 $\\epsilon$ greedy policy 选择一个Action（上下左右）， 步骤3是执行这个Action， 步骤4是应用更新规则，更新这里的 Q-table 值 这3个步骤循环进行，其中的 $\\epsilon$ 随循环逐步减小。\n步骤2 是 $\\epsilon$ greedy 的，步骤4中计算值greedy（max()）的,\nQ-learning 的更新规则 Q-learning：\nQ(s, a) = Q(s, a) + α * [R + γ * max(Q(s', a')) - Q(s, a)]\n其中 Q(s, a) 是当前状态 s 下执行动作 a 的 Q-value（价值估计值）, 这个 Q-value 是 cumulative reward，即从当前时刻开始，一直到 episode 结束，所有奖励的总和。 max(Q(s’, a’)) 是状态 s’时，所有可能 Action 中，Q-value 最大的那个Action 的Q值。 Q-learning 是 Off-policy 的TD，它使用贪婪策略 (即选择 Q 值最大的动作) 来更新 Q 值。 SARSA\nQ(s, a) = Q(s, a) + α * [R + γ * Q(s', a') - Q(s, a)]\n其中，a’ 是在状态 s’ 下，根据当前 Policy 选择的动作. SARSA 是 On-policy 算法，它使用当前策略选择的动作来更新 Q 值。 $\\epsilon$ greedy 它是最常用的RL 策略，防止陷入局部最优。\n根据 $\\epsilon$-greedy policy 选择一个Action。其中的 $\\epsilon$ 随训练的过程变化（随训练过程逐渐减小）。目的是处理探索/应用的 trade-off。\n一开始，Q-table值用0初始化，$\\epsilon$ 很大，Agent做探索（即选择随机的action），随着训练的进行，Agent的 Q-table值会越来越好，同时$\\epsilon$逐渐减小，因为我们期望Agent越来越多地应用所学，越来越小的去探索。\n$\\epsilon$-greedy 策略是指：以概率 $\\epsilon$ 随机选择一个动作，以概率 1-$\\epsilon$ 选择 Q 值最大的动作。【？，根据code实现理解？看看具体实现？】\nimport numpy as np # 初始化 Q-table Q = np.zeros((state_space_size, action_space_size)) # Q-learning 算法 for episode in range(num_episodes): state = env.reset() done = False while not done: # 1. 选择动作 (Action Selection) - $\\epsilon$-greedy 策略 if np.random.rand() \u003c epsilon: action = env.action_space.sample() # Exploration else: action = np.argmax(Q[state, :]) # Exploitation # 2. 执行动作，观察奖励和下一个状态 next_state, reward, done, _ = env.step(action) # 3. 更新 Q 值 (Q-value Update) Q[state, action] = Q[state, action] + alpha * (reward + gamma * np.max(Q[next_state, :]) - Q[state, action]) # 更新状态 state = next_state 完成训练 当训练完成，我们获得了一个最优的 Q-function，即最优的Q-table，这个最优的Q-function leads to 一个最优的 Policy，即间接学习一个Policy。\nOff-policy \u0026\u0026 On-policy 【hold】 Q-Learning 训练使用 $\\epsilon$-greedy 策略来生成数据（以e概率选择一个额action：At, 得到 Rt+1、 St+1），但使用Greedy policy 来更新 Q 值(更新公式中的 max())。\nOff-policy 的核心在于，学习的策略 (目标策略) 与实际执行的策略 (行为策略) 不同。见 off-policy（Q-learning）和 on-policy (SARSA)算法的描述：\nKAQ: Q-learning 的训练是 off-policy 的，但推理过程也是 off-policy 吗? 答:自然不是，在推理阶段，我们的目标是利用已经训练好的 Q 函数来做出最优的决策。就是直接使用贪婪策略，即在每个状态下选择 Q 值最大的动作。训练好了的 Q-table，就是在推理时用的。\n也可以说，Q-learning 是 off-policy 的，因为训练（e-greedy + greedy） 和推理（greedy）使用的策略不同。\nKAQ：理解$\\epsilon$-greedy 和 greedy两者策略不同 这里需要跟一个实例，理解 Q-learning 的过程，理解 $\\epsilon$-greedy 和 greedy，两种 policy 在训练过程中的行为。\n答：让一个实例动起来，就都理解了。\n",
+  "wordCount" : "346",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:52:03+08:00",
+  "dateModified": "2025-08-31T12:52:03+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/rl/1-2.q-learning/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      1.2.Q Learning
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:52:03 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><h2 id="q-learning中的元素">Q-learning中的元素<a hidden class="anchor" aria-hidden="true" href="#q-learning中的元素">#</a></h2>
+<p>Q-learning 算法中的 Q-function 就是 value-based 方法中的价值函数。Q-table 存储了 Q-function 的价值估计。</p>
+<p>Q-table 是一种表示 Q-function 的一种具体实现方式。适用于状态空间和动作空间都是<strong>离散且有限</strong>的情况。当状态空间或动作空间很大时，需要使用其他函数逼近方法 来表示Q-function。Q-learning 更新规则就是更新 Q-table，即 Q-Learning 的更新规则直接作用于 Q-table，用于更新 Q-table 中存储的价值估计。通过不断地更新 Q-table，Q-Learning 可以学习到最优的 Q-function，从而帮助 Agent 做出最优的决策。</p>
+<p>Q-learning 是一种 TD approach 来训练Agent的 action-value function。使用全零初始化 Q-table，通过学习，将得到 optimal 的 Q-table 作为 Agent 的 cheat-sheet.</p>
+<h2 id="recap-cumulative-reward-vs-immediate-reward">Recap: Cumulative Reward VS Immediate Reward<a hidden class="anchor" aria-hidden="true" href="#recap-cumulative-reward-vs-immediate-reward">#</a></h2>
+<p>一个 State 的 Value，或者 Q-table 中的 State-action 对儿，是 Agent 从当前 State 开始到结束的 Cumulative Reward</p>
+<p>Reward 是 Agent 在某个状态下执行操作后，从当前 State 中得到的及时反馈。</p>
+<h2 id="q-learning-算法">Q-learning 算法<a hidden class="anchor" aria-hidden="true" href="#q-learning-算法">#</a></h2>
+<p><img alt="Q" loading="lazy" src="/pics/Q-learning-2.png"></p>
+<ul>
+<li>步骤2是 $\epsilon$ greedy policy 选择一个Action（上下左右），</li>
+<li>步骤3是执行这个Action，</li>
+<li>步骤4是应用更新规则，更新这里的 Q-table 值</li>
+</ul>
+<p>这3个步骤循环进行，其中的 $\epsilon$ 随循环逐步减小。</p>
+<p>步骤2 是 $\epsilon$ greedy 的，步骤4中计算值greedy（max()）的,</p>
+<h2 id="q-learning-的更新规则">Q-learning 的更新规则<a hidden class="anchor" aria-hidden="true" href="#q-learning-的更新规则">#</a></h2>
+<p>Q-learning：</p>
+<p><code>Q(s, a) = Q(s, a) + α * [R + γ * max(Q(s', a')) - Q(s, a)]</code></p>
+<ul>
+<li>其中 Q(s, a) 是当前状态 s 下执行动作 a 的 Q-value（价值估计值）, 这个 Q-value 是 cumulative reward，即从当前时刻开始，一直到 episode 结束，所有奖励的总和。</li>
+<li>max(Q(s&rsquo;, a&rsquo;)) 是状态 s&rsquo;时，所有可能 Action 中，Q-value 最大的那个Action 的Q值。</li>
+<li>Q-learning 是 <strong>Off-policy</strong> 的TD，它使用贪婪策略 (即选择 Q 值最大的动作) 来更新 Q 值。</li>
+</ul>
+<p>SARSA</p>
+<p><code>Q(s, a) = Q(s, a) + α * [R + γ * Q(s', a') - Q(s, a)]</code></p>
+<ul>
+<li>其中，a&rsquo; 是在状态 s&rsquo; 下，根据当前 Policy 选择的动作.</li>
+<li>SARSA 是 On-policy 算法，它使用当前策略选择的动作来更新 Q 值。</li>
+</ul>
+<h2 id="epsilon-greedy">$\epsilon$ greedy<a hidden class="anchor" aria-hidden="true" href="#epsilon-greedy">#</a></h2>
+<p>它是最常用的RL 策略，防止陷入局部最优。</p>
+<p>根据 $\epsilon$-greedy policy 选择一个Action。其中的 $\epsilon$ 随训练的过程变化（随训练过程逐渐减小）。目的是处理探索/应用的 trade-off。</p>
+<p>一开始，Q-table值用0初始化，$\epsilon$ 很大，Agent做探索（即选择随机的action），随着训练的进行，Agent的 Q-table值会越来越好，同时$\epsilon$逐渐减小，因为我们期望Agent越来越多地应用所学，越来越小的去探索。</p>
+<p>$\epsilon$-greedy 策略是指：以概率 $\epsilon$ 随机选择一个动作，以概率 1-$\epsilon$ 选择 Q 值最大的动作。【？，根据code实现理解？看看具体实现？】</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">import</span> numpy <span style="color:#66d9ef">as</span> np
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 初始化 Q-table</span>
+</span></span><span style="display:flex;"><span>Q <span style="color:#f92672">=</span> np<span style="color:#f92672">.</span>zeros((state_space_size, action_space_size))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Q-learning 算法</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> episode <span style="color:#f92672">in</span> range(num_episodes):
+</span></span><span style="display:flex;"><span>    state <span style="color:#f92672">=</span> env<span style="color:#f92672">.</span>reset()
+</span></span><span style="display:flex;"><span>    done <span style="color:#f92672">=</span> <span style="color:#66d9ef">False</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> <span style="color:#f92672">not</span> done:
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e"># 1. 选择动作 (Action Selection) - $\epsilon$-greedy 策略</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> np<span style="color:#f92672">.</span>random<span style="color:#f92672">.</span>rand() <span style="color:#f92672">&lt;</span> epsilon:
+</span></span><span style="display:flex;"><span>            action <span style="color:#f92672">=</span> env<span style="color:#f92672">.</span>action_space<span style="color:#f92672">.</span>sample()  <span style="color:#75715e"># Exploration</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">else</span>:
+</span></span><span style="display:flex;"><span>            action <span style="color:#f92672">=</span> np<span style="color:#f92672">.</span>argmax(Q[state, :])   <span style="color:#75715e"># Exploitation</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e"># 2. 执行动作，观察奖励和下一个状态</span>
+</span></span><span style="display:flex;"><span>        next_state, reward, done, _ <span style="color:#f92672">=</span> env<span style="color:#f92672">.</span>step(action)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e"># 3. 更新 Q 值 (Q-value Update)</span>
+</span></span><span style="display:flex;"><span>        Q[state, action] <span style="color:#f92672">=</span> Q[state, action] <span style="color:#f92672">+</span> alpha <span style="color:#f92672">*</span> (reward <span style="color:#f92672">+</span> gamma <span style="color:#f92672">*</span> np<span style="color:#f92672">.</span>max(Q[next_state, :]) <span style="color:#f92672">-</span> Q[state, action])
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e"># 更新状态</span>
+</span></span><span style="display:flex;"><span>        state <span style="color:#f92672">=</span> next_state
+</span></span></code></pre></div><h2 id="完成训练">完成训练<a hidden class="anchor" aria-hidden="true" href="#完成训练">#</a></h2>
+<p>当训练完成，我们获得了一个最优的 Q-function，即最优的Q-table，这个最优的Q-function leads to 一个最优的 Policy，即间接学习一个Policy。</p>
+<h2 id="off-policy--on-policy-hold">Off-policy &amp;&amp; On-policy 【hold】<a hidden class="anchor" aria-hidden="true" href="#off-policy--on-policy-hold">#</a></h2>
+<p>Q-Learning 训练使用 $\epsilon$-greedy 策略来<strong>生成数据（以e概率选择一个额action：At, 得到 Rt+1、 St+1）</strong>，但使用Greedy policy 来<strong>更新 Q 值(更新公式中的 max())</strong>。</p>
+<p>Off-policy 的核心在于，学习的策略 (目标策略) 与实际执行的策略 (行为策略) 不同。见 off-policy（Q-learning）和 on-policy (SARSA)算法的描述：</p>
+<p><img alt="on/off" loading="lazy" src="/pics/off-on-4.png"></p>
+<h2 id="kaq-q-learning-的训练是-off-policy-的但推理过程也是-off-policy-吗">KAQ: Q-learning 的训练是 off-policy 的，但推理过程也是 off-policy 吗?<a hidden class="anchor" aria-hidden="true" href="#kaq-q-learning-的训练是-off-policy-的但推理过程也是-off-policy-吗">#</a></h2>
+<p>答:自然不是，在推理阶段，我们的目标是利用已经训练好的 Q 函数来做出最优的决策。就是直接使用贪婪策略，即在每个状态下选择 Q 值最大的动作。训练好了的 Q-table，就是在推理时用的。</p>
+<p>也可以说，Q-learning 是 off-policy 的，因为训练（e-greedy + greedy） 和推理（greedy）使用的策略不同。</p>
+<h2 id="kaq理解epsilon-greedy-和-greedy两者策略不同">KAQ：理解$\epsilon$-greedy 和 greedy两者策略不同<a hidden class="anchor" aria-hidden="true" href="#kaq理解epsilon-greedy-和-greedy两者策略不同">#</a></h2>
+<p>这里需要跟一个实例，理解 Q-learning 的过程，理解 $\epsilon$-greedy 和 greedy，两种 policy 在训练过程中的行为。</p>
+<p>答：让一个<a href="https://huggingface.co/learn/deep-rl-course/unit2/q-learning-example">实例动起来</a>，就都理解了。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/reinforcement-learning/">Reinforcement Learning</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/q-learning/">Q-Learning</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

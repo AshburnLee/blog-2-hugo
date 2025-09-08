@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>RLHF on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/rlhf/</link>
+    <description>Recent content in RLHF on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:49:37 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/rlhf/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>4.1.RL in LLMs</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/llm/4.1.rl-in-llms/</link>
+      <pubDate>Sun, 31 Aug 2025 12:49:37 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/llm/4.1.rl-in-llms/</guid>
+      <description>&lt;h1 id=&#34;why-rl-in-llms&#34;&gt;Why RL in LLMs&lt;/h1&gt;
+&lt;p&gt;LLMs 在生成任务中表现出色。然而，直到最近，它们在需要推理的复杂问题上一直存在困难。例如，它们难以处理需要多步推理的谜题或数学问题。强化学习可以鼓励 LLMs 进行“思考”和推理。&lt;/p&gt;
+&lt;p&gt;RL 革新了 LLMs 训练的方式。pure RL 详细内容见 &lt;a href=&#34;../RL/&#34;&gt;笔记RL&lt;/a&gt;。RL 中的 reward 对应在 LLMs 上是为了反映 LLM 在特定任务上的表现好坏。&lt;/p&gt;
+&lt;p&gt;我们希望 LLMs 不仅仅是擅长生成流畅的文本。我们希望它们能够&lt;strong&gt;提供与某些内容相关，且有帮助的信息。避免生成有害信息。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;预训练 LLM 方法，主要依赖于从文本数据中预测下一个词。上述期望的方面会存在不足。微调后的模型也会生成流畅且结构化的文本，但在上述方面也会是不足的。&lt;/p&gt;
+&lt;p&gt;RL 为我们提供了一种方法，可以微调预训练的 LLMs，以更好地实现上述期望生成内容的特质。&lt;/p&gt;
+&lt;p&gt;如果将 LLMs 比喻成宠物狗，那么我们期望它成为一个&lt;strong&gt;行为良好且有用的伙伴&lt;/strong&gt;，而不仅仅是一只知道如何流利汪汪的狗。&lt;/p&gt;
+&lt;h1 id=&#34;但是&#34;&gt;但是&lt;/h1&gt;
+&lt;p&gt;不是所有大模型都应用 RLHF（Reinforcement Learning from Human Feedback） 方法。LLMs 训练过程是&lt;strong&gt;预训练&lt;/strong&gt;，然后&lt;strong&gt;监督微调&lt;/strong&gt;（SFT），只有部分模型使用 RLHF 方法，优化模型输出。&lt;/p&gt;
+&lt;p&gt;关于SFT，所有流行的 LLMs 都需要一些监督微调。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;RLHF 的劣势&lt;/strong&gt;：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;成本高，它需要大量的人类反馈，预训练和 SFT 已经满足大部分需求。&lt;/li&gt;
+&lt;li&gt;计算复杂性大，RLHF 使用强化学习算法（如 PPO），计算资源需求大。&lt;/li&gt;
+&lt;li&gt;一些模型使用 高质量 SFT 替代 RLHF。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1 id=&#34;rl-in-llms&#34;&gt;RL in LLMs&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;语言模型对齐&lt;/strong&gt;: 是指通过训练和优化，使 LLMs 的输出与人类价值观、意图或特定任务目标保持一致的过程。目标是确保模型生成安全、准确、符合伦理且对用户有用的内容。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;RLHF&lt;/strong&gt;: 是一种对齐语言模型的&lt;strong&gt;具体方法&lt;/strong&gt;，通过结合强化学习和人类反馈优化模型，使其输出更符合人类偏好。&lt;/p&gt;
+&lt;p&gt;在 RLHF 中使用人类反馈作为强化学习（RL）中&lt;strong&gt;奖励信号&lt;/strong&gt;的代理。原理大概如下：&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

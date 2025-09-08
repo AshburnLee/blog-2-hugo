@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>2.0.LlamaIndex | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="Agent, LlamaIndex, LlamaHub">
+<meta name="description" content="LlamaIndex 是一个用于连接自定义数据源到 LLM 的框架。 简单来说，它可以让你用你自己的数据来增强 LLM，让 LLM 能够回答关于这些数据的更具体、更准确的问题。它被设计为实现 RAG（Retrieval-Augmented Generation）的 Agent。
+LlamaIndex 核心功能和作用
+1. 数据连接：
+LlamaIndex 提供了各种数据连接器 (Data Connectors)，可以从不同的数据源加载数据，例如：文档 (PDF, Word, Text, Markdown 等)，网站，数据库，知识图谱，API。这些连接器负责将数据转换为 LlamaIndex 可以处理的文档格式。
+2. 数据索引：
+LlamaIndex 将加载的数据构建成索引 (Index)，以便 LLM 可以高效地查询和检索相关信息。LlamaIndex 提供了多种索引类型，例如：
+
+列表索引 (List Index): 简单地将文档列表存储起来。
+向量索引 (Vector Store Index): 将文档嵌入到向量空间中，以便进行语义搜索。
+树索引 (Tree Index): 将文档组织成树状结构，以便进行分层搜索。
+关键词表索引 (Keyword Table Index): 使用关键词来索引文档。
+
+你可以根据你的数据和查询需求选择合适的索引类型
+3. 查询引擎：
+LlamaIndex 提供了查询引擎 (Query Engine)，用于接收用户的查询，并从索引中检索相关信息。查询引擎使用 LLM 来理解用户的查询，并生成合适的查询语句。查询引擎还可以对检索到的信息进行排序、过滤和聚合，以便提供更准确的答案。
+4. 数据代理 (Data Agents):
+LlamaIndex 允许你创建数据代理，这些代理可以自动执行各种任务，例如：回答问题，生成文本，总结文档，等等。数据代理可以根据你的需求进行定制，以便更好地完成特定任务。
+3个重要部分
+
+Components： 最基本的构建块。这些包括提示、模型和数据库等。组件通常有助于将 LlamaIndex 与其他工具和库连接起来。比如指定模型。
+Agents and Tools：让 Agent 执行动作的组件，如搜索、计算或访问外部服务；Agent 是能够使用工具并做出决策的自主组件。
+Workflows：是逐步处理逻辑的过程。
+
+LlamaHub
+LlamaHub 是一个包含数百个 integrations、Agents 和 Tools 的注册中心，属于 LlamaIndex。">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/agent/2.0.llamaindex/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/agent/2.0.llamaindex/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/agent/2.0.llamaindex/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="2.0.LlamaIndex">
+  <meta property="og:description" content="LlamaIndex 是一个用于连接自定义数据源到 LLM 的框架。 简单来说，它可以让你用你自己的数据来增强 LLM，让 LLM 能够回答关于这些数据的更具体、更准确的问题。它被设计为实现 RAG（Retrieval-Augmented Generation）的 Agent。
+LlamaIndex 核心功能和作用 1. 数据连接： LlamaIndex 提供了各种数据连接器 (Data Connectors)，可以从不同的数据源加载数据，例如：文档 (PDF, Word, Text, Markdown 等)，网站，数据库，知识图谱，API。这些连接器负责将数据转换为 LlamaIndex 可以处理的文档格式。
+2. 数据索引： LlamaIndex 将加载的数据构建成索引 (Index)，以便 LLM 可以高效地查询和检索相关信息。LlamaIndex 提供了多种索引类型，例如：
+列表索引 (List Index): 简单地将文档列表存储起来。 向量索引 (Vector Store Index): 将文档嵌入到向量空间中，以便进行语义搜索。 树索引 (Tree Index): 将文档组织成树状结构，以便进行分层搜索。 关键词表索引 (Keyword Table Index): 使用关键词来索引文档。 你可以根据你的数据和查询需求选择合适的索引类型
+3. 查询引擎： LlamaIndex 提供了查询引擎 (Query Engine)，用于接收用户的查询，并从索引中检索相关信息。查询引擎使用 LLM 来理解用户的查询，并生成合适的查询语句。查询引擎还可以对检索到的信息进行排序、过滤和聚合，以便提供更准确的答案。
+4. 数据代理 (Data Agents): LlamaIndex 允许你创建数据代理，这些代理可以自动执行各种任务，例如：回答问题，生成文本，总结文档，等等。数据代理可以根据你的需求进行定制，以便更好地完成特定任务。
+3个重要部分 Components： 最基本的构建块。这些包括提示、模型和数据库等。组件通常有助于将 LlamaIndex 与其他工具和库连接起来。比如指定模型。 Agents and Tools：让 Agent 执行动作的组件，如搜索、计算或访问外部服务；Agent 是能够使用工具并做出决策的自主组件。 Workflows：是逐步处理逻辑的过程。 LlamaHub LlamaHub 是一个包含数百个 integrations、Agents 和 Tools 的注册中心，属于 LlamaIndex。">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="agent">
+    <meta property="article:published_time" content="2025-08-31T12:13:28+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:13:28+08:00">
+    <meta property="article:tag" content="Agent">
+    <meta property="article:tag" content="LlamaIndex">
+    <meta property="article:tag" content="LlamaHub">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="2.0.LlamaIndex">
+<meta name="twitter:description" content="LlamaIndex 是一个用于连接自定义数据源到 LLM 的框架。 简单来说，它可以让你用你自己的数据来增强 LLM，让 LLM 能够回答关于这些数据的更具体、更准确的问题。它被设计为实现 RAG（Retrieval-Augmented Generation）的 Agent。
+LlamaIndex 核心功能和作用
+1. 数据连接：
+LlamaIndex 提供了各种数据连接器 (Data Connectors)，可以从不同的数据源加载数据，例如：文档 (PDF, Word, Text, Markdown 等)，网站，数据库，知识图谱，API。这些连接器负责将数据转换为 LlamaIndex 可以处理的文档格式。
+2. 数据索引：
+LlamaIndex 将加载的数据构建成索引 (Index)，以便 LLM 可以高效地查询和检索相关信息。LlamaIndex 提供了多种索引类型，例如：
+
+列表索引 (List Index): 简单地将文档列表存储起来。
+向量索引 (Vector Store Index): 将文档嵌入到向量空间中，以便进行语义搜索。
+树索引 (Tree Index): 将文档组织成树状结构，以便进行分层搜索。
+关键词表索引 (Keyword Table Index): 使用关键词来索引文档。
+
+你可以根据你的数据和查询需求选择合适的索引类型
+3. 查询引擎：
+LlamaIndex 提供了查询引擎 (Query Engine)，用于接收用户的查询，并从索引中检索相关信息。查询引擎使用 LLM 来理解用户的查询，并生成合适的查询语句。查询引擎还可以对检索到的信息进行排序、过滤和聚合，以便提供更准确的答案。
+4. 数据代理 (Data Agents):
+LlamaIndex 允许你创建数据代理，这些代理可以自动执行各种任务，例如：回答问题，生成文本，总结文档，等等。数据代理可以根据你的需求进行定制，以便更好地完成特定任务。
+3个重要部分
+
+Components： 最基本的构建块。这些包括提示、模型和数据库等。组件通常有助于将 LlamaIndex 与其他工具和库连接起来。比如指定模型。
+Agents and Tools：让 Agent 执行动作的组件，如搜索、计算或访问外部服务；Agent 是能够使用工具并做出决策的自主组件。
+Workflows：是逐步处理逻辑的过程。
+
+LlamaHub
+LlamaHub 是一个包含数百个 integrations、Agents 和 Tools 的注册中心，属于 LlamaIndex。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Agent",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/agent/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "2.0.LlamaIndex",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/agent/2.0.llamaindex/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "2.0.LlamaIndex",
+  "name": "2.0.LlamaIndex",
+  "description": "LlamaIndex 是一个用于连接自定义数据源到 LLM 的框架。 简单来说，它可以让你用你自己的数据来增强 LLM，让 LLM 能够回答关于这些数据的更具体、更准确的问题。它被设计为实现 RAG（Retrieval-Augmented Generation）的 Agent。\nLlamaIndex 核心功能和作用 1. 数据连接： LlamaIndex 提供了各种数据连接器 (Data Connectors)，可以从不同的数据源加载数据，例如：文档 (PDF, Word, Text, Markdown 等)，网站，数据库，知识图谱，API。这些连接器负责将数据转换为 LlamaIndex 可以处理的文档格式。\n2. 数据索引： LlamaIndex 将加载的数据构建成索引 (Index)，以便 LLM 可以高效地查询和检索相关信息。LlamaIndex 提供了多种索引类型，例如：\n列表索引 (List Index): 简单地将文档列表存储起来。 向量索引 (Vector Store Index): 将文档嵌入到向量空间中，以便进行语义搜索。 树索引 (Tree Index): 将文档组织成树状结构，以便进行分层搜索。 关键词表索引 (Keyword Table Index): 使用关键词来索引文档。 你可以根据你的数据和查询需求选择合适的索引类型\n3. 查询引擎： LlamaIndex 提供了查询引擎 (Query Engine)，用于接收用户的查询，并从索引中检索相关信息。查询引擎使用 LLM 来理解用户的查询，并生成合适的查询语句。查询引擎还可以对检索到的信息进行排序、过滤和聚合，以便提供更准确的答案。\n4. 数据代理 (Data Agents): LlamaIndex 允许你创建数据代理，这些代理可以自动执行各种任务，例如：回答问题，生成文本，总结文档，等等。数据代理可以根据你的需求进行定制，以便更好地完成特定任务。\n3个重要部分 Components： 最基本的构建块。这些包括提示、模型和数据库等。组件通常有助于将 LlamaIndex 与其他工具和库连接起来。比如指定模型。 Agents and Tools：让 Agent 执行动作的组件，如搜索、计算或访问外部服务；Agent 是能够使用工具并做出决策的自主组件。 Workflows：是逐步处理逻辑的过程。 LlamaHub LlamaHub 是一个包含数百个 integrations、Agents 和 Tools 的注册中心，属于 LlamaIndex。\n",
+  "keywords": [
+    "Agent", "LlamaIndex", "LlamaHub"
+  ],
+  "articleBody": "LlamaIndex 是一个用于连接自定义数据源到 LLM 的框架。 简单来说，它可以让你用你自己的数据来增强 LLM，让 LLM 能够回答关于这些数据的更具体、更准确的问题。它被设计为实现 RAG（Retrieval-Augmented Generation）的 Agent。\nLlamaIndex 核心功能和作用 1. 数据连接： LlamaIndex 提供了各种数据连接器 (Data Connectors)，可以从不同的数据源加载数据，例如：文档 (PDF, Word, Text, Markdown 等)，网站，数据库，知识图谱，API。这些连接器负责将数据转换为 LlamaIndex 可以处理的文档格式。\n2. 数据索引： LlamaIndex 将加载的数据构建成索引 (Index)，以便 LLM 可以高效地查询和检索相关信息。LlamaIndex 提供了多种索引类型，例如：\n列表索引 (List Index): 简单地将文档列表存储起来。 向量索引 (Vector Store Index): 将文档嵌入到向量空间中，以便进行语义搜索。 树索引 (Tree Index): 将文档组织成树状结构，以便进行分层搜索。 关键词表索引 (Keyword Table Index): 使用关键词来索引文档。 你可以根据你的数据和查询需求选择合适的索引类型\n3. 查询引擎： LlamaIndex 提供了查询引擎 (Query Engine)，用于接收用户的查询，并从索引中检索相关信息。查询引擎使用 LLM 来理解用户的查询，并生成合适的查询语句。查询引擎还可以对检索到的信息进行排序、过滤和聚合，以便提供更准确的答案。\n4. 数据代理 (Data Agents): LlamaIndex 允许你创建数据代理，这些代理可以自动执行各种任务，例如：回答问题，生成文本，总结文档，等等。数据代理可以根据你的需求进行定制，以便更好地完成特定任务。\n3个重要部分 Components： 最基本的构建块。这些包括提示、模型和数据库等。组件通常有助于将 LlamaIndex 与其他工具和库连接起来。比如指定模型。 Agents and Tools：让 Agent 执行动作的组件，如搜索、计算或访问外部服务；Agent 是能够使用工具并做出决策的自主组件。 Workflows：是逐步处理逻辑的过程。 LlamaHub LlamaHub 是一个包含数百个 integrations、Agents 和 Tools 的注册中心，属于 LlamaIndex。\n尝试使用 Hugging Face inference API integration.和 embedding component\npip install llama-index-llms-huggingface-api llama-index-embeddings-huggingface\n然后 可以看到一个使用 Hugging Face 推理 API 的 LLM 组件的示例：\n# 这里有指定模型的 API from llama_index.llms.huggingface_api import HuggingFaceInferenceAPI import os from dotenv import load_dotenv # Load the .env file load_dotenv() # Retrieve HF_TOKEN from the environment variables hf_token = os.getenv(\"HF_TOKEN\") llm = HuggingFaceInferenceAPI( model_name=\"Qwen/Qwen2.5-Coder-32B-Instruct\", temperature=0.7, max_tokens=100, token=hf_token, ) response = llm.complete(\"Hello, how are you?\") print(response) # I am good, how can I help you today? 如何 find, install 和 use 我们所需的组件的 integrations。\nComponents 组件 Agents 需要理解我们的请求，准备、查找和使用相关信息来帮助完成任务。这就是 LlamaIndex 组件发挥作用的地方。\n该框架有许多组件，重点使用 QueryEngine， 因为它可以作为 RAG 给 Agent 使用。\nUser 通过 Index（LlamaIndex 将database中的数据构建成Index） 在 Your database 中查找信息，并将这个信息 append 到 prompt中，作为 LLM 的输入，最终返回给User. 所以 QueryEngine 的作用是于接收用户的查询，并从索引中检索相关信息，任何代理都需要一种查找和理解相关数据的方式。 QueryEngine 正是提供了这种能力。\n创建 RAG pipline 5 步骤 回顾 RAG 的5个步骤\n我使用的 Devv.ai 不是 RAG 的系统，只是简单的使用 LLM 回答问题。\n现在使用 LlmaIndex 创建 RAG 流程。\n这里有更多关于 LlamaIndex 的 RAG\n步骤1. loading 熟悉 LlamaHub 加载器和 LlamaParse 解析器，以处理更复杂的数据源。\n最简单加载数据的方式是使用 SimpleDirectoryReader 。这个多功能组件可以从文件夹中加载各种文件类型，并将它们转换为 Document 对象，以便 LlamaIndex 可以使用。\nfrom llama_index.core import SimpleDirectoryReader reader = SimpleDirectoryReader(input_dir=\"path/to/directory\") documents = reader.load_data() 加载我们的文档后，我们需要将它们分解成更小的片段，称为 Node 对象。IngestionPipeline 帮助我们通过两个关键转换来创建这些节点：SentenceSplitter \u0026 HuggingFaceEmbedding ：\nfrom llama_index.core import Document from llama_index.embeddings.huggingface import HuggingFaceEmbedding from llama_index.core.node_parser import SentenceSplitter from llama_index.core.ingestion import IngestionPipeline # create the pipeline with transformations pipeline = IngestionPipeline( transformations=[ SentenceSplitter(chunk_overlap=0), HuggingFaceEmbedding(model_name=\"BAAI/bge-small-en-v1.5\"), ] ) nodes = await pipeline.arun(documents=[Document.example()]) 步骤2，3. storing \u0026 indexing 在创建我们的 Node 对象后，我们需要对它们进行索引以使其可搜索，但在那之前，我们需要一个地方来存储我们的数据。\n!pip install llama-index-vector-stores-chroma 用于存储 documents。\nimport chromadb from llama_index.vector_stores.chroma import ChromaVectorStore db = chromadb.PersistentClient(path=\"./alfred_chroma_db\") chroma_collection = db.get_or_create_collection(\"alfred\") # 保存我们的 documents vector_store = ChromaVectorStore(chroma_collection=chroma_collection) pipeline = IngestionPipeline( transformations=[ SentenceSplitter(chunk_size=25, chunk_overlap=0), HuggingFaceEmbedding(model_name=\"BAAI/bge-small-en-v1.5\"), ], vector_store=vector_store, ) 通过将 query and nodes 嵌入到同一个向量空间中，我们可以找到相关的匹配项。 VectorStoreIndex 帮助我们处理这个问题。 从我们的 vector_store 和 embedding 中创建这 Index:\nfrom llama_index.core import VectorStoreIndex from llama_index.embeddings.huggingface import HuggingFaceEmbedding embed_model = HuggingFaceEmbedding(model_name=\"BAAI/bge-small-en-v1.5\") index = VectorStoreIndex.from_vector_store(vector_store, embed_model=embed_model) 注意使用相同的 model。现在可以轻松地 save and load our index。\n步骤4. 使用提示和 LLMs Quering a VectorStoreIndex 在我们能够查询 Index 之前，我们需要将其转换为查询 interface，方法有：\nas_retriever，as_query_engine， as_chat_engine。\nfrom llama_index.llms.huggingface_api import HuggingFaceInferenceAPI llm = HuggingFaceInferenceAPI(model_name=\"Qwen/Qwen2.5-Coder-32B-Instruct\") query_engine = index.as_query_engine( llm=llm, response_mode=\"tree_summarize\", ) query_engine.query(\"What is the meaning of life?\") # The meaning of life is 42 步骤5. Evaluation LlamaIndex 提供内置评估工具来评估响应质量。这些评估器利用 LLMs 来分析响应的不同维度。\n即使没有直接评估，也可以通过观察每一个组件的结果来评估Agent的表现。\nResponseSynthesizer from llama_index.core import VectorStoreIndex, SimpleDirectoryReader from llama_index.core.response_synthesizers import ResponseMode # 加载文档 documents = SimpleDirectoryReader(\"data\").load_data(......) index = VectorStoreIndex.from_documents(documents) # as_query_engine 将一个 Index 转化为一个 Search Engine # 配置查询引擎，使用 ResponseSynthesizer query_engine = index.as_query_engine( response_mode=\"refine\", # 使用 refine 模式 similarity_top_k=3 # 检索 top-3 节点 ) # 查询 response = query_engine.query(\"What is LlamaIndex?\") print(response) # ResponseSynthesizer 合成答案：llamaIndex includes... 从 top-3 文档节点中提取 LlamaIndex 信息，迭代优化（refine 模式），生成最终答案。\n关于 respond mode，有以下几种模式：\ncompact：将所有节点合并为单一上下文，调用 LLM 一次生成答案。 refine：迭代优化每个节点的响应，逐步生成最终答案。 tree_summarize：分层汇总节点，适合复杂查询。 accumulate：为每个节点生成独立答案，汇总输出。 ",
+  "wordCount" : "478",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:13:28+08:00",
+  "dateModified": "2025-08-31T12:13:28+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/agent/2.0.llamaindex/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      2.0.LlamaIndex
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:13:28 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><p>LlamaIndex 是一个用于连接自定义数据源到 LLM 的框架。 简单来说，它可以让你用你自己的数据来增强 LLM，让 LLM 能够回答关于这些数据的更具体、更准确的问题。它被设计为实现 RAG（Retrieval-Augmented Generation）的 Agent。</p>
+<h2 id="llamaindex-核心功能和作用">LlamaIndex 核心功能和作用<a hidden class="anchor" aria-hidden="true" href="#llamaindex-核心功能和作用">#</a></h2>
+<h3 id="1-数据连接">1. 数据连接：<a hidden class="anchor" aria-hidden="true" href="#1-数据连接">#</a></h3>
+<p>LlamaIndex 提供了各种数据连接器 (Data Connectors)，可以从不同的数据源加载数据，例如：文档 (PDF, Word, Text, Markdown 等)，网站，数据库，知识图谱，API。这些连接器负责将数据转换为 LlamaIndex 可以处理的文档格式。</p>
+<h3 id="2-数据索引">2. 数据索引：<a hidden class="anchor" aria-hidden="true" href="#2-数据索引">#</a></h3>
+<p>LlamaIndex 将加载的数据构建成索引 (Index)，以便 LLM 可以高效地查询和检索相关信息。LlamaIndex 提供了多种索引类型，例如：</p>
+<ul>
+<li>列表索引 (List Index): 简单地将文档列表存储起来。</li>
+<li>向量索引 (Vector Store Index): 将文档嵌入到向量空间中，以便进行语义搜索。</li>
+<li>树索引 (Tree Index): 将文档组织成树状结构，以便进行分层搜索。</li>
+<li>关键词表索引 (Keyword Table Index): 使用关键词来索引文档。</li>
+</ul>
+<p>你可以根据你的数据和查询需求选择合适的索引类型</p>
+<h3 id="3-查询引擎">3. 查询引擎：<a hidden class="anchor" aria-hidden="true" href="#3-查询引擎">#</a></h3>
+<p>LlamaIndex 提供了查询引擎 (Query Engine)，用于<strong>接收用户的查询</strong>，<strong>并从索引中检索</strong>相关信息。查询引擎使用 LLM 来理解用户的查询，并生成合适的查询语句。查询引擎还可以对检索到的信息进行排序、过滤和聚合，以便提供更准确的答案。</p>
+<h3 id="4-数据代理-data-agents">4. 数据代理 (Data Agents):<a hidden class="anchor" aria-hidden="true" href="#4-数据代理-data-agents">#</a></h3>
+<p>LlamaIndex 允许你创建数据代理，这些代理可以自动执行各种任务，例如：回答问题，生成文本，总结文档，等等。数据代理可以根据你的需求进行定制，以便更好地完成特定任务。</p>
+<h2 id="3个重要部分">3个重要部分<a hidden class="anchor" aria-hidden="true" href="#3个重要部分">#</a></h2>
+<ul>
+<li><strong>Components</strong>： 最基本的构建块。这些包括提示、模型和数据库等。组件通常有助于将 LlamaIndex 与其他工具和库连接起来。比如指定模型。</li>
+<li><strong>Agents and Tools</strong>：让 Agent 执行动作的组件，如搜索、计算或访问外部服务；Agent 是能够使用工具并做出决策的自主组件。</li>
+<li><strong>Workflows</strong>：是逐步处理逻辑的过程。</li>
+</ul>
+<h2 id="llamahub">LlamaHub<a hidden class="anchor" aria-hidden="true" href="#llamahub">#</a></h2>
+<p><strong>LlamaHub</strong> 是一个包含数百个 <strong>integrations</strong>、Agents 和 Tools 的注册中心，属于 LlamaIndex。</p>
+<p>尝试使用 Hugging Face inference API <strong>integration</strong>.和 embedding component</p>
+<p><code>pip install llama-index-llms-huggingface-api llama-index-embeddings-huggingface</code></p>
+<p>然后 可以看到一个使用 Hugging Face 推理 API 的 LLM 组件的示例：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#75715e"># 这里有指定模型的 API</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.llms.huggingface_api <span style="color:#f92672">import</span> HuggingFaceInferenceAPI
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> os
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> dotenv <span style="color:#f92672">import</span> load_dotenv
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Load the .env file</span>
+</span></span><span style="display:flex;"><span>load_dotenv()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Retrieve HF_TOKEN from the environment variables</span>
+</span></span><span style="display:flex;"><span>hf_token <span style="color:#f92672">=</span> os<span style="color:#f92672">.</span>getenv(<span style="color:#e6db74">&#34;HF_TOKEN&#34;</span>)
+</span></span><span style="display:flex;"><span>llm <span style="color:#f92672">=</span> HuggingFaceInferenceAPI(
+</span></span><span style="display:flex;"><span>    model_name<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;Qwen/Qwen2.5-Coder-32B-Instruct&#34;</span>,
+</span></span><span style="display:flex;"><span>    temperature<span style="color:#f92672">=</span><span style="color:#ae81ff">0.7</span>,
+</span></span><span style="display:flex;"><span>    max_tokens<span style="color:#f92672">=</span><span style="color:#ae81ff">100</span>,
+</span></span><span style="display:flex;"><span>    token<span style="color:#f92672">=</span>hf_token,
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>response <span style="color:#f92672">=</span> llm<span style="color:#f92672">.</span>complete(<span style="color:#e6db74">&#34;Hello, how are you?&#34;</span>)
+</span></span><span style="display:flex;"><span>print(response)
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># I am good, how can I help you today?</span>
+</span></span></code></pre></div><p>如何 find, install 和 use 我们所需的组件的 integrations。</p>
+<h2 id="components-组件">Components 组件<a hidden class="anchor" aria-hidden="true" href="#components-组件">#</a></h2>
+<p>Agents 需要理解我们的请求，准备、查找和使用相关信息来帮助完成任务。这就是 LlamaIndex 组件发挥作用的地方。</p>
+<p>该框架有许多组件，重点使用 <strong>QueryEngine</strong>， 因为<strong>它可以作为 RAG 给 Agent 使用</strong>。</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: center"><img alt="rag" loading="lazy" src="/pics/basic_rag.png"></th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: center"><em>User 通过 Index（LlamaIndex 将database中的数据构建成Index） 在 Your database 中查找信息，并<strong>将这个信息 append 到 prompt中</strong>，作为 LLM 的输入，最终返回给User.</em></td>
+      </tr>
+  </tbody>
+</table>
+<p>所以 QueryEngine 的作用是于接收用户的查询，并从索引中检索相关信息，任何代理都需要一种查找和理解相关数据的方式。 QueryEngine 正是提供了这种能力。</p>
+<h2 id="创建-rag-pipline-5-步骤">创建 RAG pipline 5 步骤<a hidden class="anchor" aria-hidden="true" href="#创建-rag-pipline-5-步骤">#</a></h2>
+<p>回顾 RAG 的<a href="https://ashburnLee.github.io/blog-2-hugo/agent/0.5.agentic-rag/#rag-5个关键阶段">5个步骤</a></p>
+<p>我使用的 Devv.ai 不是 RAG 的系统，只是简单的使用 LLM 回答问题。</p>
+<p>现在使用 LlmaIndex 创建 RAG 流程。</p>
+<p><a href="https://docs.llamaindex.ai/en/stable/understanding/rag/">这里</a>有更多关于 LlamaIndex 的 RAG</p>
+<h3 id="步骤1-loading">步骤1. loading<a hidden class="anchor" aria-hidden="true" href="#步骤1-loading">#</a></h3>
+<p>熟悉 LlamaHub 加载器和 LlamaParse 解析器，以处理更复杂的数据源。</p>
+<p>最简单加载数据的方式是使用 <code>SimpleDirectoryReader</code> 。这个多功能组件可以从文件夹中加载各种文件类型，并将它们转换为 <code>Document</code> 对象，以便 <code>LlamaIndex</code> 可以使用。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.core <span style="color:#f92672">import</span> SimpleDirectoryReader
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>reader <span style="color:#f92672">=</span> SimpleDirectoryReader(input_dir<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;path/to/directory&#34;</span>)
+</span></span><span style="display:flex;"><span>documents <span style="color:#f92672">=</span> reader<span style="color:#f92672">.</span>load_data()
+</span></span></code></pre></div><p>加载我们的文档后，我们需要将它们分解成更小的片段，称为 <strong>Node</strong> 对象。<strong>IngestionPipeline</strong> 帮助我们通过两个关键转换来创建这些节点：<code>SentenceSplitter</code> &amp; <code>HuggingFaceEmbedding</code> ：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.core <span style="color:#f92672">import</span> Document
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.embeddings.huggingface <span style="color:#f92672">import</span> HuggingFaceEmbedding
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.core.node_parser <span style="color:#f92672">import</span> SentenceSplitter
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.core.ingestion <span style="color:#f92672">import</span> IngestionPipeline
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># create the pipeline with transformations</span>
+</span></span><span style="display:flex;"><span>pipeline <span style="color:#f92672">=</span> IngestionPipeline(
+</span></span><span style="display:flex;"><span>    transformations<span style="color:#f92672">=</span>[
+</span></span><span style="display:flex;"><span>        SentenceSplitter(chunk_overlap<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>),
+</span></span><span style="display:flex;"><span>        HuggingFaceEmbedding(model_name<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;BAAI/bge-small-en-v1.5&#34;</span>),
+</span></span><span style="display:flex;"><span>    ]
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>nodes <span style="color:#f92672">=</span> <span style="color:#66d9ef">await</span> pipeline<span style="color:#f92672">.</span>arun(documents<span style="color:#f92672">=</span>[Document<span style="color:#f92672">.</span>example()])
+</span></span></code></pre></div><h3 id="步骤23-storing--indexing">步骤2，3. storing &amp; indexing<a hidden class="anchor" aria-hidden="true" href="#步骤23-storing--indexing">#</a></h3>
+<p>在创建我们的 Node 对象后，我们需要对它们进行索引以使其可搜索，但在那之前，我们需要一个地方来存储我们的数据。</p>
+<p><code>!pip install llama-index-vector-stores-chroma</code> 用于存储 documents。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">import</span> chromadb
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.vector_stores.chroma <span style="color:#f92672">import</span> ChromaVectorStore
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>db <span style="color:#f92672">=</span> chromadb<span style="color:#f92672">.</span>PersistentClient(path<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;./alfred_chroma_db&#34;</span>)
+</span></span><span style="display:flex;"><span>chroma_collection <span style="color:#f92672">=</span> db<span style="color:#f92672">.</span>get_or_create_collection(<span style="color:#e6db74">&#34;alfred&#34;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 保存我们的 documents</span>
+</span></span><span style="display:flex;"><span>vector_store <span style="color:#f92672">=</span> ChromaVectorStore(chroma_collection<span style="color:#f92672">=</span>chroma_collection)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>pipeline <span style="color:#f92672">=</span> IngestionPipeline(
+</span></span><span style="display:flex;"><span>    transformations<span style="color:#f92672">=</span>[
+</span></span><span style="display:flex;"><span>        SentenceSplitter(chunk_size<span style="color:#f92672">=</span><span style="color:#ae81ff">25</span>, chunk_overlap<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span>),
+</span></span><span style="display:flex;"><span>        HuggingFaceEmbedding(model_name<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;BAAI/bge-small-en-v1.5&#34;</span>),
+</span></span><span style="display:flex;"><span>    ],
+</span></span><span style="display:flex;"><span>    vector_store<span style="color:#f92672">=</span>vector_store,
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><p>通过<strong>将 query and nodes 嵌入到同一个向量空间中</strong>，我们可以找到相关的匹配项。 <code>VectorStoreIndex</code> 帮助我们处理这个问题。 从我们的 vector_store 和 embedding 中创建这 Index:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.core <span style="color:#f92672">import</span> VectorStoreIndex
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.embeddings.huggingface <span style="color:#f92672">import</span> HuggingFaceEmbedding
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>embed_model <span style="color:#f92672">=</span> HuggingFaceEmbedding(model_name<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;BAAI/bge-small-en-v1.5&#34;</span>)
+</span></span><span style="display:flex;"><span>index <span style="color:#f92672">=</span> VectorStoreIndex<span style="color:#f92672">.</span>from_vector_store(vector_store, embed_model<span style="color:#f92672">=</span>embed_model)
+</span></span></code></pre></div><p>注意使用相同的 model。现在可以轻松地 save and load our index。</p>
+<h3 id="步骤4-使用提示和-llms-quering-a-vectorstoreindex">步骤4. 使用提示和 LLMs Quering a VectorStoreIndex<a hidden class="anchor" aria-hidden="true" href="#步骤4-使用提示和-llms-quering-a-vectorstoreindex">#</a></h3>
+<p>在我们能够查询 Index 之前，我们需要将其转换为查询 interface，方法有：</p>
+<p><code>as_retriever</code>，<code>as_query_engine</code>， <code>as_chat_engine</code>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.llms.huggingface_api <span style="color:#f92672">import</span> HuggingFaceInferenceAPI
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>llm <span style="color:#f92672">=</span> HuggingFaceInferenceAPI(model_name<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;Qwen/Qwen2.5-Coder-32B-Instruct&#34;</span>)
+</span></span><span style="display:flex;"><span>query_engine <span style="color:#f92672">=</span> index<span style="color:#f92672">.</span>as_query_engine(
+</span></span><span style="display:flex;"><span>    llm<span style="color:#f92672">=</span>llm,
+</span></span><span style="display:flex;"><span>    response_mode<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;tree_summarize&#34;</span>,
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>query_engine<span style="color:#f92672">.</span>query(<span style="color:#e6db74">&#34;What is the meaning of life?&#34;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># The meaning of life is 42</span>
+</span></span></code></pre></div><h3 id="步骤5-evaluation">步骤5. Evaluation<a hidden class="anchor" aria-hidden="true" href="#步骤5-evaluation">#</a></h3>
+<p>LlamaIndex 提供内置评估工具来评估响应质量。这些评估器利用 LLMs 来分析响应的不同维度。</p>
+<p>即使没有直接评估，也可以通过观察每一个组件的结果来评估Agent的表现。</p>
+<h2 id="responsesynthesizer">ResponseSynthesizer<a hidden class="anchor" aria-hidden="true" href="#responsesynthesizer">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.core <span style="color:#f92672">import</span> VectorStoreIndex, SimpleDirectoryReader
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> llama_index.core.response_synthesizers <span style="color:#f92672">import</span> ResponseMode
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 加载文档</span>
+</span></span><span style="display:flex;"><span>documents <span style="color:#f92672">=</span> SimpleDirectoryReader(<span style="color:#e6db74">&#34;data&#34;</span>)<span style="color:#f92672">.</span>load_data(<span style="color:#f92672">......</span>)
+</span></span><span style="display:flex;"><span>index <span style="color:#f92672">=</span> VectorStoreIndex<span style="color:#f92672">.</span>from_documents(documents)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># as_query_engine 将一个 Index 转化为一个 Search Engine</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 配置查询引擎，使用 ResponseSynthesizer</span>
+</span></span><span style="display:flex;"><span>query_engine <span style="color:#f92672">=</span> index<span style="color:#f92672">.</span>as_query_engine(
+</span></span><span style="display:flex;"><span>    response_mode<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;refine&#34;</span>,  <span style="color:#75715e"># 使用 refine 模式</span>
+</span></span><span style="display:flex;"><span>    similarity_top_k<span style="color:#f92672">=</span><span style="color:#ae81ff">3</span>  <span style="color:#75715e"># 检索 top-3 节点</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 查询</span>
+</span></span><span style="display:flex;"><span>response <span style="color:#f92672">=</span> query_engine<span style="color:#f92672">.</span>query(<span style="color:#e6db74">&#34;What is LlamaIndex?&#34;</span>)
+</span></span><span style="display:flex;"><span>print(response)  <span style="color:#75715e"># ResponseSynthesizer 合成答案：llamaIndex includes...</span>
+</span></span></code></pre></div><p>从 top-3 文档节点中提取 LlamaIndex 信息，迭代优化（refine 模式），生成最终答案。</p>
+<p>关于 respond mode，有以下几种模式：</p>
+<ul>
+<li><code>compact</code>：将所有节点合并为单一上下文，调用 LLM 一次生成答案。</li>
+<li><code>refine</code>：迭代优化每个节点的响应，逐步生成最终答案。</li>
+<li><code>tree_summarize</code>：分层汇总节点，适合复杂查询。</li>
+<li><code>accumulate</code>：为每个节点生成独立答案，汇总输出。</li>
+</ul>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/agent/">Agent</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llamaindex/">LlamaIndex</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llamahub/">LlamaHub</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>3.2.实例langgraph Png Tool Invoke Llm | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="Agent">
+<meta name="description" content="这里
+ReAct 模式的工作流。
+该实例的作用和功能是
+
+处理图像文档
+使用 VLM 提取图像中的文字
+在需要时调用常规Tools
+分析内容并提供摘要
+执行与文档相关的特定指令
+
+重点
+回顾 ReAct 结构
+一个复合ReAct 结构的 Agent 需要 3 步骤：
+
+act - 让 Agent 调用 tools
+observe - 将调用 Tools 的输出传回给 model
+reason - 让 model 分析 tools 的输出，并且决定下一步的行为是什么。比如可能会调用另一个 Tools，或者直接将输出返回给用户。
+
+
+KAQ：Tool calling 是Agent 的行为还是 LLM 的行为？
+工具调用是 Agent 的行为，因为 Agent 管理执行流程（调用工具、处理结果）。但 LLM 驱动工具调用，即依赖 LLM 生成调用指令 {&quot;tool&quot;: &quot;web_search&quot;, &quot;query&quot;: &quot;Shanghai city walk&quot;}。因为它生成调用逻辑（如 JSON 或代码）。
+开源LLM 中有的支持Tool calling，有的不支持。如果 LLM 不支持工具调用，Agent 无法有效解析和执行工具调用，导致功能受限。">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/agent/3.2.%E5%AE%9E%E4%BE%8Blanggraph-png-tool-invoke-llm/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/agent/3.2.%E5%AE%9E%E4%BE%8Blanggraph-png-tool-invoke-llm/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/agent/3.2.%E5%AE%9E%E4%BE%8Blanggraph-png-tool-invoke-llm/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="3.2.实例langgraph Png Tool Invoke Llm">
+  <meta property="og:description" content="这里
+ReAct 模式的工作流。
+该实例的作用和功能是 处理图像文档 使用 VLM 提取图像中的文字 在需要时调用常规Tools 分析内容并提供摘要 执行与文档相关的特定指令 重点 回顾 ReAct 结构 一个复合ReAct 结构的 Agent 需要 3 步骤：
+act - 让 Agent 调用 tools observe - 将调用 Tools 的输出传回给 model reason - 让 model 分析 tools 的输出，并且决定下一步的行为是什么。比如可能会调用另一个 Tools，或者直接将输出返回给用户。 KAQ：Tool calling 是Agent 的行为还是 LLM 的行为？ 工具调用是 Agent 的行为，因为 Agent 管理执行流程（调用工具、处理结果）。但 LLM 驱动工具调用，即依赖 LLM 生成调用指令 {&#34;tool&#34;: &#34;web_search&#34;, &#34;query&#34;: &#34;Shanghai city walk&#34;}。因为它生成调用逻辑（如 JSON 或代码）。
+开源LLM 中有的支持Tool calling，有的不支持。如果 LLM 不支持工具调用，Agent 无法有效解析和执行工具调用，导致功能受限。">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="agent">
+    <meta property="article:published_time" content="2025-08-31T12:13:30+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:13:30+08:00">
+    <meta property="article:tag" content="Agent">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="3.2.实例langgraph Png Tool Invoke Llm">
+<meta name="twitter:description" content="这里
+ReAct 模式的工作流。
+该实例的作用和功能是
+
+处理图像文档
+使用 VLM 提取图像中的文字
+在需要时调用常规Tools
+分析内容并提供摘要
+执行与文档相关的特定指令
+
+重点
+回顾 ReAct 结构
+一个复合ReAct 结构的 Agent 需要 3 步骤：
+
+act - 让 Agent 调用 tools
+observe - 将调用 Tools 的输出传回给 model
+reason - 让 model 分析 tools 的输出，并且决定下一步的行为是什么。比如可能会调用另一个 Tools，或者直接将输出返回给用户。
+
+
+KAQ：Tool calling 是Agent 的行为还是 LLM 的行为？
+工具调用是 Agent 的行为，因为 Agent 管理执行流程（调用工具、处理结果）。但 LLM 驱动工具调用，即依赖 LLM 生成调用指令 {&quot;tool&quot;: &quot;web_search&quot;, &quot;query&quot;: &quot;Shanghai city walk&quot;}。因为它生成调用逻辑（如 JSON 或代码）。
+开源LLM 中有的支持Tool calling，有的不支持。如果 LLM 不支持工具调用，Agent 无法有效解析和执行工具调用，导致功能受限。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Agent",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/agent/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "3.2.实例langgraph Png Tool Invoke Llm",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/agent/3.2.%E5%AE%9E%E4%BE%8Blanggraph-png-tool-invoke-llm/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "3.2.实例langgraph Png Tool Invoke Llm",
+  "name": "3.2.实例langgraph Png Tool Invoke Llm",
+  "description": "这里\nReAct 模式的工作流。\n该实例的作用和功能是 处理图像文档 使用 VLM 提取图像中的文字 在需要时调用常规Tools 分析内容并提供摘要 执行与文档相关的特定指令 重点 回顾 ReAct 结构 一个复合ReAct 结构的 Agent 需要 3 步骤：\nact - 让 Agent 调用 tools observe - 将调用 Tools 的输出传回给 model reason - 让 model 分析 tools 的输出，并且决定下一步的行为是什么。比如可能会调用另一个 Tools，或者直接将输出返回给用户。 KAQ：Tool calling 是Agent 的行为还是 LLM 的行为？ 工具调用是 Agent 的行为，因为 Agent 管理执行流程（调用工具、处理结果）。但 LLM 驱动工具调用，即依赖 LLM 生成调用指令 {\u0026quot;tool\u0026quot;: \u0026quot;web_search\u0026quot;, \u0026quot;query\u0026quot;: \u0026quot;Shanghai city walk\u0026quot;}。因为它生成调用逻辑（如 JSON 或代码）。\n开源LLM 中有的支持Tool calling，有的不支持。如果 LLM 不支持工具调用，Agent 无法有效解析和执行工具调用，导致功能受限。\n",
+  "keywords": [
+    "Agent"
+  ],
+  "articleBody": "这里\nReAct 模式的工作流。\n该实例的作用和功能是 处理图像文档 使用 VLM 提取图像中的文字 在需要时调用常规Tools 分析内容并提供摘要 执行与文档相关的特定指令 重点 回顾 ReAct 结构 一个复合ReAct 结构的 Agent 需要 3 步骤：\nact - 让 Agent 调用 tools observe - 将调用 Tools 的输出传回给 model reason - 让 model 分析 tools 的输出，并且决定下一步的行为是什么。比如可能会调用另一个 Tools，或者直接将输出返回给用户。 KAQ：Tool calling 是Agent 的行为还是 LLM 的行为？ 工具调用是 Agent 的行为，因为 Agent 管理执行流程（调用工具、处理结果）。但 LLM 驱动工具调用，即依赖 LLM 生成调用指令 {\"tool\": \"web_search\", \"query\": \"Shanghai city walk\"}。因为它生成调用逻辑（如 JSON 或代码）。\n开源LLM 中有的支持Tool calling，有的不支持。如果 LLM 不支持工具调用，Agent 无法有效解析和执行工具调用，导致功能受限。\n应用 LangGraph 中的哪些工具（具体在下面code中） AnyMessage 类 LangGraph 如何添加上图中的“环”，即 tool 的输出回大脑。 指明 vision_llm。 在tool中将 llm 调用封装起来，让tool变得强大 将定义的 tools 凑到一堆儿 创建Graph时，通过 add_edge(\"tools\", \"assistant\") 将 tools 的输出连接到 assistant。提现出 ReAct 结构。 Code pip install -q -U langchain_openai langchain_core langgraph 工具 extract_text 函数，利用 LLM 从图像中提取文本。即 tool 本身包含一个 llm 调用。\nimport os # Please setp your own key. # OpenAI 的 GPT-4o 模型时，必须提供 OpenAI 官方的 API Key 才能正常使用的， os.environ[\"OPENAI_API_KEY\"] = \"sk-xxxxxx\" import base64 from langchain_core.messages import HumanMessage from langchain_openai import ChatOpenAI vision_llm = ChatOpenAI(model=\"gpt-4o\") def extract_text(img_path: str) -\u003e str: \"\"\" Extract text from an image file using a multimodal model. Args: img_path: A local image file path (strings). Returns: A single string containing the concatenated text extracted from each image. \"\"\" all_text = \"\" try: # Read image and encode as base64 with open(img_path, \"rb\") as image_file: image_bytes = image_file.read() image_base64 = base64.b64encode(image_bytes).decode(\"utf-8\") # Prepare the prompt including the base64 image data message = [ HumanMessage( content=[ { \"type\": \"text\", \"text\": ( \"Extract all the text from this image. \" \"Return only the extracted text, no explanations.\" ), }, { \"type\": \"image_url\", \"image_url\": { \"url\": f\"data:image/png;base64,{image_base64}\" }, }, ] ) ] # Call the vision-capable model response = vision_llm.invoke(message) # Append extracted text all_text += response.content + \"\\n\\n\" return all_text.strip() except Exception as e: # You can choose whether to raise or just return an empty string / error message error_msg = f\"Error extracting text: {str(e)}\" print(error_msg) return \"\" llm = ChatOpenAI(model=\"gpt-4o\") def divide(a: int, b: int) -\u003e float: \"\"\"Divide a and b.\"\"\" return a / b # tools 的集合 tools = [ divide, extract_text ] llm_with_tools = llm.bind_tools(tools, parallel_tool_calls=False) from typing import TypedDict, Annotated, Optional from langchain_core.messages import AnyMessage from langgraph.graph.message import add_messages class AgentState(TypedDict): # The input document input_file: Optional[str] # Contains file path, type (PNG) messages: Annotated[list[AnyMessage], add_messages] from langchain_core.messages import HumanMessage, SystemMessage from langchain_core.utils.function_calling import convert_to_openai_tool def assistant(state: AgentState): # System message textual_description_of_tool = \"\"\" extract_text(img_path: str) -\u003e str: Extract text from an image file using a multimodal model. Args: img_path: A local image file path (strings). Returns: A single string containing the concatenated text extracted from each image. divide(a: int, b: int) -\u003e float: Divide a and b \"\"\" image = state[\"input_file\"] sys_msg = SystemMessage(content=f\"You are an helpful agent that can analyse some images and run \\ some computatio without provided tools :\\n{textual_description_of_tool} \\n You have access to some otpional images. Currently the loaded images is : {image}\") return {\"messages\": [llm_with_tools.invoke([sys_msg] + state[\"messages\"])], \"input_file\": state[\"input_file\"]} ''' 1. define a `tools` node with our list of tools. 2. The `assistant` node is just our model with bound tools. 3. add tools_condition edge, which routes to End or to tools based on whether the assistant calls a tool 4. using connect the `tools` node back to the `assistant`, forming a loop. - After the assistant node executes, tools_condition checks if the model's output is a tool call. - If it is a tool call, the flow is directed to the tools node. - The tools node connects back to assistant. - This loop continues as long as the model decides to call tools. - If the model response is not a tool call, the flow is directed to END, terminating the process. ''' from langgraph.graph import START, StateGraph from langgraph.prebuilt import ToolNode, tools_condition from IPython.display import Image, display # Graph builder = StateGraph(AgentState) # Define nodes: these do the work builder.add_node(\"assistant\", assistant) builder.add_node(\"tools\", ToolNode(tools)) # Define edges: these determine how the control flow moves builder.add_edge(START, \"assistant\") builder.add_conditional_edges( \"assistant\", # If the latest message (result) from assistant is a tool call -\u003e tools_condition routes to tools # If the latest message (result) from assistant is a not a tool call -\u003e tools_condition routes to END tools_condition, ) builder.add_edge(\"tools\", \"assistant\") react_graph = builder.compile() # Show graph的结构 display(Image(react_graph.get_graph(xray=True).draw_mermaid_png())) # 工具调用 messages = [HumanMessage(content=\"Divide 6790 by 5\")] messages = react_graph.invoke({\"messages\": messages, \"input_file\": None}) for m in messages['messages']: m.pretty_print() # 输入是含有文本的图片 messages = [HumanMessage(content=\"According the note provided by MR wayne in the provided images. \\ What's the list of items I should buy for the dinner menu ?\")] messages = react_graph.invoke({\"messages\": messages, \"input_file\": \"Batman_training_and_meals.png\"}) # 返回 message 是结构化的JSON的，所以需要提取主要信息 for m in messages['messages']: m.pretty_print() ",
+  "wordCount" : "754",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:13:30+08:00",
+  "dateModified": "2025-08-31T12:13:30+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/agent/3.2.%E5%AE%9E%E4%BE%8Blanggraph-png-tool-invoke-llm/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      3.2.实例langgraph Png Tool Invoke Llm
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:13:30 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><p><a href="https://huggingface.co/learn/agents-course/unit2/langgraph/document_analysis_agent">这里</a></p>
+<p>ReAct 模式的工作流。</p>
+<h1 id="该实例的作用和功能是">该实例的作用和功能是<a hidden class="anchor" aria-hidden="true" href="#该实例的作用和功能是">#</a></h1>
+<ol>
+<li>处理图像文档</li>
+<li>使用 VLM 提取图像中的文字</li>
+<li>在需要时调用常规Tools</li>
+<li>分析内容并提供摘要</li>
+<li>执行与文档相关的特定指令</li>
+</ol>
+<h1 id="重点">重点<a hidden class="anchor" aria-hidden="true" href="#重点">#</a></h1>
+<h2 id="回顾-react-结构">回顾 ReAct 结构<a hidden class="anchor" aria-hidden="true" href="#回顾-react-结构">#</a></h2>
+<p>一个复合ReAct 结构的 Agent 需要 3 步骤：</p>
+<ul>
+<li>act - 让 Agent 调用 tools</li>
+<li>observe - 将调用 Tools 的输出传回给 model</li>
+<li>reason - 让 model 分析 tools 的输出，并且决定下一步的行为是什么。比如可能会调用另一个 Tools，或者直接将输出返回给用户。</li>
+</ul>
+<p><img alt="ReAct" loading="lazy" src="/pics/Agent.png"></p>
+<h2 id="kaqtool-calling-是agent-的行为还是-llm-的行为">KAQ：Tool calling 是Agent 的行为还是 LLM 的行为？<a hidden class="anchor" aria-hidden="true" href="#kaqtool-calling-是agent-的行为还是-llm-的行为">#</a></h2>
+<p>工具调用是 Agent 的行为，因为 Agent 管理执行流程（调用工具、处理结果）。但 LLM 驱动工具调用，即依赖 LLM 生成调用指令<code> {&quot;tool&quot;: &quot;web_search&quot;, &quot;query&quot;: &quot;Shanghai city walk&quot;}</code>。因为它生成调用逻辑（如 JSON 或代码）。</p>
+<p>开源LLM 中有的支持Tool calling，有的不支持。如果 LLM 不支持工具调用，Agent 无法有效解析和执行工具调用，导致功能受限。</p>
+<h2 id="应用-langgraph-中的哪些工具具体在下面code中">应用 LangGraph 中的哪些工具（具体在下面code中）<a hidden class="anchor" aria-hidden="true" href="#应用-langgraph-中的哪些工具具体在下面code中">#</a></h2>
+<ul>
+<li><code>AnyMessage</code> 类</li>
+<li>LangGraph 如何添加上图中的“环”，即 tool 的输出回大脑。</li>
+<li>指明 <code>vision_llm</code>。</li>
+<li>在tool中将 llm 调用封装起来，让tool变得强大</li>
+<li>将定义的 tools 凑到一堆儿</li>
+<li>创建Graph时，通过 <code>add_edge(&quot;tools&quot;, &quot;assistant&quot;)</code> 将 tools 的输出连接到 assistant。提现出 ReAct 结构。</li>
+</ul>
+<h1 id="code">Code<a hidden class="anchor" aria-hidden="true" href="#code">#</a></h1>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>pip install -q -U langchain_openai langchain_core langgraph
+</span></span></code></pre></div><p>工具 <code>extract_text</code> 函数，利用 LLM 从图像中提取文本。即 <strong>tool 本身包含一个 llm 调用</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">import</span> os
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Please setp your own key.</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># OpenAI 的 GPT-4o 模型时，必须提供 OpenAI 官方的 API Key 才能正常使用的，</span>
+</span></span><span style="display:flex;"><span>os<span style="color:#f92672">.</span>environ[<span style="color:#e6db74">&#34;OPENAI_API_KEY&#34;</span>] <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;sk-xxxxxx&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> base64
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> langchain_core.messages <span style="color:#f92672">import</span> HumanMessage
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> langchain_openai <span style="color:#f92672">import</span> ChatOpenAI
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>vision_llm <span style="color:#f92672">=</span> ChatOpenAI(model<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;gpt-4o&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">extract_text</span>(img_path: str) <span style="color:#f92672">-&gt;</span> str:
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;&#34;&#34;
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    Extract text from an image file using a multimodal model.
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    Args:
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">        img_path: A local image file path (strings).
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    Returns:
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">        A single string containing the concatenated text extracted from each image.
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    &#34;&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>    all_text <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">try</span>:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e"># Read image and encode as base64</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">with</span> open(img_path, <span style="color:#e6db74">&#34;rb&#34;</span>) <span style="color:#66d9ef">as</span> image_file:
+</span></span><span style="display:flex;"><span>            image_bytes <span style="color:#f92672">=</span> image_file<span style="color:#f92672">.</span>read()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        image_base64 <span style="color:#f92672">=</span> base64<span style="color:#f92672">.</span>b64encode(image_bytes)<span style="color:#f92672">.</span>decode(<span style="color:#e6db74">&#34;utf-8&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e"># Prepare the prompt including the base64 image data</span>
+</span></span><span style="display:flex;"><span>        message <span style="color:#f92672">=</span> [
+</span></span><span style="display:flex;"><span>            HumanMessage(
+</span></span><span style="display:flex;"><span>                content<span style="color:#f92672">=</span>[
+</span></span><span style="display:flex;"><span>                    {
+</span></span><span style="display:flex;"><span>                        <span style="color:#e6db74">&#34;type&#34;</span>: <span style="color:#e6db74">&#34;text&#34;</span>,
+</span></span><span style="display:flex;"><span>                        <span style="color:#e6db74">&#34;text&#34;</span>: (
+</span></span><span style="display:flex;"><span>                            <span style="color:#e6db74">&#34;Extract all the text from this image. &#34;</span>
+</span></span><span style="display:flex;"><span>                            <span style="color:#e6db74">&#34;Return only the extracted text, no explanations.&#34;</span>
+</span></span><span style="display:flex;"><span>                        ),
+</span></span><span style="display:flex;"><span>                    },
+</span></span><span style="display:flex;"><span>                    {
+</span></span><span style="display:flex;"><span>                        <span style="color:#e6db74">&#34;type&#34;</span>: <span style="color:#e6db74">&#34;image_url&#34;</span>,
+</span></span><span style="display:flex;"><span>                        <span style="color:#e6db74">&#34;image_url&#34;</span>: {
+</span></span><span style="display:flex;"><span>                            <span style="color:#e6db74">&#34;url&#34;</span>: <span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;data:image/png;base64,</span><span style="color:#e6db74">{</span>image_base64<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>
+</span></span><span style="display:flex;"><span>                        },
+</span></span><span style="display:flex;"><span>                    },
+</span></span><span style="display:flex;"><span>                ]
+</span></span><span style="display:flex;"><span>            )
+</span></span><span style="display:flex;"><span>        ]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e"># Call the vision-capable model</span>
+</span></span><span style="display:flex;"><span>        response <span style="color:#f92672">=</span> vision_llm<span style="color:#f92672">.</span>invoke(message)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e"># Append extracted text</span>
+</span></span><span style="display:flex;"><span>        all_text <span style="color:#f92672">+=</span> response<span style="color:#f92672">.</span>content <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n\n</span><span style="color:#e6db74">&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> all_text<span style="color:#f92672">.</span>strip()
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">except</span> <span style="color:#a6e22e">Exception</span> <span style="color:#66d9ef">as</span> e:
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e"># You can choose whether to raise or just return an empty string / error message</span>
+</span></span><span style="display:flex;"><span>        error_msg <span style="color:#f92672">=</span> <span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;Error extracting text: </span><span style="color:#e6db74">{</span>str(e)<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>
+</span></span><span style="display:flex;"><span>        print(error_msg)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>llm <span style="color:#f92672">=</span> ChatOpenAI(model<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;gpt-4o&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">divide</span>(a: int, b: int) <span style="color:#f92672">-&gt;</span> float:
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;&#34;&#34;Divide a and b.&#34;&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> a <span style="color:#f92672">/</span> b
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># tools 的集合</span>
+</span></span><span style="display:flex;"><span>tools <span style="color:#f92672">=</span> [
+</span></span><span style="display:flex;"><span>    divide,
+</span></span><span style="display:flex;"><span>    extract_text
+</span></span><span style="display:flex;"><span>]
+</span></span><span style="display:flex;"><span>llm_with_tools <span style="color:#f92672">=</span> llm<span style="color:#f92672">.</span>bind_tools(tools, parallel_tool_calls<span style="color:#f92672">=</span><span style="color:#66d9ef">False</span>)
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> typing <span style="color:#f92672">import</span> TypedDict, Annotated, Optional
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> langchain_core.messages <span style="color:#f92672">import</span> AnyMessage
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> langgraph.graph.message <span style="color:#f92672">import</span> add_messages
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">AgentState</span>(TypedDict):
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># The input document</span>
+</span></span><span style="display:flex;"><span>    input_file: Optional[str]  <span style="color:#75715e"># Contains file path, type (PNG)</span>
+</span></span><span style="display:flex;"><span>    messages: Annotated[list[AnyMessage], add_messages]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> langchain_core.messages <span style="color:#f92672">import</span> HumanMessage, SystemMessage
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> langchain_core.utils.function_calling <span style="color:#f92672">import</span> convert_to_openai_tool
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">assistant</span>(state: AgentState):
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># System message</span>
+</span></span><span style="display:flex;"><span>    textual_description_of_tool <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;&#34;&#34;
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">extract_text(img_path: str) -&gt; str:
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    Extract text from an image file using a multimodal model.
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    Args:
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">        img_path: A local image file path (strings).
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    Returns:
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">        A single string containing the concatenated text extracted from each image.
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">divide(a: int, b: int) -&gt; float:
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    Divide a and b
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">&#34;&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>    image <span style="color:#f92672">=</span> state[<span style="color:#e6db74">&#34;input_file&#34;</span>]
+</span></span><span style="display:flex;"><span>    sys_msg <span style="color:#f92672">=</span> SystemMessage(content<span style="color:#f92672">=</span><span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;You are an helpful agent that can analyse some images and run </span><span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span><span style="color:#e6db74">                                    some computatio without provided tools :</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">{</span>textual_description_of_tool<span style="color:#e6db74">}</span><span style="color:#e6db74"> </span><span style="color:#ae81ff">\n</span><span style="color:#e6db74"> </span>
+</span></span><span style="display:flex;"><span>                                    You have access to some otpional images<span style="color:#f92672">.</span> Currently the loaded images <span style="color:#f92672">is</span> : {image}<span style="color:#e6db74">&#34;)</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> {<span style="color:#e6db74">&#34;messages&#34;</span>: [llm_with_tools<span style="color:#f92672">.</span>invoke([sys_msg] <span style="color:#f92672">+</span> state[<span style="color:#e6db74">&#34;messages&#34;</span>])], <span style="color:#e6db74">&#34;input_file&#34;</span>: state[<span style="color:#e6db74">&#34;input_file&#34;</span>]}
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#e6db74">&#39;&#39;&#39;
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">1. define a `tools` node with our list of tools.
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">2. The `assistant` node is just our model with bound tools.
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">3. add tools_condition edge, which routes to End or to tools based on whether the assistant calls a tool
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">4. using connect the `tools` node back to the `assistant`, forming a loop. 
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    - After the assistant node executes, tools_condition checks if the model&#39;s output is a tool call.
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    - If it is a tool call, the flow is directed to the tools node.
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    - The tools node connects back to assistant.
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    - This loop continues as long as the model decides to call tools.
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">    - If the model response is not a tool call, the flow is directed to END, terminating the process.
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">&#39;&#39;&#39;</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> langgraph.graph <span style="color:#f92672">import</span> START, StateGraph
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> langgraph.prebuilt <span style="color:#f92672">import</span> ToolNode, tools_condition
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> IPython.display <span style="color:#f92672">import</span> Image, display
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Graph</span>
+</span></span><span style="display:flex;"><span>builder <span style="color:#f92672">=</span> StateGraph(AgentState)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Define nodes: these do the work</span>
+</span></span><span style="display:flex;"><span>builder<span style="color:#f92672">.</span>add_node(<span style="color:#e6db74">&#34;assistant&#34;</span>, assistant)
+</span></span><span style="display:flex;"><span>builder<span style="color:#f92672">.</span>add_node(<span style="color:#e6db74">&#34;tools&#34;</span>, ToolNode(tools))
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Define edges: these determine how the control flow moves</span>
+</span></span><span style="display:flex;"><span>builder<span style="color:#f92672">.</span>add_edge(START, <span style="color:#e6db74">&#34;assistant&#34;</span>)
+</span></span><span style="display:flex;"><span>builder<span style="color:#f92672">.</span>add_conditional_edges(
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;assistant&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># If the latest message (result) from assistant is a tool call -&gt; tools_condition routes to tools</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e"># If the latest message (result) from assistant is a not a tool call -&gt; tools_condition routes to END</span>
+</span></span><span style="display:flex;"><span>    tools_condition,
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>builder<span style="color:#f92672">.</span>add_edge(<span style="color:#e6db74">&#34;tools&#34;</span>, <span style="color:#e6db74">&#34;assistant&#34;</span>)
+</span></span><span style="display:flex;"><span>react_graph <span style="color:#f92672">=</span> builder<span style="color:#f92672">.</span>compile()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># Show graph的结构</span>
+</span></span><span style="display:flex;"><span>display(Image(react_graph<span style="color:#f92672">.</span>get_graph(xray<span style="color:#f92672">=</span><span style="color:#66d9ef">True</span>)<span style="color:#f92672">.</span>draw_mermaid_png()))
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#75715e"># 工具调用</span>
+</span></span><span style="display:flex;"><span>messages <span style="color:#f92672">=</span> [HumanMessage(content<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;Divide 6790 by 5&#34;</span>)]
+</span></span><span style="display:flex;"><span>messages <span style="color:#f92672">=</span> react_graph<span style="color:#f92672">.</span>invoke({<span style="color:#e6db74">&#34;messages&#34;</span>: messages, <span style="color:#e6db74">&#34;input_file&#34;</span>: <span style="color:#66d9ef">None</span>})
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> m <span style="color:#f92672">in</span> messages[<span style="color:#e6db74">&#39;messages&#39;</span>]:
+</span></span><span style="display:flex;"><span>    m<span style="color:#f92672">.</span>pretty_print()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 输入是含有文本的图片</span>
+</span></span><span style="display:flex;"><span>messages <span style="color:#f92672">=</span> [HumanMessage(content<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;According the note provided by MR wayne in the provided images. </span><span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span><span style="color:#e6db74">                                    What&#39;s the list of items I should buy for the dinner menu ?&#34;</span>)]
+</span></span><span style="display:flex;"><span>messages <span style="color:#f92672">=</span> react_graph<span style="color:#f92672">.</span>invoke({<span style="color:#e6db74">&#34;messages&#34;</span>: messages, <span style="color:#e6db74">&#34;input_file&#34;</span>: <span style="color:#e6db74">&#34;Batman_training_and_meals.png&#34;</span>})
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 返回 message 是结构化的JSON的，所以需要提取主要信息</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> m <span style="color:#f92672">in</span> messages[<span style="color:#e6db74">&#39;messages&#39;</span>]:
+</span></span><span style="display:flex;"><span>    m<span style="color:#f92672">.</span>pretty_print()
+</span></span></code></pre></div>
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/agent/">Agent</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

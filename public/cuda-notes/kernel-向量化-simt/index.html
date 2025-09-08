@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Kernel 向量化 SIMT | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="CUDA, SIMD, SIMT">
+<meta name="description" content="NVIDIA GPU 架构是 SIMT，而编译器又会利用 SIMD 指令来优化 int4 类型的操作，这看起来似乎有些矛盾，但实际上它们并不冲突。
+SIMT 和 SIMD 的关系
+
+
+SIMT 是架构层面：SIMT 描述的是 NVIDIA GPU 的整体架构和执行模型。它指的是多个线程（以 warp 为单位）执行相同的指令，但处理不同的数据。
+
+
+SIMD 是指令层面：SIMD 是一种指令集，它允许一条指令同时操作多个数据。编译器可以使用 SIMD 指令来优化代码，提高程序的性能。
+
+
+所以 NV GPU 是 SIMT 架构的：决定了它的基本执行方式：多个线程（warp）执行相同的指令。同时又有 SIMD 优化的：在 SIMT 架构下，编译器仍然可以利用 SIMD 指令来优化代码。例如，对于 int4 类型的操作，编译器可以使用 SIMD 指令一次性加载、存储和计算 4 个整数。
+SIMT 是 NVIDIA GPU 的专有模型，依赖 SM 和 warp 调度。Multiple Thread 体现在Warp内线程异步执行相同指令：
+__global__ void add(float* a, float* b, float* c, int n) {
+    int idx = blockIdx.x * blockDim.x &#43; threadIdx.x;  // 每个线程独立索引
+    if (idx &lt; n) c[idx] = a[idx] &#43; b[idx];  // SIMT：warp 内线程并行执行加法
+}
+">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/kernel-%E5%90%91%E9%87%8F%E5%8C%96-simt/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/kernel-%E5%90%91%E9%87%8F%E5%8C%96-simt/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/kernel-%E5%90%91%E9%87%8F%E5%8C%96-simt/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="Kernel 向量化 SIMT">
+  <meta property="og:description" content="NVIDIA GPU 架构是 SIMT，而编译器又会利用 SIMD 指令来优化 int4 类型的操作，这看起来似乎有些矛盾，但实际上它们并不冲突。
+SIMT 和 SIMD 的关系 SIMT 是架构层面：SIMT 描述的是 NVIDIA GPU 的整体架构和执行模型。它指的是多个线程（以 warp 为单位）执行相同的指令，但处理不同的数据。
+SIMD 是指令层面：SIMD 是一种指令集，它允许一条指令同时操作多个数据。编译器可以使用 SIMD 指令来优化代码，提高程序的性能。
+所以 NV GPU 是 SIMT 架构的：决定了它的基本执行方式：多个线程（warp）执行相同的指令。同时又有 SIMD 优化的：在 SIMT 架构下，编译器仍然可以利用 SIMD 指令来优化代码。例如，对于 int4 类型的操作，编译器可以使用 SIMD 指令一次性加载、存储和计算 4 个整数。
+SIMT 是 NVIDIA GPU 的专有模型，依赖 SM 和 warp 调度。Multiple Thread 体现在Warp内线程异步执行相同指令：
+__global__ void add(float* a, float* b, float* c, int n) { int idx = blockIdx.x * blockDim.x &#43; threadIdx.x; // 每个线程独立索引 if (idx &lt; n) c[idx] = a[idx] &#43; b[idx]; // SIMT：warp 内线程并行执行加法 } ">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="cuda-notes">
+    <meta property="article:published_time" content="2025-08-31T12:45:51+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:45:51+08:00">
+    <meta property="article:tag" content="CUDA">
+    <meta property="article:tag" content="SIMD">
+    <meta property="article:tag" content="SIMT">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Kernel 向量化 SIMT">
+<meta name="twitter:description" content="NVIDIA GPU 架构是 SIMT，而编译器又会利用 SIMD 指令来优化 int4 类型的操作，这看起来似乎有些矛盾，但实际上它们并不冲突。
+SIMT 和 SIMD 的关系
+
+
+SIMT 是架构层面：SIMT 描述的是 NVIDIA GPU 的整体架构和执行模型。它指的是多个线程（以 warp 为单位）执行相同的指令，但处理不同的数据。
+
+
+SIMD 是指令层面：SIMD 是一种指令集，它允许一条指令同时操作多个数据。编译器可以使用 SIMD 指令来优化代码，提高程序的性能。
+
+
+所以 NV GPU 是 SIMT 架构的：决定了它的基本执行方式：多个线程（warp）执行相同的指令。同时又有 SIMD 优化的：在 SIMT 架构下，编译器仍然可以利用 SIMD 指令来优化代码。例如，对于 int4 类型的操作，编译器可以使用 SIMD 指令一次性加载、存储和计算 4 个整数。
+SIMT 是 NVIDIA GPU 的专有模型，依赖 SM 和 warp 调度。Multiple Thread 体现在Warp内线程异步执行相同指令：
+__global__ void add(float* a, float* b, float* c, int n) {
+    int idx = blockIdx.x * blockDim.x &#43; threadIdx.x;  // 每个线程独立索引
+    if (idx &lt; n) c[idx] = a[idx] &#43; b[idx];  // SIMT：warp 内线程并行执行加法
+}
+">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "CUDA Notes",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/cuda-notes/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Kernel 向量化 SIMT",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/cuda-notes/kernel-%E5%90%91%E9%87%8F%E5%8C%96-simt/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Kernel 向量化 SIMT",
+  "name": "Kernel 向量化 SIMT",
+  "description": "NVIDIA GPU 架构是 SIMT，而编译器又会利用 SIMD 指令来优化 int4 类型的操作，这看起来似乎有些矛盾，但实际上它们并不冲突。\nSIMT 和 SIMD 的关系 SIMT 是架构层面：SIMT 描述的是 NVIDIA GPU 的整体架构和执行模型。它指的是多个线程（以 warp 为单位）执行相同的指令，但处理不同的数据。\nSIMD 是指令层面：SIMD 是一种指令集，它允许一条指令同时操作多个数据。编译器可以使用 SIMD 指令来优化代码，提高程序的性能。\n所以 NV GPU 是 SIMT 架构的：决定了它的基本执行方式：多个线程（warp）执行相同的指令。同时又有 SIMD 优化的：在 SIMT 架构下，编译器仍然可以利用 SIMD 指令来优化代码。例如，对于 int4 类型的操作，编译器可以使用 SIMD 指令一次性加载、存储和计算 4 个整数。\nSIMT 是 NVIDIA GPU 的专有模型，依赖 SM 和 warp 调度。Multiple Thread 体现在Warp内线程异步执行相同指令：\n__global__ void add(float* a, float* b, float* c, int n) { int idx = blockIdx.x * blockDim.x + threadIdx.x; // 每个线程独立索引 if (idx \u0026lt; n) c[idx] = a[idx] + b[idx]; // SIMT：warp 内线程并行执行加法 } ",
+  "keywords": [
+    "CUDA", "SIMD", "SIMT"
+  ],
+  "articleBody": "NVIDIA GPU 架构是 SIMT，而编译器又会利用 SIMD 指令来优化 int4 类型的操作，这看起来似乎有些矛盾，但实际上它们并不冲突。\nSIMT 和 SIMD 的关系 SIMT 是架构层面：SIMT 描述的是 NVIDIA GPU 的整体架构和执行模型。它指的是多个线程（以 warp 为单位）执行相同的指令，但处理不同的数据。\nSIMD 是指令层面：SIMD 是一种指令集，它允许一条指令同时操作多个数据。编译器可以使用 SIMD 指令来优化代码，提高程序的性能。\n所以 NV GPU 是 SIMT 架构的：决定了它的基本执行方式：多个线程（warp）执行相同的指令。同时又有 SIMD 优化的：在 SIMT 架构下，编译器仍然可以利用 SIMD 指令来优化代码。例如，对于 int4 类型的操作，编译器可以使用 SIMD 指令一次性加载、存储和计算 4 个整数。\nSIMT 是 NVIDIA GPU 的专有模型，依赖 SM 和 warp 调度。Multiple Thread 体现在Warp内线程异步执行相同指令：\n__global__ void add(float* a, float* b, float* c, int n) { int idx = blockIdx.x * blockDim.x + threadIdx.x; // 每个线程独立索引 if (idx \u003c n) c[idx] = a[idx] + b[idx]; // SIMT：warp 内线程并行执行加法 } ",
+  "wordCount" : "88",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:45:51+08:00",
+  "dateModified": "2025-08-31T12:45:51+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/cuda-notes/kernel-%E5%90%91%E9%87%8F%E5%8C%96-simt/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      Kernel 向量化 SIMT
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:45:51 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><p>NVIDIA GPU 架构是 SIMT，而编译器又会利用 SIMD 指令来优化 int4 类型的操作，这看起来似乎有些矛盾，但实际上它们并不冲突。</p>
+<h2 id="simt-和-simd-的关系">SIMT 和 SIMD 的关系<a hidden class="anchor" aria-hidden="true" href="#simt-和-simd-的关系">#</a></h2>
+<ul>
+<li>
+<p>SIMT 是<strong>架构层面</strong>：SIMT 描述的是 NVIDIA GPU 的整体架构和执行模型。它指的是多个线程（以 warp 为单位）执行相同的指令，但处理不同的数据。</p>
+</li>
+<li>
+<p>SIMD 是<strong>指令层面</strong>：SIMD 是一种指令集，它允许一条指令同时操作多个数据。编译器可以使用 SIMD 指令来优化代码，提高程序的性能。</p>
+</li>
+</ul>
+<p>所以 NV GPU 是 SIMT 架构的：决定了它的基本执行方式：多个线程（warp）执行相同的指令。同时又有 SIMD 优化的：在 SIMT 架构下，编译器仍然可以利用 SIMD 指令来优化代码。例如，对于 int4 类型的操作，编译器可以使用 SIMD 指令一次性加载、存储和计算 4 个整数。</p>
+<p>SIMT 是 NVIDIA GPU 的专有模型，依赖 SM 和 warp 调度。Multiple Thread 体现在Warp内线程异步执行相同指令：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>__global__ <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">add</span>(<span style="color:#66d9ef">float</span><span style="color:#f92672">*</span> a, <span style="color:#66d9ef">float</span><span style="color:#f92672">*</span> b, <span style="color:#66d9ef">float</span><span style="color:#f92672">*</span> c, <span style="color:#66d9ef">int</span> n) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> idx <span style="color:#f92672">=</span> blockIdx.x <span style="color:#f92672">*</span> blockDim.x <span style="color:#f92672">+</span> threadIdx.x;  <span style="color:#75715e">// 每个线程独立索引
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#66d9ef">if</span> (idx <span style="color:#f92672">&lt;</span> n) c[idx] <span style="color:#f92672">=</span> a[idx] <span style="color:#f92672">+</span> b[idx];  <span style="color:#75715e">// SIMT：warp 内线程并行执行加法
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>}
+</span></span></code></pre></div>
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/cuda/">CUDA</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/simd/">SIMD</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/simt/">SIMT</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

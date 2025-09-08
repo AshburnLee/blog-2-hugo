@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>SM | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="CUDA, Streaming Multiprocessor">
+<meta name="description" content="SM
+Streaming Multiprocessor（SM）。SM 是 GPU 上的一个硬件单元，负责执行 CUDA 核函数（kernels）中的线程块（blocks of threads）。每个 SM 能够同时处理多个线程块，这些线程块中的线程并行执行相同的指令，这种执行模式被称为 SIMD（单指令多数据流）。
+SM 是 GPU 上的一个硬件单元，程序被组织成网格（grid），每个网格由多个线程块（block）组成，而每个线程块又由多个线程（thread）组成。这些线程以 warp为单位被分配到 SM 上执行。
+SM &amp; SP
+
+SM 是核心计算单元，能够并行执行多个线程，它包含多个 SP、指令单元、共享内存、L1缓存、寄存器和其他资源。
+SM 使用 Warp 调度器来管理线程的执行。
+SP（也称为 CUDA 核心）: SP 是 SM 中最基本的处理单元，负责执行单个指令。
+协作关系： SM 负责调度和管理线程的执行，而 SP 负责实际的计算。
+
+SM 中 register 资源分配
+硬件条件：一个 SM 中有 768 个 threads，含有 8000 个registers。假设我配置 block 为256个 threads。如何最大化资源占用率？
+当每个 thread 占用 10 个 registers，那么一个 SM 共占用 （768*10=）7680 个register，没有超过 registers 总个数 8000。SM 驻扎 （768/256=）3 个block，(768/32=) 24 个 warp。这是最理想的情况，最大化资源占用率。">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/sm/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/sm/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/sm/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="SM">
+  <meta property="og:description" content="SM Streaming Multiprocessor（SM）。SM 是 GPU 上的一个硬件单元，负责执行 CUDA 核函数（kernels）中的线程块（blocks of threads）。每个 SM 能够同时处理多个线程块，这些线程块中的线程并行执行相同的指令，这种执行模式被称为 SIMD（单指令多数据流）。
+SM 是 GPU 上的一个硬件单元，程序被组织成网格（grid），每个网格由多个线程块（block）组成，而每个线程块又由多个线程（thread）组成。这些线程以 warp为单位被分配到 SM 上执行。
+SM &amp; SP SM 是核心计算单元，能够并行执行多个线程，它包含多个 SP、指令单元、共享内存、L1缓存、寄存器和其他资源。 SM 使用 Warp 调度器来管理线程的执行。 SP（也称为 CUDA 核心）: SP 是 SM 中最基本的处理单元，负责执行单个指令。 协作关系： SM 负责调度和管理线程的执行，而 SP 负责实际的计算。 SM 中 register 资源分配 硬件条件：一个 SM 中有 768 个 threads，含有 8000 个registers。假设我配置 block 为256个 threads。如何最大化资源占用率？
+当每个 thread 占用 10 个 registers，那么一个 SM 共占用 （768*10=）7680 个register，没有超过 registers 总个数 8000。SM 驻扎 （768/256=）3 个block，(768/32=) 24 个 warp。这是最理想的情况，最大化资源占用率。">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="cuda-notes">
+    <meta property="article:published_time" content="2025-08-31T12:45:49+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:45:49+08:00">
+    <meta property="article:tag" content="CUDA">
+    <meta property="article:tag" content="Streaming Multiprocessor">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="SM">
+<meta name="twitter:description" content="SM
+Streaming Multiprocessor（SM）。SM 是 GPU 上的一个硬件单元，负责执行 CUDA 核函数（kernels）中的线程块（blocks of threads）。每个 SM 能够同时处理多个线程块，这些线程块中的线程并行执行相同的指令，这种执行模式被称为 SIMD（单指令多数据流）。
+SM 是 GPU 上的一个硬件单元，程序被组织成网格（grid），每个网格由多个线程块（block）组成，而每个线程块又由多个线程（thread）组成。这些线程以 warp为单位被分配到 SM 上执行。
+SM &amp; SP
+
+SM 是核心计算单元，能够并行执行多个线程，它包含多个 SP、指令单元、共享内存、L1缓存、寄存器和其他资源。
+SM 使用 Warp 调度器来管理线程的执行。
+SP（也称为 CUDA 核心）: SP 是 SM 中最基本的处理单元，负责执行单个指令。
+协作关系： SM 负责调度和管理线程的执行，而 SP 负责实际的计算。
+
+SM 中 register 资源分配
+硬件条件：一个 SM 中有 768 个 threads，含有 8000 个registers。假设我配置 block 为256个 threads。如何最大化资源占用率？
+当每个 thread 占用 10 个 registers，那么一个 SM 共占用 （768*10=）7680 个register，没有超过 registers 总个数 8000。SM 驻扎 （768/256=）3 个block，(768/32=) 24 个 warp。这是最理想的情况，最大化资源占用率。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "CUDA Notes",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/cuda-notes/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "SM",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/cuda-notes/sm/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "SM",
+  "name": "SM",
+  "description": "SM Streaming Multiprocessor（SM）。SM 是 GPU 上的一个硬件单元，负责执行 CUDA 核函数（kernels）中的线程块（blocks of threads）。每个 SM 能够同时处理多个线程块，这些线程块中的线程并行执行相同的指令，这种执行模式被称为 SIMD（单指令多数据流）。\nSM 是 GPU 上的一个硬件单元，程序被组织成网格（grid），每个网格由多个线程块（block）组成，而每个线程块又由多个线程（thread）组成。这些线程以 warp为单位被分配到 SM 上执行。\nSM \u0026amp; SP SM 是核心计算单元，能够并行执行多个线程，它包含多个 SP、指令单元、共享内存、L1缓存、寄存器和其他资源。 SM 使用 Warp 调度器来管理线程的执行。 SP（也称为 CUDA 核心）: SP 是 SM 中最基本的处理单元，负责执行单个指令。 协作关系： SM 负责调度和管理线程的执行，而 SP 负责实际的计算。 SM 中 register 资源分配 硬件条件：一个 SM 中有 768 个 threads，含有 8000 个registers。假设我配置 block 为256个 threads。如何最大化资源占用率？\n当每个 thread 占用 10 个 registers，那么一个 SM 共占用 （768*10=）7680 个register，没有超过 registers 总个数 8000。SM 驻扎 （768/256=）3 个block，(768/32=) 24 个 warp。这是最理想的情况，最大化资源占用率。\n",
+  "keywords": [
+    "CUDA", "Streaming Multiprocessor"
+  ],
+  "articleBody": "SM Streaming Multiprocessor（SM）。SM 是 GPU 上的一个硬件单元，负责执行 CUDA 核函数（kernels）中的线程块（blocks of threads）。每个 SM 能够同时处理多个线程块，这些线程块中的线程并行执行相同的指令，这种执行模式被称为 SIMD（单指令多数据流）。\nSM 是 GPU 上的一个硬件单元，程序被组织成网格（grid），每个网格由多个线程块（block）组成，而每个线程块又由多个线程（thread）组成。这些线程以 warp为单位被分配到 SM 上执行。\nSM \u0026 SP SM 是核心计算单元，能够并行执行多个线程，它包含多个 SP、指令单元、共享内存、L1缓存、寄存器和其他资源。 SM 使用 Warp 调度器来管理线程的执行。 SP（也称为 CUDA 核心）: SP 是 SM 中最基本的处理单元，负责执行单个指令。 协作关系： SM 负责调度和管理线程的执行，而 SP 负责实际的计算。 SM 中 register 资源分配 硬件条件：一个 SM 中有 768 个 threads，含有 8000 个registers。假设我配置 block 为256个 threads。如何最大化资源占用率？\n当每个 thread 占用 10 个 registers，那么一个 SM 共占用 （768*10=）7680 个register，没有超过 registers 总个数 8000。SM 驻扎 （768/256=）3 个block，(768/32=) 24 个 warp。这是最理想的情况，最大化资源占用率。\n当每个 thread 占用 11 个 registers, 那么SM 要占用 11x768=8448 个 register 超过了 register的总个数。此时，算数上SM最多使用 (8000/11=727.27) 727 个。但实际上，超出限制后，threads数的减少是以block为粒度的减少。若一个block 有 256 个threads，那么可用threads数就不是从 768 减少到 727 ，而是从 768 减少到 512 （第一个比 727 小的 256 的整数倍，0，256，512，768，。。。 ），所以此时，block 个数是2个（512=2x256）\n有多少个 warp 呢？2个 block 有512 个 threads，这个 SM 驻扎 (512/32=) 16个warp。\n只要活动 threads 数减少，就以 block 为单位（粒度）地减少。\n好的 CUDA 程序 设备最大化并行程度 最大化资源利用率 计算吞吐量接近GPU的理论峰值 内存带宽接近GPU的理论峰值 较低的功耗下实现了较高的性能 SM 中 Shared Memory 分配 同样的，一个 SM 中的 Shared Memory 的大小也是有限的。在同一个 block 的 threads 共享同一块 Shared Memory 。一个 SM 中实际使用的 block 数量也是与每个 block 被分配的 Shared Memory 的大小有关。\n一个 SM 有8个 blocks，可使用 Shared Memory 为 16kB。\n当 每个block被分配 Shared Memory 最多为（16kB/8=）2kB，此时资源利用率最大 当 每个block使用了 4kB，则实际只是用了（16kB/4kB=）4 个 blocks，并行程度只有原来的一半。 当 每个block使用 5kB，则实际只用了（16kB/5kB=）3 个 blocks，并行程度就更小了。 Registers数量和每个block分配到的Shared Memory的大小，共同约束了整个系统中的block数量个threads数量。实际应用中也要尽量少的使用存储资源，从而最大化并行程度。内存是竞争资源。\n驻扎/驻留 (Resident) 表示线程或 warp 存在于 SM 中，已经分配了资源（例如，寄存器、共享内存等），但并不一定正在执行。所以：\n每个 SM 最多驻扎 768 个 threads。意思是，768个线程已经分配到了资源，等待快速切换执行。 每个 SM 最多同时驻留 64 个 warp，这 64 个 warp 并不是同时执行的，而是通过快速上下文切换来提高 GPU 的利用率和性能。 SM 内部有 warp 调度器，按照某种策略在不同的 Warp 间切换，达到隐藏延迟的目的。 所以 最大驻扎线程数，即SM 能够同时容纳的线程数量是有限的，这个限制是由 SM 的硬件资源决定的。因为驻扎是已经分配好了资源，资源优先，所以最大驻扎数也是有限的。\n",
+  "wordCount" : "221",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:45:49+08:00",
+  "dateModified": "2025-08-31T12:45:49+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/cuda-notes/sm/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      SM
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:45:49 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><h2 id="sm">SM<a hidden class="anchor" aria-hidden="true" href="#sm">#</a></h2>
+<p>Streaming Multiprocessor（SM）。SM 是 GPU 上的一个<strong>硬件单元</strong>，负责执行 CUDA 核函数（kernels）中的<strong>线程块</strong>（blocks of threads）。每个 SM 能够同时处理多个线程块，这些线程块中的线程并行执行相同的指令，这种执行模式被称为 SIMD（单指令多数据流）。</p>
+<p>SM 是 GPU 上的一个<strong>硬件单元</strong>，程序被组织成网格（grid），每个网格由多个线程块（block）组成，而每个线程块又由多个线程（thread）组成。这些线程以 warp为单位被分配到 SM 上执行。</p>
+<h2 id="sm--sp">SM &amp; SP<a hidden class="anchor" aria-hidden="true" href="#sm--sp">#</a></h2>
+<ul>
+<li>SM 是核心计算单元，能够并行执行多个线程，它包含多个 SP、指令单元、共享内存、L1缓存、寄存器和其他资源。</li>
+<li>SM 使用 Warp 调度器来管理线程的执行。</li>
+<li>SP（也称为 CUDA 核心）: SP 是 SM 中最基本的处理单元，负责执行单个指令。</li>
+<li>协作关系： SM 负责调度和管理线程的执行，而 SP 负责实际的计算。</li>
+</ul>
+<h2 id="sm-中-register-资源分配">SM 中 register 资源分配<a hidden class="anchor" aria-hidden="true" href="#sm-中-register-资源分配">#</a></h2>
+<p>硬件条件：一个 SM 中有 768 个 threads，含有 8000 个registers。假设我配置 block 为256个 threads。如何最大化资源占用率？</p>
+<p>当每个 thread 占用 10 个 registers，那么一个 SM 共占用 （768*10=）7680 个register，没有超过 registers 总个数 8000。SM 驻扎 （768/256=）3 个block，(768/32=) 24 个 warp。这是最理想的情况，最大化资源占用率。</p>
+<p>当每个 thread 占用 11 个 registers, 那么SM 要占用 11x768=8448 个 register 超过了 register的总个数。此时，算数上SM最多使用 (8000/11=727.27) 727 个。但实际上，超出限制后，threads数的减少是以block为粒度的减少。若一个block 有 256 个threads，那么可用threads数就不是从 768 减少到 727 ，而是从 768 减少到 512 （第一个比 727 小的 256 的整数倍，0，256，512，768，。。。 ），所以此时，block 个数是2个（512=2x256）</p>
+<p>有多少个 warp 呢？2个 block 有512 个 threads，这个 SM 驻扎 (512/32=) 16个warp。</p>
+<p><strong>只要活动 threads 数减少，就以 block 为单位（粒度）地减少。</strong></p>
+<h2 id="好的-cuda-程序">好的 CUDA 程序<a hidden class="anchor" aria-hidden="true" href="#好的-cuda-程序">#</a></h2>
+<ul>
+<li>设备最大化并行程度</li>
+<li>最大化资源利用率</li>
+<li>计算吞吐量接近GPU的理论峰值</li>
+<li>内存带宽接近GPU的理论峰值</li>
+<li>较低的功耗下实现了较高的性能</li>
+</ul>
+<h2 id="sm-中-shared-memory-分配">SM 中 Shared Memory 分配<a hidden class="anchor" aria-hidden="true" href="#sm-中-shared-memory-分配">#</a></h2>
+<p>同样的，一个 SM 中的 Shared Memory 的大小也是有限的。在同一个 block 的 threads 共享同一块 Shared Memory 。一个 SM 中实际使用的 block 数量也是与每个 block 被分配的 Shared Memory 的大小有关。</p>
+<p>一个 SM 有8个 blocks，可使用 Shared Memory 为 16kB。</p>
+<ul>
+<li>当 每个block被分配 Shared Memory 最多为（16kB/8=）2kB，此时资源利用率最大</li>
+<li>当 每个block使用了 4kB，则实际只是用了（16kB/4kB=）4 个 blocks，并行程度只有原来的一半。</li>
+<li>当 每个block使用 5kB，则实际只用了（16kB/5kB=）3 个 blocks，并行程度就更小了。</li>
+</ul>
+<p>Registers数量和每个block分配到的Shared Memory的大小，共同约束了整个系统中的block数量个threads数量。实际应用中也要尽量少的使用存储资源，从而最大化并行程度。内存是竞争资源。</p>
+<h2 id="驻扎驻留-resident">驻扎/驻留 (Resident)<a hidden class="anchor" aria-hidden="true" href="#驻扎驻留-resident">#</a></h2>
+<p>表示线程或 warp 存在于 SM 中，已经分配了资源（例如，寄存器、共享内存等），但并不一定正在执行。所以：</p>
+<ul>
+<li>每个 SM 最多驻扎 768 个 threads。意思是，768个线程已经分配到了资源，等待快速切换执行。</li>
+<li>每个 SM 最多同时驻留 64 个 warp，这 64 个 warp 并不是同时执行的，而是通过快速上下文切换来提高 GPU 的利用率和性能。  SM 内部有 warp 调度器，按照某种策略在不同的 Warp 间切换，达到隐藏延迟的目的。</li>
+</ul>
+<p>所以 最大驻扎线程数，即SM 能够同时容纳的线程数量是有限的，这个限制是由 SM 的硬件资源决定的。因为驻扎是已经分配好了资源，资源优先，所以最大驻扎数也是有限的。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/cuda/">CUDA</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/streaming-multiprocessor/">Streaming Multiprocessor</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Shared Memory on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/shared-memory/</link>
+    <description>Recent content in Shared Memory on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:45:52 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/shared-memory/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Memory Shared 1</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/cuda-notes/memory-shared-1/</link>
+      <pubDate>Sun, 31 Aug 2025 12:45:52 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/cuda-notes/memory-shared-1/</guid>
+      <description>&lt;h2 id=&#34;shared-memory&#34;&gt;Shared Memory&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;片上内存，极低延迟&lt;/li&gt;
+&lt;li&gt;是每个线程块 (Thread Block) 独有的；&lt;/li&gt;
+&lt;li&gt;生命周期与创建它的线程块相同；当线程块执行完毕后，共享内存中的数据也会被释放。&lt;/li&gt;
+&lt;li&gt;用于实现高性能的协作并行算法，例如并行归约。&lt;/li&gt;
+&lt;li&gt;用于手动管理的数据缓存，减少对全局内存的访问。比如通过 Shared Mem 实现 reverse 一个数组。&lt;/li&gt;
+&lt;li&gt;共享内存可以静态分配（在编译时指定大小）或动态分配（在运行时指定大小）；&lt;/li&gt;
+&lt;li&gt;每个 SM 都有，且是有限的共享内存容量；&lt;/li&gt;
+&lt;li&gt;注意 Bank conflict&lt;/li&gt;
+&lt;li&gt;在共享内存中进行读写操作时，通常需要使用 &lt;code&gt;__syncthreads()&lt;/code&gt; 函数进行线程同步。&lt;/li&gt;
+&lt;li&gt;每个线程块可用的共享内存量是有限的。可以使用 &lt;code&gt;cudaGetDeviceProperties&lt;/code&gt; 函数来查询设备的共享内存大小。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;分配-shared-memory&#34;&gt;分配 Shared Memory&lt;/h2&gt;
+&lt;p&gt;静态分配：适用于共享内存大小在运行时保持不变的情况，在 kernel 中固定大小 &lt;code&gt;vectorAddStatic&amp;lt;&amp;lt;&amp;lt;blocksPerGrid, threadsPerBlock&amp;gt;&amp;gt;&amp;gt;()&lt;/code&gt; 。它更简单，并且编译器可以进行更好的优化。&lt;/p&gt;
+&lt;p&gt;动态分配：适用于共享内存大小可能在运行时变化的情况，在启动 kernel 时 给出 &lt;code&gt;vectorAddDynamic&amp;lt;&amp;lt;&amp;lt;blocksPerGrid, threadsPerBlock, sharedMemSize&amp;gt;&amp;gt;&amp;gt;()&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;更多使用 Shared Memory 的实例：&amp;hellip;&lt;/p&gt;
+&lt;h2 id=&#34;bank&#34;&gt;Bank&lt;/h2&gt;
+&lt;p&gt;CUDA 共享内存被划分为多个内存 Bank，&lt;strong&gt;每个 Bank 在一时钟周期内只能处理一个内存请求&lt;/strong&gt;。如果多个线程试图同时访问同一个 Bank 中的不同地址，就会发生 Bank 冲突 (Bank conflict)。这会导致内存访问串行化，降低性能。&lt;/p&gt;
+&lt;p&gt;避免 Bank 冲突的策略:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;内存对齐: 确保线程访问的内存地址在不同的 Bank 中。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;访问模式: 避免多个线程同时访问同一个 Bank 。 例如，如果共享内存是一个二维数组，则应避免所有线程同时访问同一列（或同一行，取决于内存布局）。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Memory Shared 2</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/cuda-notes/memory-shared-2/</link>
+      <pubDate>Sun, 31 Aug 2025 12:45:52 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/cuda-notes/memory-shared-2/</guid>
+      <description>&lt;h2 id=&#34;为什么会冲突&#34;&gt;为什么会冲突&lt;/h2&gt;
+&lt;p&gt;假设:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;TILE_DIM = 32&lt;/li&gt;
+&lt;li&gt;Shared Memory 有 32 个 Banks&lt;/li&gt;
+&lt;li&gt;每个 Bank 宽度为 4 字节 (float)&lt;/li&gt;
+&lt;li&gt;线程块维度为 (32, 32)，即每个线程块有 1024 个线程&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;我们声明一个共享内存数组：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;__shared__ &lt;span style=&#34;color:#66d9ef&#34;&gt;float&lt;/span&gt; tile[TILE_DIM][TILE_DIM]; &lt;span style=&#34;color:#75715e&#34;&gt;// __shared__ float tile[32][32];
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;现在，&lt;/p&gt;
+&lt;h3 id=&#34;如果线程配置是-dim3-blockdim1-32&#34;&gt;如果线程配置是 &lt;code&gt;dim3 blockDim(1, 32)&lt;/code&gt;&lt;/h3&gt;
+&lt;p&gt;这些线程的 &lt;code&gt;threadIdx.x&lt;/code&gt; 都为 0，而 &lt;code&gt;threadIdx.y&lt;/code&gt; 从 0 到 31，
+通过 &lt;code&gt;int index = threadIdx.y + blockIdx.x * blockDim.y = threadIdx.y;&lt;/code&gt; 得到线程id和其对应的tile元素索引:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// tile[threadIdx.x][threadsIdx.y]
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;Thread &lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;:&lt;/span&gt; tile[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;][&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;]
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;Thread &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;:&lt;/span&gt; tile[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;][&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;]
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;Thread &lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;:&lt;/span&gt; tile[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;][&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;]
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;...
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;Thread &lt;span style=&#34;color:#ae81ff&#34;&gt;31&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;:&lt;/span&gt; tile[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;][&lt;span style=&#34;color:#ae81ff&#34;&gt;31&lt;/span&gt;]
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;由于 tile 数组是按行存储的，并且每个 float 占用 4 bytes，根据行存储公式： &lt;code&gt;Address = base_address + (row * num_cols + col) * element_size&lt;/code&gt; 得到这些线程访问的地址如下：&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Memory Shared 3</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/cuda-notes/memory-shared-3/</link>
+      <pubDate>Sun, 31 Aug 2025 12:45:52 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/cuda-notes/memory-shared-3/</guid>
+      <description>&lt;h2 id=&#34;读代码&#34;&gt;读代码&lt;/h2&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-cpp&#34; data-lang=&#34;cpp&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// 有 Bank Conflict 的 Kernel
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;__global__ &lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;kernelWithBankConflict&lt;/span&gt;(&lt;span style=&#34;color:#66d9ef&#34;&gt;float&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;input, &lt;span style=&#34;color:#66d9ef&#34;&gt;float&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;output) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    __shared__ &lt;span style=&#34;color:#66d9ef&#34;&gt;float&lt;/span&gt; tile[TILE_DIM][TILE_DIM];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; x &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; threadIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; blockIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; blockDim.x;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; y &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; threadIdx.y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; blockIdx.y &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; blockDim.y;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    tile[threadIdx.x][threadIdx.y] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; input[x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; TILE_DIM &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; y];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    __syncthreads();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    output[x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; TILE_DIM &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; y] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tile[threadIdx.x][threadIdx.y];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;// 避免 Bank Conflict 的 Kernel
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;__global__ &lt;span style=&#34;color:#66d9ef&#34;&gt;void&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;kernelWithoutBankConflict&lt;/span&gt;(&lt;span style=&#34;color:#66d9ef&#34;&gt;float&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;input, &lt;span style=&#34;color:#66d9ef&#34;&gt;float&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt;output) {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    __shared__ &lt;span style=&#34;color:#66d9ef&#34;&gt;float&lt;/span&gt; tile[TILE_DIM][TILE_DIM &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; x &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; threadIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; blockIdx.x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; blockDim.x;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; y &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; threadIdx.y &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; blockIdx.y &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; blockDim.y;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    tile[threadIdx.x][threadIdx.y] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; input[x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; TILE_DIM &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; y];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    __syncthreads();
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    output[x &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; TILE_DIM &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; y] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tile[threadIdx.x][threadIdx.y];
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;int&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;main&lt;/span&gt;() {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    ...
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    dim3 blockDim(TILE_DIM, TILE_DIM);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    dim3 gridDim(&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;, &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// 执行 Kernel (有 Bank Conflict)
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    kernelWithBankConflict&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&amp;lt;&amp;lt;&lt;/span&gt;gridDim, blockDim&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt;(d_input, d_output);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;// 执行 Kernel (避免 Bank Conflict)
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;&lt;/span&gt;    kernelWithoutBankConflict&lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&amp;lt;&amp;lt;&lt;/span&gt;gridDim, blockDim&lt;span style=&#34;color:#f92672&#34;&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt;(d_input, d_output);
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    ...
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;code&gt;input[x * TILE_DIM + y];&lt;/code&gt; : x，y 表示每个线程自己的全局索引，&lt;code&gt;x * TILE_DIM&lt;/code&gt; 表示目标位置所在的行，&lt;code&gt;+ y&lt;/code&gt; 表示目标位置所在的列，所以行偏移后，列偏移，就得到了目标位置index。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

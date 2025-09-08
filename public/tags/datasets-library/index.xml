@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Datasets Library on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/datasets-library/</link>
+    <description>Recent content in Datasets Library on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:49:37 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/datasets-library/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>2.0.dataset库</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/llm/2.0.dataset%E5%BA%93/</link>
+      <pubDate>Sun, 31 Aug 2025 12:49:37 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/llm/2.0.dataset%E5%BA%93/</guid>
+      <description>&lt;h1 id=&#34;load_dataset&#34;&gt;load_dataset&lt;/h1&gt;
+&lt;p&gt;&lt;code&gt;from datasets import load_dataset&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;方法 load_dataset 功能强大，它可以加载多种格式的数据集：huggingface上的数据集、单个文件、文件集合、压缩包、远程数据集。&lt;/p&gt;
+&lt;h1 id=&#34;切片切块数据&#34;&gt;切片切块数据&lt;/h1&gt;
+&lt;p&gt;大多数情况下，你得到的数据是不会完全符合训练模型期望的。所以你需要&lt;strong&gt;处理、清理原始数据集&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;在进行任何数据分析时，一个好的做法是抓取一小部分随机样本，以便快速了解你正在处理的数据类型。在 Datasets 中，我们可以通过将 &lt;code&gt;Dataset.shuffle() &lt;/code&gt; 和 &lt;code&gt;Dataset.select()&lt;/code&gt; 函数连接起来来创建随机样本：&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Datasets.map(func)&lt;/code&gt; 功能强大，传入一个处理原始数据的方法，就可以将这个方法应用到数据集的每一个样本上，以转换、处理或增强数据。输出一个新的 Dataset 对象，包含处理后的数据，原数据集保持不变。&lt;/p&gt;
+&lt;p&gt;在 &lt;code&gt;Dataset.map()&lt;/code&gt; 中指定 &lt;code&gt;batched=True&lt;/code&gt;，表示快速进行映射操作。在对大量文本进行 tokenize 的时候尤其快速，成为快速分词。原因是分词代码是用 Rust 编写的，而 Rust 是一种易于并行化代码执行的语言。&lt;/p&gt;
+&lt;p&gt;强大的功能集中在一个方法中，使用起来非常方便。&lt;/p&gt;
+&lt;p&gt;Datasets 提供了一个 &lt;code&gt;Dataset.set_format()&lt;/code&gt; 函数。实现与各种第三方库之间的转换。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Dataset.train_test_split()&lt;/code&gt; 函数将训练集分成 train 和 validation 分割。&lt;/p&gt;
+&lt;p&gt;还有其他功能，explore as needed.&lt;/p&gt;
+&lt;hr&gt;
+&lt;p&gt;使用&lt;strong&gt;验证集&lt;/strong&gt;而非滥用&lt;strong&gt;测试集&lt;/strong&gt;。目的是：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;测试集应保持完全独立，仅在开发完成后用于最终评估模型性能。&lt;/li&gt;
+&lt;li&gt;如果在开发中反复使用测试集，会导致模型“间接学习”测试数据，产生过于乐观的性能估计。&lt;/li&gt;
+&lt;li&gt;验证集作为中间评估工具，避免测试集被污染。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1 id=&#34;大数据集&#34;&gt;大数据集&lt;/h1&gt;
+&lt;p&gt;如果从头训练LLMs，所需的数据量是巨大的，比如几十 GB 的文本加载到内存都是巨大的挑战。并且有个经验，通常你需要的内存大小要比比数据集大小多 5 到 10 倍！Datasets 库提供了解决办法：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;内存映射文件&lt;/code&gt;：将数据集视为 内存映射文件，让开发者免除了内存管理的麻烦。即 Datasets 将每个数据集视为一个内存映射文件，它提供了 RAM 和文件系统存储之间的映射，允许该库在不将整个数据集加载到内存中的情况下访问和操作数据集的元素。&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;Streaming&lt;/code&gt;：通过 streaming 传输语料库中的条目来摆脱硬盘限制。它允许我们在不需要下载整个数据集的情况下动态下载和访问元素。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1 id=&#34;faiss&#34;&gt;FAISS&lt;/h1&gt;
+&lt;p&gt;Facebook AI Similarity Search 是一个提供高效算法以快速搜索和聚类嵌入向量的库。Datasets 中有其实现：FAISS 索引。去基本思想是创建一个特殊的索引数据结构，该结构允许我们找到与输入嵌入相似的嵌入。它的应用场景：&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

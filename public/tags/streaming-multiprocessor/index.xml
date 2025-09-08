@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Streaming Multiprocessor on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/streaming-multiprocessor/</link>
+    <description>Recent content in Streaming Multiprocessor on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:45:49 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/streaming-multiprocessor/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>SM</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/cuda-notes/sm/</link>
+      <pubDate>Sun, 31 Aug 2025 12:45:49 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/cuda-notes/sm/</guid>
+      <description>&lt;h2 id=&#34;sm&#34;&gt;SM&lt;/h2&gt;
+&lt;p&gt;Streaming Multiprocessor（SM）。SM 是 GPU 上的一个&lt;strong&gt;硬件单元&lt;/strong&gt;，负责执行 CUDA 核函数（kernels）中的&lt;strong&gt;线程块&lt;/strong&gt;（blocks of threads）。每个 SM 能够同时处理多个线程块，这些线程块中的线程并行执行相同的指令，这种执行模式被称为 SIMD（单指令多数据流）。&lt;/p&gt;
+&lt;p&gt;SM 是 GPU 上的一个&lt;strong&gt;硬件单元&lt;/strong&gt;，程序被组织成网格（grid），每个网格由多个线程块（block）组成，而每个线程块又由多个线程（thread）组成。这些线程以 warp为单位被分配到 SM 上执行。&lt;/p&gt;
+&lt;h2 id=&#34;sm--sp&#34;&gt;SM &amp;amp; SP&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;SM 是核心计算单元，能够并行执行多个线程，它包含多个 SP、指令单元、共享内存、L1缓存、寄存器和其他资源。&lt;/li&gt;
+&lt;li&gt;SM 使用 Warp 调度器来管理线程的执行。&lt;/li&gt;
+&lt;li&gt;SP（也称为 CUDA 核心）: SP 是 SM 中最基本的处理单元，负责执行单个指令。&lt;/li&gt;
+&lt;li&gt;协作关系： SM 负责调度和管理线程的执行，而 SP 负责实际的计算。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;sm-中-register-资源分配&#34;&gt;SM 中 register 资源分配&lt;/h2&gt;
+&lt;p&gt;硬件条件：一个 SM 中有 768 个 threads，含有 8000 个registers。假设我配置 block 为256个 threads。如何最大化资源占用率？&lt;/p&gt;
+&lt;p&gt;当每个 thread 占用 10 个 registers，那么一个 SM 共占用 （768*10=）7680 个register，没有超过 registers 总个数 8000。SM 驻扎 （768/256=）3 个block，(768/32=) 24 个 warp。这是最理想的情况，最大化资源占用率。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>1.2.Transformer库中的models | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="LLM, Transformer">
+<meta name="description" content="Transformer 库中的 models
+创建Transformer 模型
+from transformers import AutoModel
+model = AutoModel.from_pretrained(&#34;bert-base-cased&#34;)
+AutoModel 是一个 auto 类，意味着它会为你猜测合适的模型架构并实例化正确的模型类。然而，如果你知道你想使用的模型类型，可以直接使用它来定义其架构的类,比如我确定我要使用BERT模型，则可以这样：
+from transformers import BertModel
+model = BertModel.from_pretrained(&#34;bert-base-cased&#34;)
+save models
+save_pretrained() 方法保存模型的权重和架构配置：
+model.save_pretrained(&quot;directory_on_my_computer&quot;) 会保存模型到指定路径。内容包含 config.json 和 pytorch_model.bin。
+
+
+config.json 构建模型架构所需的所有必要属性，还包括checkpoint的来源，以及那时是使用的transformer 的版本。
+
+
+pytorch_model.bin 文件被称为 state dictionary, 它包含你模型的所有权重。
+
+
+这两个文件协同工作：配置文件用于了解模型架构，而模型权重是模型的参数。
+load saved models
+要重用保存的模型，再次使用 from_pretrained() 方法：
+from transformers import AutoModel
+model = AutoModel.from_pretrained(&#34;directory_on_my_computer&#34;)
+分享你的模型或 embedding
+Encoding text
+已经知道 tokenizer 将文本分割成 tokens，然后将这些标记转换为数字 input IDs。可以观察这种转换：
+from transformers import AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained(&#34;bert-base-cased&#34;)
+encoded_input = tokenizer(&#34;How are you?&#34;, &#34;I&#39;m fine, thank you!&#34;, return_tensors=&#34;pt&#34;)
+print(encoded_input)
+
+{&#39;input_ids&#39;: 
+tensor([[101, 1731, 1132, 1128, 136, 102], 
+        [101, 1045, 1005, 1049, 2503, 117, 5763, 1128,136, 102]]), 
+ &#39;token_type_ids&#39;: 
+ tensor([[0, 0, 0, 0, 0, 0], 
+         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]),   # wrong？为什么都是0，分明是两个batch？
+ &#39;attention_mask&#39;: 
+ tensor([[1, 1, 1, 1, 1, 1], 
+         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])}
+
+input_ids: token 转化为数值表示
+token_type_ids： 些告诉模型输入的哪部分是句子 A，哪部分是句子 B。为句子 A 的 token 分配 0，为句子 B 的 token 分配 1，帮助模型理解两部分的边界和关系。
+attention_mask: 这表示哪些标记应该被关注，哪些不应该。
+
+tokenizer() 方法这里有几个参数：
+
+return_tensors=&quot;pt&quot; 将输出转化为 PyTorch tensors。
+padding=True/False 将输入填充。
+truncation=True 如果输入太长，则截断它们。
+
+1. Padding 输入填充
+encoded_input = tokenizer(
+    [&#34;How are you?&#34;, &#34;I&#39;m fine, thank you!&#34;],  # 一组，所以是一个句子
+    padding=True, 
+    return_tensors=&#34;pt&#34;
+)
+print(encoded_input)
+
+{&#39;input_ids&#39;: 
+tensor([[101,1731,1132,1128, 136, 102, 0,  0,    0,    0],
+        [101,1045,1005,1049,2503, 117,5763,1128, 136, 102]]), 
+ &#39;token_type_ids&#39;: 
+ tensor([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  
+         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]),  # 一组，所以是一个句子
+ &#39;attention_mask&#39;: 
+ tensor([[1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])}
+为什么要 Padding 成长度一样的？">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/llm/1.2.transformer%E5%BA%93%E4%B8%AD%E7%9A%84models/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/llm/1.2.transformer%E5%BA%93%E4%B8%AD%E7%9A%84models/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/llm/1.2.transformer%E5%BA%93%E4%B8%AD%E7%9A%84models/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="1.2.Transformer库中的models">
+  <meta property="og:description" content="Transformer 库中的 models 创建Transformer 模型 from transformers import AutoModel model = AutoModel.from_pretrained(&#34;bert-base-cased&#34;) AutoModel 是一个 auto 类，意味着它会为你猜测合适的模型架构并实例化正确的模型类。然而，如果你知道你想使用的模型类型，可以直接使用它来定义其架构的类,比如我确定我要使用BERT模型，则可以这样：
+from transformers import BertModel model = BertModel.from_pretrained(&#34;bert-base-cased&#34;) save models save_pretrained() 方法保存模型的权重和架构配置：
+model.save_pretrained(&#34;directory_on_my_computer&#34;) 会保存模型到指定路径。内容包含 config.json 和 pytorch_model.bin。
+config.json 构建模型架构所需的所有必要属性，还包括checkpoint的来源，以及那时是使用的transformer 的版本。
+pytorch_model.bin 文件被称为 state dictionary, 它包含你模型的所有权重。
+这两个文件协同工作：配置文件用于了解模型架构，而模型权重是模型的参数。
+load saved models 要重用保存的模型，再次使用 from_pretrained() 方法：
+from transformers import AutoModel model = AutoModel.from_pretrained(&#34;directory_on_my_computer&#34;) 分享你的模型或 embedding Encoding text 已经知道 tokenizer 将文本分割成 tokens，然后将这些标记转换为数字 input IDs。可以观察这种转换：
+from transformers import AutoTokenizer tokenizer = AutoTokenizer.from_pretrained(&#34;bert-base-cased&#34;) encoded_input = tokenizer(&#34;How are you?&#34;, &#34;I&#39;m fine, thank you!&#34;, return_tensors=&#34;pt&#34;) print(encoded_input) {&#39;input_ids&#39;: tensor([[101, 1731, 1132, 1128, 136, 102], [101, 1045, 1005, 1049, 2503, 117, 5763, 1128,136, 102]]), &#39;token_type_ids&#39;: tensor([[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]), # wrong？为什么都是0，分明是两个batch？ &#39;attention_mask&#39;: tensor([[1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])} input_ids: token 转化为数值表示 token_type_ids： 些告诉模型输入的哪部分是句子 A，哪部分是句子 B。为句子 A 的 token 分配 0，为句子 B 的 token 分配 1，帮助模型理解两部分的边界和关系。 attention_mask: 这表示哪些标记应该被关注，哪些不应该。 tokenizer() 方法这里有几个参数： return_tensors=&#34;pt&#34; 将输出转化为 PyTorch tensors。 padding=True/False 将输入填充。 truncation=True 如果输入太长，则截断它们。 1. Padding 输入填充 encoded_input = tokenizer( [&#34;How are you?&#34;, &#34;I&#39;m fine, thank you!&#34;], # 一组，所以是一个句子 padding=True, return_tensors=&#34;pt&#34; ) print(encoded_input) {&#39;input_ids&#39;: tensor([[101,1731,1132,1128, 136, 102, 0, 0, 0, 0], [101,1045,1005,1049,2503, 117,5763,1128, 136, 102]]), &#39;token_type_ids&#39;: tensor([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]), # 一组，所以是一个句子 &#39;attention_mask&#39;: tensor([[1, 1, 1, 1, 1, 1, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])} 为什么要 Padding 成长度一样的？">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="llm">
+    <meta property="article:published_time" content="2025-08-31T12:49:36+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:49:36+08:00">
+    <meta property="article:tag" content="LLM">
+    <meta property="article:tag" content="Transformer">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="1.2.Transformer库中的models">
+<meta name="twitter:description" content="Transformer 库中的 models
+创建Transformer 模型
+from transformers import AutoModel
+model = AutoModel.from_pretrained(&#34;bert-base-cased&#34;)
+AutoModel 是一个 auto 类，意味着它会为你猜测合适的模型架构并实例化正确的模型类。然而，如果你知道你想使用的模型类型，可以直接使用它来定义其架构的类,比如我确定我要使用BERT模型，则可以这样：
+from transformers import BertModel
+model = BertModel.from_pretrained(&#34;bert-base-cased&#34;)
+save models
+save_pretrained() 方法保存模型的权重和架构配置：
+model.save_pretrained(&quot;directory_on_my_computer&quot;) 会保存模型到指定路径。内容包含 config.json 和 pytorch_model.bin。
+
+
+config.json 构建模型架构所需的所有必要属性，还包括checkpoint的来源，以及那时是使用的transformer 的版本。
+
+
+pytorch_model.bin 文件被称为 state dictionary, 它包含你模型的所有权重。
+
+
+这两个文件协同工作：配置文件用于了解模型架构，而模型权重是模型的参数。
+load saved models
+要重用保存的模型，再次使用 from_pretrained() 方法：
+from transformers import AutoModel
+model = AutoModel.from_pretrained(&#34;directory_on_my_computer&#34;)
+分享你的模型或 embedding
+Encoding text
+已经知道 tokenizer 将文本分割成 tokens，然后将这些标记转换为数字 input IDs。可以观察这种转换：
+from transformers import AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained(&#34;bert-base-cased&#34;)
+encoded_input = tokenizer(&#34;How are you?&#34;, &#34;I&#39;m fine, thank you!&#34;, return_tensors=&#34;pt&#34;)
+print(encoded_input)
+
+{&#39;input_ids&#39;: 
+tensor([[101, 1731, 1132, 1128, 136, 102], 
+        [101, 1045, 1005, 1049, 2503, 117, 5763, 1128,136, 102]]), 
+ &#39;token_type_ids&#39;: 
+ tensor([[0, 0, 0, 0, 0, 0], 
+         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]),   # wrong？为什么都是0，分明是两个batch？
+ &#39;attention_mask&#39;: 
+ tensor([[1, 1, 1, 1, 1, 1], 
+         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])}
+
+input_ids: token 转化为数值表示
+token_type_ids： 些告诉模型输入的哪部分是句子 A，哪部分是句子 B。为句子 A 的 token 分配 0，为句子 B 的 token 分配 1，帮助模型理解两部分的边界和关系。
+attention_mask: 这表示哪些标记应该被关注，哪些不应该。
+
+tokenizer() 方法这里有几个参数：
+
+return_tensors=&quot;pt&quot; 将输出转化为 PyTorch tensors。
+padding=True/False 将输入填充。
+truncation=True 如果输入太长，则截断它们。
+
+1. Padding 输入填充
+encoded_input = tokenizer(
+    [&#34;How are you?&#34;, &#34;I&#39;m fine, thank you!&#34;],  # 一组，所以是一个句子
+    padding=True, 
+    return_tensors=&#34;pt&#34;
+)
+print(encoded_input)
+
+{&#39;input_ids&#39;: 
+tensor([[101,1731,1132,1128, 136, 102, 0,  0,    0,    0],
+        [101,1045,1005,1049,2503, 117,5763,1128, 136, 102]]), 
+ &#39;token_type_ids&#39;: 
+ tensor([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  
+         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]),  # 一组，所以是一个句子
+ &#39;attention_mask&#39;: 
+ tensor([[1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+         [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])}
+为什么要 Padding 成长度一样的？">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "LLM",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "1.2.Transformer库中的models",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/1.2.transformer%E5%BA%93%E4%B8%AD%E7%9A%84models/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "1.2.Transformer库中的models",
+  "name": "1.2.Transformer库中的models",
+  "description": "Transformer 库中的 models 创建Transformer 模型 from transformers import AutoModel model = AutoModel.from_pretrained(\u0026#34;bert-base-cased\u0026#34;) AutoModel 是一个 auto 类，意味着它会为你猜测合适的模型架构并实例化正确的模型类。然而，如果你知道你想使用的模型类型，可以直接使用它来定义其架构的类,比如我确定我要使用BERT模型，则可以这样：\nfrom transformers import BertModel model = BertModel.from_pretrained(\u0026#34;bert-base-cased\u0026#34;) save models save_pretrained() 方法保存模型的权重和架构配置：\nmodel.save_pretrained(\u0026quot;directory_on_my_computer\u0026quot;) 会保存模型到指定路径。内容包含 config.json 和 pytorch_model.bin。\nconfig.json 构建模型架构所需的所有必要属性，还包括checkpoint的来源，以及那时是使用的transformer 的版本。\npytorch_model.bin 文件被称为 state dictionary, 它包含你模型的所有权重。\n这两个文件协同工作：配置文件用于了解模型架构，而模型权重是模型的参数。\nload saved models 要重用保存的模型，再次使用 from_pretrained() 方法：\nfrom transformers import AutoModel model = AutoModel.from_pretrained(\u0026#34;directory_on_my_computer\u0026#34;) 分享你的模型或 embedding Encoding text 已经知道 tokenizer 将文本分割成 tokens，然后将这些标记转换为数字 input IDs。可以观察这种转换：\nfrom transformers import AutoTokenizer tokenizer = AutoTokenizer.from_pretrained(\u0026#34;bert-base-cased\u0026#34;) encoded_input = tokenizer(\u0026#34;How are you?\u0026#34;, \u0026#34;I\u0026#39;m fine, thank you!\u0026#34;, return_tensors=\u0026#34;pt\u0026#34;) print(encoded_input) {\u0026#39;input_ids\u0026#39;: tensor([[101, 1731, 1132, 1128, 136, 102], [101, 1045, 1005, 1049, 2503, 117, 5763, 1128,136, 102]]), \u0026#39;token_type_ids\u0026#39;: tensor([[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]), # wrong？为什么都是0，分明是两个batch？ \u0026#39;attention_mask\u0026#39;: tensor([[1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])} input_ids: token 转化为数值表示 token_type_ids： 些告诉模型输入的哪部分是句子 A，哪部分是句子 B。为句子 A 的 token 分配 0，为句子 B 的 token 分配 1，帮助模型理解两部分的边界和关系。 attention_mask: 这表示哪些标记应该被关注，哪些不应该。 tokenizer() 方法这里有几个参数： return_tensors=\u0026quot;pt\u0026quot; 将输出转化为 PyTorch tensors。 padding=True/False 将输入填充。 truncation=True 如果输入太长，则截断它们。 1. Padding 输入填充 encoded_input = tokenizer( [\u0026#34;How are you?\u0026#34;, \u0026#34;I\u0026#39;m fine, thank you!\u0026#34;], # 一组，所以是一个句子 padding=True, return_tensors=\u0026#34;pt\u0026#34; ) print(encoded_input) {\u0026#39;input_ids\u0026#39;: tensor([[101,1731,1132,1128, 136, 102, 0, 0, 0, 0], [101,1045,1005,1049,2503, 117,5763,1128, 136, 102]]), \u0026#39;token_type_ids\u0026#39;: tensor([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]), # 一组，所以是一个句子 \u0026#39;attention_mask\u0026#39;: tensor([[1, 1, 1, 1, 1, 1, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])} 为什么要 Padding 成长度一样的？\n",
+  "keywords": [
+    "LLM", "Transformer"
+  ],
+  "articleBody": "Transformer 库中的 models 创建Transformer 模型 from transformers import AutoModel model = AutoModel.from_pretrained(\"bert-base-cased\") AutoModel 是一个 auto 类，意味着它会为你猜测合适的模型架构并实例化正确的模型类。然而，如果你知道你想使用的模型类型，可以直接使用它来定义其架构的类,比如我确定我要使用BERT模型，则可以这样：\nfrom transformers import BertModel model = BertModel.from_pretrained(\"bert-base-cased\") save models save_pretrained() 方法保存模型的权重和架构配置：\nmodel.save_pretrained(\"directory_on_my_computer\") 会保存模型到指定路径。内容包含 config.json 和 pytorch_model.bin。\nconfig.json 构建模型架构所需的所有必要属性，还包括checkpoint的来源，以及那时是使用的transformer 的版本。\npytorch_model.bin 文件被称为 state dictionary, 它包含你模型的所有权重。\n这两个文件协同工作：配置文件用于了解模型架构，而模型权重是模型的参数。\nload saved models 要重用保存的模型，再次使用 from_pretrained() 方法：\nfrom transformers import AutoModel model = AutoModel.from_pretrained(\"directory_on_my_computer\") 分享你的模型或 embedding Encoding text 已经知道 tokenizer 将文本分割成 tokens，然后将这些标记转换为数字 input IDs。可以观察这种转换：\nfrom transformers import AutoTokenizer tokenizer = AutoTokenizer.from_pretrained(\"bert-base-cased\") encoded_input = tokenizer(\"How are you?\", \"I'm fine, thank you!\", return_tensors=\"pt\") print(encoded_input) {'input_ids': tensor([[101, 1731, 1132, 1128, 136, 102], [101, 1045, 1005, 1049, 2503, 117, 5763, 1128,136, 102]]), 'token_type_ids': tensor([[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]), # wrong？为什么都是0，分明是两个batch？ 'attention_mask': tensor([[1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])} input_ids: token 转化为数值表示 token_type_ids： 些告诉模型输入的哪部分是句子 A，哪部分是句子 B。为句子 A 的 token 分配 0，为句子 B 的 token 分配 1，帮助模型理解两部分的边界和关系。 attention_mask: 这表示哪些标记应该被关注，哪些不应该。 tokenizer() 方法这里有几个参数： return_tensors=\"pt\" 将输出转化为 PyTorch tensors。 padding=True/False 将输入填充。 truncation=True 如果输入太长，则截断它们。 1. Padding 输入填充 encoded_input = tokenizer( [\"How are you?\", \"I'm fine, thank you!\"], # 一组，所以是一个句子 padding=True, return_tensors=\"pt\" ) print(encoded_input) {'input_ids': tensor([[101,1731,1132,1128, 136, 102, 0, 0, 0, 0], [101,1045,1005,1049,2503, 117,5763,1128, 136, 102]]), 'token_type_ids': tensor([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]), # 一组，所以是一个句子 'attention_mask': tensor([[1, 1, 1, 1, 1, 1, 0, 0, 0, 0], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])} 为什么要 Padding 成长度一样的？\n答：因为 Transformer 模型要求输入张量形状一致（批量处理时需要固定维度），便于并行计算和高效处理不同长度的输入。\n2. Truncating inputs 截断输入 张量可能会太大以至于无法被模型处理。例如，BERT 只预训练了最多 512 个 token 的序列，所以它无法处理更长的序列。如果你有超过模型处理能力的序列，你需要使用 truncation 参数来截断它们。 通过结合padding 和 truncation 参数，你可以确保你的张量具有你需要的精确大小：\nencoded_input = tokenizer( [\"How are you?\", \"I'm fine, thank you!\"], # 一组，所以是一个句子 padding=True, truncation=True, max_length=5, return_tensors=\"pt\", ) print(encoded_input) {'input_ids': tensor([[ 101, 1731, 1132, 1128, 102], [ 101, 1045, 1005, 1049, 102]]), 'token_type_ids': tensor([[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]), # 一组，所以是一个句子 'attention_mask': tensor([[1, 1, 1, 1, 1], [1, 1, 1, 1, 1]])} 句子中的单词数量一般大于 tokenizer 之后的 input ids即token的数量，为什么？\n原因有以下：\nTransformer 模型的 tokenizer（如 BERT、Qwen 的 tokenizer）通常使用具体的tokenizer 方法如 WordPiece、BPE 或 SentencePiece，将句子拆分为更小的单元（subword tokens）\nTokenizer 会添加特殊 token，如 [CLS]（分类标记）、[SEP]（句子分隔符）或 [PAD]（填充标记）\n标点符号（如?、!、.） 通常被单独编码为 token。\n所以token数量多于单词数量。那么如何查看token分别是啥？ 可以通过 decode input id 反过来得到原始文本：\ntokenizer.decode(encoded_input[\"input_ids\"][0]) \"[CLS] How are you? [SEP]\" 看，第一句话有6个token，但是只有3个单词。\n那么其中的特殊 token 是什么？\n添加特殊tokens ）对 BERT 及其衍生模型尤为重要。这些标记被添加以更好地表示句子边界，例如句子的开始（ [CLS] ）或句子之间的分隔符（ [SEP] ）。\n这些tokens 由tokenizer 自动添加。并非所有模型都需要特殊标记。模型在预训练时使用了这些标记，所以你使用预训练模型时，也需要使用这些特殊 token 的。\n最后 encoded_input 会作为模型的输入。\nStay curious and keep asking questions! 🧠✨\n",
+  "wordCount" : "379",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:49:36+08:00",
+  "dateModified": "2025-08-31T12:49:36+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/llm/1.2.transformer%E5%BA%93%E4%B8%AD%E7%9A%84models/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      1.2.Transformer库中的models
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:49:36 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><h1 id="transformer-库中的-models">Transformer 库中的 models<a hidden class="anchor" aria-hidden="true" href="#transformer-库中的-models">#</a></h1>
+<h2 id="创建transformer-模型">创建Transformer 模型<a hidden class="anchor" aria-hidden="true" href="#创建transformer-模型">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> transformers <span style="color:#f92672">import</span> AutoModel
+</span></span><span style="display:flex;"><span>model <span style="color:#f92672">=</span> AutoModel<span style="color:#f92672">.</span>from_pretrained(<span style="color:#e6db74">&#34;bert-base-cased&#34;</span>)
+</span></span></code></pre></div><p><code>AutoModel</code> 是一个 auto 类，意味着它会<strong>为你猜测</strong>合适的模型架构并实例化正确的模型类。然而，如果你知道你想使用的模型类型，可以直接使用它来定义其架构的类,比如我确定我要使用BERT模型，则可以这样：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> transformers <span style="color:#f92672">import</span> BertModel
+</span></span><span style="display:flex;"><span>model <span style="color:#f92672">=</span> BertModel<span style="color:#f92672">.</span>from_pretrained(<span style="color:#e6db74">&#34;bert-base-cased&#34;</span>)
+</span></span></code></pre></div><h2 id="save-models">save models<a hidden class="anchor" aria-hidden="true" href="#save-models">#</a></h2>
+<p><code>save_pretrained()</code> 方法保存模型的<strong>权重</strong>和<strong>架构配置</strong>：</p>
+<p><code>model.save_pretrained(&quot;directory_on_my_computer&quot;)</code> 会保存模型到指定路径。内容包含 <code>config.json</code> 和 <code>pytorch_model.bin</code>。</p>
+<ul>
+<li>
+<p><code>config.json</code> 构建模型架构所需的所有必要属性，还包括checkpoint的来源，以及那时是使用的transformer 的版本。</p>
+</li>
+<li>
+<p><code>pytorch_model.bin</code> 文件被称为 state dictionary, 它包含你模型的所有权重。</p>
+</li>
+</ul>
+<p>这两个文件协同工作：配置文件用于了解模型架构，而模型权重是模型的参数。</p>
+<h2 id="load-saved-models">load saved models<a hidden class="anchor" aria-hidden="true" href="#load-saved-models">#</a></h2>
+<p>要重用保存的模型，再次使用 <code>from_pretrained()</code> 方法：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> transformers <span style="color:#f92672">import</span> AutoModel
+</span></span><span style="display:flex;"><span>model <span style="color:#f92672">=</span> AutoModel<span style="color:#f92672">.</span>from_pretrained(<span style="color:#e6db74">&#34;directory_on_my_computer&#34;</span>)
+</span></span></code></pre></div><h2 id="分享你的模型或-embedding">分享你的模型或 embedding<a hidden class="anchor" aria-hidden="true" href="#分享你的模型或-embedding">#</a></h2>
+<h2 id="encoding-text">Encoding text<a hidden class="anchor" aria-hidden="true" href="#encoding-text">#</a></h2>
+<p>已经知道 tokenizer 将文本分割成 tokens，然后将这些标记转换为数字 input IDs。可以观察这种转换：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> transformers <span style="color:#f92672">import</span> AutoTokenizer
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>tokenizer <span style="color:#f92672">=</span> AutoTokenizer<span style="color:#f92672">.</span>from_pretrained(<span style="color:#e6db74">&#34;bert-base-cased&#34;</span>)
+</span></span><span style="display:flex;"><span>encoded_input <span style="color:#f92672">=</span> tokenizer(<span style="color:#e6db74">&#34;How are you?&#34;</span>, <span style="color:#e6db74">&#34;I&#39;m fine, thank you!&#34;</span>, return_tensors<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;pt&#34;</span>)
+</span></span><span style="display:flex;"><span>print(encoded_input)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>{<span style="color:#e6db74">&#39;input_ids&#39;</span>: 
+</span></span><span style="display:flex;"><span>tensor([[<span style="color:#ae81ff">101</span>, <span style="color:#ae81ff">1731</span>, <span style="color:#ae81ff">1132</span>, <span style="color:#ae81ff">1128</span>, <span style="color:#ae81ff">136</span>, <span style="color:#ae81ff">102</span>], 
+</span></span><span style="display:flex;"><span>        [<span style="color:#ae81ff">101</span>, <span style="color:#ae81ff">1045</span>, <span style="color:#ae81ff">1005</span>, <span style="color:#ae81ff">1049</span>, <span style="color:#ae81ff">2503</span>, <span style="color:#ae81ff">117</span>, <span style="color:#ae81ff">5763</span>, <span style="color:#ae81ff">1128</span>,<span style="color:#ae81ff">136</span>, <span style="color:#ae81ff">102</span>]]), 
+</span></span><span style="display:flex;"><span> <span style="color:#e6db74">&#39;token_type_ids&#39;</span>: 
+</span></span><span style="display:flex;"><span> tensor([[<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>], 
+</span></span><span style="display:flex;"><span>         [<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>]]),   <span style="color:#75715e"># wrong？为什么都是0，分明是两个batch？</span>
+</span></span><span style="display:flex;"><span> <span style="color:#e6db74">&#39;attention_mask&#39;</span>: 
+</span></span><span style="display:flex;"><span> tensor([[<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>], 
+</span></span><span style="display:flex;"><span>         [<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>]])}
+</span></span></code></pre></div><ul>
+<li><code>input_ids</code>: token 转化为数值表示</li>
+<li><code>token_type_ids</code>： 些告诉模型输入的哪部分是句子 A，哪部分是句子 B。为句子 A 的 token 分配 0，为句子 B 的 token 分配 1，帮助模型理解两部分的边界和关系。</li>
+<li><code>attention_mask</code>: 这表示哪些标记应该被关注，哪些不应该。</li>
+</ul>
+<h2 id="tokenizer-方法这里有几个参数"><code>tokenizer()</code> 方法这里有几个参数：<a hidden class="anchor" aria-hidden="true" href="#tokenizer-方法这里有几个参数">#</a></h2>
+<ol>
+<li><code>return_tensors=&quot;pt&quot;</code> 将输出转化为 PyTorch tensors。</li>
+<li><code>padding=True/False</code> 将输入填充。</li>
+<li><code>truncation=True</code> 如果输入太长，则截断它们。</li>
+</ol>
+<h3 id="1-padding-输入填充">1. Padding 输入填充<a hidden class="anchor" aria-hidden="true" href="#1-padding-输入填充">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span>encoded_input <span style="color:#f92672">=</span> tokenizer(
+</span></span><span style="display:flex;"><span>    [<span style="color:#e6db74">&#34;How are you?&#34;</span>, <span style="color:#e6db74">&#34;I&#39;m fine, thank you!&#34;</span>],  <span style="color:#75715e"># 一组，所以是一个句子</span>
+</span></span><span style="display:flex;"><span>    padding<span style="color:#f92672">=</span><span style="color:#66d9ef">True</span>, 
+</span></span><span style="display:flex;"><span>    return_tensors<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;pt&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>print(encoded_input)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>{<span style="color:#e6db74">&#39;input_ids&#39;</span>: 
+</span></span><span style="display:flex;"><span>tensor([[<span style="color:#ae81ff">101</span>,<span style="color:#ae81ff">1731</span>,<span style="color:#ae81ff">1132</span>,<span style="color:#ae81ff">1128</span>, <span style="color:#ae81ff">136</span>, <span style="color:#ae81ff">102</span>, <span style="color:#ae81ff">0</span>,  <span style="color:#ae81ff">0</span>,    <span style="color:#ae81ff">0</span>,    <span style="color:#ae81ff">0</span>],
+</span></span><span style="display:flex;"><span>        [<span style="color:#ae81ff">101</span>,<span style="color:#ae81ff">1045</span>,<span style="color:#ae81ff">1005</span>,<span style="color:#ae81ff">1049</span>,<span style="color:#ae81ff">2503</span>, <span style="color:#ae81ff">117</span>,<span style="color:#ae81ff">5763</span>,<span style="color:#ae81ff">1128</span>, <span style="color:#ae81ff">136</span>, <span style="color:#ae81ff">102</span>]]), 
+</span></span><span style="display:flex;"><span> <span style="color:#e6db74">&#39;token_type_ids&#39;</span>: 
+</span></span><span style="display:flex;"><span> tensor([[<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>],  
+</span></span><span style="display:flex;"><span>         [<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>]]),  <span style="color:#75715e"># 一组，所以是一个句子</span>
+</span></span><span style="display:flex;"><span> <span style="color:#e6db74">&#39;attention_mask&#39;</span>: 
+</span></span><span style="display:flex;"><span> tensor([[<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>],
+</span></span><span style="display:flex;"><span>         [<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>]])}
+</span></span></code></pre></div><p>为什么要 Padding 成长度一样的？</p>
+<p>答：因为 Transformer 模型要求输入张量形状一致（批量处理时需要固定维度），便于并行计算和高效处理不同长度的输入。</p>
+<h3 id="2-truncating-inputs-截断输入">2. Truncating inputs 截断输入<a hidden class="anchor" aria-hidden="true" href="#2-truncating-inputs-截断输入">#</a></h3>
+<p>张量可能会太大以至于无法被模型处理。例如，BERT 只预训练了最多 512 个 token 的序列，所以它无法处理更长的序列。如果你有超过模型处理能力的序列，你需要使用 truncation 参数来截断它们。 通过结合padding 和 truncation 参数，你可以确保你的张量具有你需要的精确大小：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span>encoded_input <span style="color:#f92672">=</span> tokenizer(
+</span></span><span style="display:flex;"><span>    [<span style="color:#e6db74">&#34;How are you?&#34;</span>, <span style="color:#e6db74">&#34;I&#39;m fine, thank you!&#34;</span>],  <span style="color:#75715e"># 一组，所以是一个句子</span>
+</span></span><span style="display:flex;"><span>    padding<span style="color:#f92672">=</span><span style="color:#66d9ef">True</span>,
+</span></span><span style="display:flex;"><span>    truncation<span style="color:#f92672">=</span><span style="color:#66d9ef">True</span>,
+</span></span><span style="display:flex;"><span>    max_length<span style="color:#f92672">=</span><span style="color:#ae81ff">5</span>,
+</span></span><span style="display:flex;"><span>    return_tensors<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;pt&#34;</span>,
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>print(encoded_input)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>{<span style="color:#e6db74">&#39;input_ids&#39;</span>: 
+</span></span><span style="display:flex;"><span>tensor([[  <span style="color:#ae81ff">101</span>,  <span style="color:#ae81ff">1731</span>,  <span style="color:#ae81ff">1132</span>,  <span style="color:#ae81ff">1128</span>,   <span style="color:#ae81ff">102</span>],
+</span></span><span style="display:flex;"><span>        [  <span style="color:#ae81ff">101</span>,  <span style="color:#ae81ff">1045</span>,  <span style="color:#ae81ff">1005</span>,  <span style="color:#ae81ff">1049</span>,   <span style="color:#ae81ff">102</span>]]), 
+</span></span><span style="display:flex;"><span> <span style="color:#e6db74">&#39;token_type_ids&#39;</span>: 
+</span></span><span style="display:flex;"><span> tensor([[<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>],
+</span></span><span style="display:flex;"><span>         [<span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>]]),  <span style="color:#75715e"># 一组，所以是一个句子</span>
+</span></span><span style="display:flex;"><span> <span style="color:#e6db74">&#39;attention_mask&#39;</span>: 
+</span></span><span style="display:flex;"><span> tensor([[<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>],
+</span></span><span style="display:flex;"><span>         [<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>]])}
+</span></span></code></pre></div><p>句子中的单词数量一般大于 tokenizer 之后的 input ids即token的数量，为什么？</p>
+<p>原因有以下：</p>
+<ol>
+<li>
+<p>Transformer 模型的 tokenizer（如 BERT、Qwen 的 tokenizer）通常使用具体的tokenizer 方法如 WordPiece、BPE 或 SentencePiece，将句子拆分为<strong>更小</strong>的单元（subword tokens）</p>
+</li>
+<li>
+<p>Tokenizer 会添加特殊 token，如 <code>[CLS]</code>（分类标记）、<code>[SEP]</code>（句子分隔符）或 <code>[PAD]</code>（填充标记）</p>
+</li>
+<li>
+<p>标点符号（如<code>?</code>、<code>!</code>、<code>.</code>） 通常被单独编码为 token。</p>
+</li>
+</ol>
+<p>所以token数量多于单词数量。那么如何查看token分别是啥？ 可以通过 decode input id 反过来得到原始文本：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span>tokenizer<span style="color:#f92672">.</span>decode(encoded_input[<span style="color:#e6db74">&#34;input_ids&#34;</span>][<span style="color:#ae81ff">0</span>])
+</span></span><span style="display:flex;"><span><span style="color:#e6db74">&#34;[CLS] How are you? [SEP]&#34;</span>
+</span></span></code></pre></div><p>看，第一句话有6个token，但是只有3个单词。</p>
+<p>那么其中的特殊 token 是什么？</p>
+<h2 id="添加特殊tokens">添加特殊tokens<a hidden class="anchor" aria-hidden="true" href="#添加特殊tokens">#</a></h2>
+<p>）对 BERT 及其衍生模型尤为重要。这些标记被添加以更好地表示句子边界，例如句子的开始（ <code>[CLS]</code> ）或句子之间的分隔符（ <code>[SEP]</code> ）。</p>
+<p>这些tokens 由tokenizer 自动添加。并非所有模型都需要特殊标记。模型在预训练时使用了这些标记，所以你使用预训练模型时，也需要使用这些特殊 token 的。</p>
+<p>最后  encoded_input 会作为模型的输入。</p>
+<hr>
+<p>Stay curious and keep asking questions! 🧠✨</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llm/">LLM</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/transformer/">Transformer</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

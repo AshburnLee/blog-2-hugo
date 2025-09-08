@@ -1,0 +1,1007 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Agent on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/categories/agent/</link>
+    <description>Recent content in Agent on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:14:13 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/categories/agent/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>2.2.LlamaIndex中使用Agents</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/2.2.llamaindex%E4%B8%AD%E4%BD%BF%E7%94%A8agents/</link>
+      <pubDate>Sun, 31 Aug 2025 12:14:13 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/2.2.llamaindex%E4%B8%AD%E4%BD%BF%E7%94%A8agents/</guid>
+      <description>&lt;h2 id=&#34;llamaindex-支持的-agents&#34;&gt;LlamaIndex 支持的 Agents&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Function Calling Agents - 这些适用于可以调用特定功能的 AI 模型。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;ReAct Agents - 这些可以与任何进行聊天或文本端点的 AI 配合使用，并处理复杂的推理任务。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Advanced Custom Agents - 这些使用更复杂的方法来处理更复杂的任务和工作流程。比如 LLMCompiler 或 Chain-of-abstraction&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;初始化-agents&#34;&gt;初始化 Agents&lt;/h2&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;!pip install llama-index llama-index-vector-stores-chroma llama-index-llms-huggingface-api llama-index-embeddings-huggingface -U -q
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;使用 &lt;code&gt;AgentWorkflow&lt;/code&gt; 初始化一个 Agent。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 登陆使用serverless API&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; huggingface_hub &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; login
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;login()
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; llama_index.llms.huggingface_api &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; HuggingFaceInferenceAPI
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; llama_index.core.agent.workflow &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; AgentWorkflow, ToolCallResult, AgentStream
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;add&lt;/span&gt;(a: int, b: int) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Add two numbers&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; a &lt;span style=&#34;color:#f92672&#34;&gt;+&lt;/span&gt; b
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;subtract&lt;/span&gt;(a: int, b: int) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Subtract two numbers&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; a &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; b
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;multiply&lt;/span&gt;(a: int, b: int) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Multiply two numbers&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; a &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; b
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;divide&lt;/span&gt;(a: int, b: int) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; int:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Divide two numbers&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; a &lt;span style=&#34;color:#f92672&#34;&gt;/&lt;/span&gt; b
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;llm &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; HuggingFaceInferenceAPI(model_name&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Qwen/Qwen2.5-Coder-32B-Instruct&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;agent &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; AgentWorkflow&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_tools_or_functions(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    tools_or_functions&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[subtract, multiply, divide, add],
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    llm&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;llm,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    system_prompt&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;You are a math agent that can add, subtract, multiply, and divide numbers using provided tools.&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;然后就可以执行推理了：&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Concepts</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/concepts/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:33 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/concepts/</guid>
+      <description>&lt;h1 id=&#34;serverless-api--server-based-api&#34;&gt;Serverless API &amp;amp; Server-based API&lt;/h1&gt;
+&lt;p&gt;Serverless API:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;基础设施管理：无需管理服务器。云服务提供商负责所有底层基础设施的管理。&lt;/li&gt;
+&lt;li&gt;扩展性：自动扩展，根据流量需求动态调整资源。&lt;/li&gt;
+&lt;li&gt;成本：按需付费，只需为实际使用的计算资源付费。&lt;/li&gt;
+&lt;li&gt;部署：通常通过函数即服务 (FaaS) 平台部署，如 AWS Lambda、Azure Functions、Google Cloud Functions。&lt;/li&gt;
+&lt;li&gt;运维：运维工作量较少，主要关注业务逻辑。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Server-based API:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;基础设施管理：需要自行管理服务器，包括配置、维护和扩展。&lt;/li&gt;
+&lt;li&gt;扩展性：需要手动配置和扩展服务器，以应对流量高峰。&lt;/li&gt;
+&lt;li&gt;成本：需要为服务器的运行时间付费，即使在低流量时段也需要支付费用。&lt;/li&gt;
+&lt;li&gt;部署：通常部署在传统的服务器或虚拟机上，如 Apache、Nginx 等。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;文本检索-text-retieval&#34;&gt;文本检索 Text retieval&lt;/h2&gt;
+&lt;p&gt;其核心作用是根据用户输入的查询（query），快速高效地在庞大的文档集合中筛选出与查询最相关的文档或文本片段。&lt;/p&gt;
+&lt;p&gt;BM25Retriever，是 BM25 的python library，基于词频概率统计估计相关性，是目前经典且广泛使用的排名算法。&lt;/p&gt;
+&lt;p&gt;SentenceTransformers 是基于embedding 的文本检索方法 Python library。&lt;/p&gt;
+&lt;h2 id=&#34;rag-检索增强生成-用途&#34;&gt;RAG 检索增强生成 用途&lt;/h2&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# doc is a list of documents&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;bm25_retriever &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; BM25Retriever&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_documents(docs)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# query is a string&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;results &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; bm25_retriever&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;invoke(query)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;RAG 模式的 AI Agent 适用于需要&lt;strong&gt;结合外部知识&lt;/strong&gt;生成准确回答的场景，如知识库问答、搜索整合、客服、法律分析、医疗支持和教育。&lt;/p&gt;
+&lt;h2 id=&#34;sglang-structured-generation-language-与-vllmvectorized-large-language-model-inference&#34;&gt;SGLang （Structured Generation Language） 与 vLLM（Vectorized Large Language Model Inference）&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;SGLang：是复杂多轮交互及结构化生成的语言模型服务框架。适用于需要&lt;strong&gt;多步骤&lt;/strong&gt;任务、&lt;strong&gt;多GPU协作&lt;/strong&gt;、&lt;strong&gt;大规模&lt;/strong&gt;模型复杂应用。需要&lt;strong&gt;多轮复杂任务&lt;/strong&gt;支持场景。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>3.4.实例sentence Embedding</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/3.4.%E5%AE%9E%E4%BE%8Bsentence-embedding/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:32 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/3.4.%E5%AE%9E%E4%BE%8Bsentence-embedding/</guid>
+      <description>&lt;p&gt;&lt;code&gt;paraphrase-multilingual-MiniLM-L12-v2&lt;/code&gt; 是一个预训练的 Sentence Transformers 模型，由 Hugging Face 社区提供，专门用于生成句子的语义嵌入（embeddings）。这是个公开模型，不需要 &lt;code&gt;huggingface token&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;下载内容有 MiniLM 模型权值文件，配置文件，分词文件，等，下载位置是 &lt;code&gt;~/.cache/huggingface/hub/&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;首次调用 HuggingFaceEmbeddings 时，如果本地无缓存，sentence-transformers 会自动从 Hugging Face Hub 下载。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Chroma.from_documents&lt;/code&gt; 创建一个本地的向量数据库，将文档嵌入存储在内存或磁盘中，&lt;code&gt;collection_name=&amp;quot;weather_collection&amp;quot;&lt;/code&gt; 是数据库中用于组织文档的集合名称。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain_core.documents &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; Document
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain_community.vectorstores &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; Chroma
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain_community.embeddings &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; HuggingFaceEmbeddings
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 定义文档列表&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;docs &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    Document(page_content&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;上海的天气通常在夏季炎热潮湿，冬季寒冷干燥。夏季平均气温约 30°C，冬季约 5°C。&amp;#34;&lt;/span&gt;, metadata&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;{&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;city&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;上海&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;source&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;weather_guide&amp;#34;&lt;/span&gt;}),
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    Document(page_content&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;北京的天气四季分明，夏季炎热，冬季非常寒冷且有沙尘暴。冬季气温可低至 -10°C。&amp;#34;&lt;/span&gt;, metadata&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;{&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;city&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;北京&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;source&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;weather_guide&amp;#34;&lt;/span&gt;}),
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    Document(page_content&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;广州的天气全年温暖，夏季多雨，冬季温和。年平均气温约 22°C。&amp;#34;&lt;/span&gt;, metadata&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;{&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;city&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;广州&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;source&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;weather_guide&amp;#34;&lt;/span&gt;})
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;]
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 初始化 sentence-transformers 嵌入模型&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;embedding_model &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; HuggingFaceEmbeddings(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    model_name&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;paraphrase-multilingual-MiniLM-L12-v2&amp;#34;&lt;/span&gt;,  &lt;span style=&#34;color:#75715e&#34;&gt;# 支持中文的多语言模型&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    model_kwargs&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;{&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;device&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;cpu&amp;#34;&lt;/span&gt;}  &lt;span style=&#34;color:#75715e&#34;&gt;# 可改为 &amp;#34;cuda&amp;#34; 如果有 GPU&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 初始化 Chroma 向量存储&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# Vector Store 是 LangChain 的核心组件之一&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;vectorstore &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Chroma&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_documents(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    documents&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;docs,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    embedding&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;embedding_model,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    collection_name&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;weather_collection&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 创建检索器，设置 top-k=1&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;retriever &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; vectorstore&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;as_retriever(search_kwargs&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;{&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;k&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;})
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 查询&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;query &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;有沙尘暴的城市&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 调用检索器,索引相关内容&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;results &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; retriever&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;invoke(query)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 输出结果&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;查询:&amp;#34;&lt;/span&gt;, query)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;\n&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;检索结果:&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; i, doc &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; enumerate(results, &lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;):
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    print(&lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;文档 &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;i&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;:&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    print(&lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;内容: &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;doc&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;page_content&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    print(&lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;元数据: &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;doc&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;metadata&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;正确输出
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</description>
+    </item>
+    <item>
+      <title>3.4.实例summarize_ocr_trans</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/3.4.%E5%AE%9E%E4%BE%8Bsummarize_ocr_trans/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:32 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/3.4.%E5%AE%9E%E4%BE%8Bsummarize_ocr_trans/</guid>
+      <description>&lt;h1 id=&#34;我的目标&#34;&gt;我的目标&lt;/h1&gt;
+&lt;ul&gt;
+&lt;li&gt;有 call tools 能力的 LLM&lt;/li&gt;
+&lt;li&gt;有识别图片中文字的 LLM&lt;/li&gt;
+&lt;li&gt;有翻译功能（日-&amp;gt;中）的 LLM&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;我的app，有一张图片，它包含日文，首先需要一个 llm 识别图中日文，然后翻译成中文。第二步是将上述中文中提到的名词，提取出来，提取的过程可以通过写一个 tools 工具，供 Agent 调用以达到目的。用另外一个 LLM 用中文解释这些名词是什么？功能是什么？使用 LangGraph 和 Ollama 实现一个 AIagent 来实现上述的application，最好是含有 ReAct 。&lt;/p&gt;
+&lt;p&gt;请问我应该如何构建这个 LangGraph，每一步使用哪个 LLM（来自Ollama）？&lt;/p&gt;
+&lt;h2 id=&#34;子任务一&#34;&gt;子任务一&lt;/h2&gt;
+&lt;p&gt;识别图片中的日文，并将其翻译成中文&lt;/p&gt;
+&lt;p&gt;LangGraph 实现：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; os
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langgraph.graph &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; StateGraph, END
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; typing &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; TypedDict, Optional
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; PIL &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; Image
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; pytesseract
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; transformers &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; AutoTokenizer, AutoModelForSeq2SeqLM
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; torch
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 定义状态&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;AgentState&lt;/span&gt;(TypedDict):
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    image_path: str
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    prompt: str
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    extracted_text: Optional[str]
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    translated_text: Optional[str]
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    output_file: str
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 节点1：OCR提取日文&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;ocr_node&lt;/span&gt;(state: AgentState) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; AgentState:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;try&lt;/span&gt;:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        image &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Image&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;open(state[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;image_path&amp;#34;&lt;/span&gt;])
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        text &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; pytesseract&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;image_to_string(image, lang&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;jpn&amp;#39;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        state[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;extracted_text&amp;#34;&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; text&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;strip()
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; state
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;except&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Exception&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;as&lt;/span&gt; e:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        state[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;extracted_text&amp;#34;&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;OCR错误: &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;str(e)&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; state
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 节点2：翻译日文到中文&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;translate_node&lt;/span&gt;(state: AgentState) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; AgentState:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;not&lt;/span&gt; state[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;extracted_text&amp;#34;&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;错误&amp;#34;&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; state[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;extracted_text&amp;#34;&lt;/span&gt;]:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        state[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;translated_text&amp;#34;&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;无法翻译: 无有效文本&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; state
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;try&lt;/span&gt;:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#75715e&#34;&gt;# 使用Hugging Face的翻译模型&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        model_name &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Helsinki-NLP/opus-mt-ja-zh&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        tokenizer &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; AutoTokenizer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_pretrained(model_name)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        model &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; AutoModelForSeq2SeqLM&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_pretrained(model_name)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        inputs &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tokenizer(state[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;extracted_text&amp;#34;&lt;/span&gt;], return_tensors&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;pt&amp;#34;&lt;/span&gt;, padding&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;True&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;with&lt;/span&gt; torch&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;no_grad():
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;            outputs &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; model&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;generate(&lt;span style=&#34;color:#f92672&#34;&gt;**&lt;/span&gt;inputs)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        translated &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; tokenizer&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;decode(outputs[&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;], skip_special_tokens&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;True&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        state[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;translated_text&amp;#34;&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; translated
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; state
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;except&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Exception&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;as&lt;/span&gt; e:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        state[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;translated_text&amp;#34;&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;翻译错误: &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;str(e)&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; state
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 节点3：写入文件&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;write_to_file_node&lt;/span&gt;(state: AgentState) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; AgentState:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;try&lt;/span&gt;:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;with&lt;/span&gt; open(state[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;output_file&amp;#34;&lt;/span&gt;], &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;w&amp;#34;&lt;/span&gt;, encoding&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;utf-8&amp;#34;&lt;/span&gt;) &lt;span style=&#34;color:#66d9ef&#34;&gt;as&lt;/span&gt; f:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;            f&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;write(state[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;translated_text&amp;#34;&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;or&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;无翻译结果&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; state
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;except&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;Exception&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;as&lt;/span&gt; e:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        state[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;translated_text&amp;#34;&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;文件写入错误: &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;str(e)&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; state
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 创建工作流&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;create_workflow&lt;/span&gt;():
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    workflow &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; StateGraph(AgentState)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;# 添加节点&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    workflow&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;add_node(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;ocr&amp;#34;&lt;/span&gt;, ocr_node)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    workflow&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;add_node(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;translate&amp;#34;&lt;/span&gt;, translate_node)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    workflow&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;add_node(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;write_to_file&amp;#34;&lt;/span&gt;, write_to_file_node)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;# 定义流程&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    workflow&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;set_entry_point(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;ocr&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    workflow&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;add_edge(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;ocr&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;translate&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    workflow&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;add_edge(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;translate&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;write_to_file&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    workflow&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;add_edge(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;write_to_file&amp;#34;&lt;/span&gt;, END)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; workflow&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;compile()
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 主函数&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;main&lt;/span&gt;(image_path: str, output_file: str &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;translated_output.txt&amp;#34;&lt;/span&gt;):
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;# 初始化状态&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    state &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; AgentState(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        image_path&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;image_path,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        prompt&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;识别图片中的日文，并将其翻译成中文&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        extracted_text&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;None&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        translated_text&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;None&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        output_file&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;output_file
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    )
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;# 创建并运行工作流&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    app &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; create_workflow()
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    final_state &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; app&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;invoke(state)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; final_state
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; __name__ &lt;span style=&#34;color:#f92672&#34;&gt;==&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;__main__&amp;#34;&lt;/span&gt;:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;# 示例用法&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    image_path &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;path_to_your_image.jpg&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    output_file &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;translated_output.txt&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    result &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; main(image_path, output_file)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    print(&lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;处理完成！翻译结果已保存至 &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;output_file&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    print(&lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;提取的日文: &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;result[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;extracted_text&amp;#39;&lt;/span&gt;]&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    print(&lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;翻译的中文: &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;result[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;translated_text&amp;#39;&lt;/span&gt;]&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;上述需求 LanChain 足够了 ，LangChain 实现：&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>3.4.实例summarize_url</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/3.4.%E5%AE%9E%E4%BE%8Bsummarize_url/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:32 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/3.4.%E5%AE%9E%E4%BE%8Bsummarize_url/</guid>
+      <description>&lt;h1 id=&#34;总结并输出一个-url-中的文字内容&#34;&gt;总结并输出一个 URL 中的文字内容&lt;/h1&gt;
+&lt;p&gt;Perplexity 和 Grok 都没有访问 URL 的能力，其输出是基于训练数据。其的回答中涉及到的参考页面都是你的&lt;strong&gt;训练数据而不是实时的网页访问&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;学习一个东西，需要读其文档，文档太多，需要一个工具来总结。&lt;/p&gt;
+&lt;h2 id=&#34;实现一&#34;&gt;实现一&lt;/h2&gt;
+&lt;p&gt;第一次执行 &lt;code&gt;summarizer = pipeline(&amp;quot;summarization&amp;quot;, model=&amp;quot;facebook/bart-large-cnn&amp;quot;)&lt;/code&gt; 时，Hugging Face 模型中心（Hugging Face Hub）下载与 &amp;ldquo;facebook/bart-large-cnn&amp;rdquo; 模型相关内容 config.json、model.safetensors（1.6GB）、generation_config.json、vocab.json、merges.txt、tokenizer.json:&lt;/p&gt;
+&lt;p&gt;这个模型是公开模型，不需要token。但是对于受限模型或私有模型，就需要了，最好的方式是：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; huggingface_hub &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; login
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;login(token&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;your_hf_token&amp;#34;&lt;/span&gt;)  &lt;span style=&#34;color:#75715e&#34;&gt;# 或将TOKEN一环境变量形式写如env&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;从 huggingface 中下载的数据和模型存放在 &lt;code&gt;~/.cache/huggingface/hub&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;code（works）：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain_community.document_loaders &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; WebBaseLoader
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain.chains.summarize &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; load_summarize_chain
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain.text_splitter &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; CharacterTextSplitter
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; os
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 1. 模型&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; transformers &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; pipeline
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain.llms &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; HuggingFacePipeline  &lt;span style=&#34;color:#75715e&#34;&gt;# 第一次使用时会下载内容&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;summarizer &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; pipeline(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;summarization&amp;#34;&lt;/span&gt;, model&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;facebook/bart-large-cnn&amp;#34;&lt;/span&gt;)  &lt;span style=&#34;color:#75715e&#34;&gt;# 由 Facebook 开发的 BART 模型，专门为文本摘要任务优化&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;llm &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; HuggingFacePipeline(pipeline&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;summarizer)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;输出复合预期
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# local LLM&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# from langchain_ollama import ChatOllama&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# os.environ[&amp;#34;http_proxy&amp;#34;] = &amp;#34;http://127.0.0.1:11434&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# os.environ[&amp;#34;https_proxy&amp;#34;] = &amp;#34;http://127.0.0.1:11434&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# infer_server_url = &amp;#34;http://localhost:11434/&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# model_name = &amp;#34;qwen3:1.7b&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# llm = ChatOllama(&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#     model=model_name,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#     base_url=infer_server_url,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#     api_key=&amp;#34;none&amp;#34;,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#     temperature=0,&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;#     stream=False&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# )&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;Sample url: https://ollama.com/
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;Output from qwen3:1.7b: 
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;Ollama&amp;#39;s new app allows users to download and run large language models like DeepSeek-R1, Qwen 3, and Gemma 3 on macOS, Windows, and Linux, with features including model exploration, download, and access to resources like the blog, docs, GitHub, Discord, and X (Twitter). © 2025 Ollama Inc.
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;对于简单网页是可以识别并总结的。
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;&amp;#39;&amp;#39;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 1. 网页加载 需要Proxy&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;os&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;environ[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;http_proxy&amp;#34;&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;x.x.x.x:yy&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;os&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;environ[&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;https_proxy&amp;#34;&lt;/span&gt;] &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;x.x.x.x:yy&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;url &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;https://ollama.com/&amp;#34;&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;# 用户输入&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# url = &amp;#34;https://www.hpcwire.com/off-the-wire/mitac-partners-with-daiwabo-to-expand-server-distribution-across-japan/?utm_source=twitter&amp;amp;utm_medium=social&amp;amp;utm_term=hpcwire&amp;amp;utm_content=0ca462ed-d256-453f-924d-49a1d20354c1&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;loader &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; WebBaseLoader(url)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;docs &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; loader&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;load()
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(docs)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;====================&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 3. 拆分文档&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;splitter &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; CharacterTextSplitter(chunk_size&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1000&lt;/span&gt;, chunk_overlap&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;100&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;split_docs &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; splitter&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;split_documents(docs)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 4. 构建摘要链&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;chain &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; load_summarize_chain(llm, chain_type&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;map_reduce&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;summary &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; chain&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;invoke(split_docs) &lt;span style=&#34;color:#75715e&#34;&gt;# invoke&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 5. 输出&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(summary)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;考虑将 &lt;code&gt;WebBaseLoader&lt;/code&gt; 换成 &lt;code&gt;UnstructuredURLLoader&lt;/code&gt;、&lt;code&gt;Playwright&lt;/code&gt; 等 loader（支持 JS 动态页面）。&lt;/li&gt;
+&lt;li&gt;你可以 customize the prompt。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;实现二&#34;&gt;实现二&lt;/h2&gt;
+&lt;p&gt;通过 Stuff 方式，将文档内容合并到提示中。适合文档&lt;strong&gt;总量较小&lt;/strong&gt;能直接放进上下文的场景，如果输入文本过长，&lt;strong&gt;超过模型上下文限制&lt;/strong&gt;，会导致失败或者要人为截断。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>3.3.实例3</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/3.3.%E5%AE%9E%E4%BE%8B3/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:31 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/3.3.%E5%AE%9E%E4%BE%8B3/</guid>
+      <description>&lt;h2 id=&#34;langgraph-get-started&#34;&gt;LangGraph get started&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;anthropic&lt;/code&gt; 是指 LangChain 库中支持与 Anthropic 公司的大语言模型（如 Claude 系列）集成的功能模块。&lt;strong&gt;代表安装 LangChain 时，额外包含与 Anthropic 模型接口的相关依赖包和集成代码&lt;/strong&gt;。这样安装后，你可以用 LangChain 调用 Anthropic 提供的大语言模型，通过配置 &lt;code&gt;ANTHROPIC_API_KEY&lt;/code&gt; 来访问和使用这些模型。&lt;/p&gt;
+&lt;p&gt;前提需要 An Anthropic &lt;strong&gt;API key&lt;/strong&gt;，但在我的地理位置 not available 。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;pip install -U langgraph
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;pip install -qU &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;langchain[anthropic]&amp;#34;&lt;/span&gt; to call the model
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;这个是个 ReAct，并且 LLM 与 tools 没有 bind&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langgraph.prebuilt &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; create_react_agent
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;get_weather&lt;/span&gt;(city: str) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; str:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Get weather for a given city.&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;It&amp;#39;s always sunny in &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;city&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;!&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;agent &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; create_react_agent(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    model&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;anthropic:claude-3-7-sonnet-latest&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    tools&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[get_weather],
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    prompt&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;You are a helpful assistant&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# Run the agent&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;agent&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;invoke(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    {&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;messages&amp;#34;&lt;/span&gt;: [{&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;role&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;user&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;content&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;what is the weather in sf&amp;#34;&lt;/span&gt;}]}
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;ReAct 是一个 Agent 框架。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>3.0.LangGraph When to Use</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/3.0.langgraph-when-to-use/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:30 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/3.0.langgraph-when-to-use/</guid>
+      <description>&lt;p&gt;可以用它创建基于 LLM/VLM 模型的应用。&lt;/p&gt;
+&lt;h1 id=&#34;langchain-vs-langgraph&#34;&gt;LangChain VS LangGraph&lt;/h1&gt;
+&lt;ul&gt;
+&lt;li&gt;LangChain 核心是将多个 LLM 调用和 tools calling 通过链 &lt;strong&gt;Chain 线性拼接&lt;/strong&gt;组成有序任务序列，适合顺序性、线性流程的场景。&lt;/li&gt;
+&lt;li&gt;LangGraph 是由 LangChain 创建团队推出的一个扩展库，基于 LangChain 构建，但可独立使用。它引入了图结构（StateGraph）来管理任务流程，支持复杂的多角色 Agent 协作、有状态执行、循环分支、条件跳转等高级功能，更适合复杂、动态、带状态的多智能体协同或长期任务管理。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;所以：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;LangChain 适合线性任务和单智能体场景。&lt;/li&gt;
+&lt;li&gt;LangGraph 适合复杂任务、多智能体协作和状态管理场景。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1 id=&#34;langchain&#34;&gt;LangChain&lt;/h1&gt;
+&lt;p&gt;LangChain 提供了标准的接口，用于将 models 和工具和组件交互，对于检索、LLM 调用、工具调用 很有用。LangChain 中的 classes 可以与 LangGraph 一同使用。&lt;/p&gt;
+&lt;p&gt;是市场上目前最成熟的 Agent 框架。&lt;/p&gt;
+&lt;h1 id=&#34;什么时候使用-langgraph&#34;&gt;什么时候使用 LangGraph&lt;/h1&gt;
+&lt;p&gt;你再设计AI Agent时会面临 &lt;strong&gt;控制&amp;amp;自由&lt;/strong&gt; 的权衡：自由让你的 LLM 有更多空间进行创造并解决意外问题。；控制确保阿里可预测的行为和可维护。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;CodeAgent 的行为非常自由，可能很难预测，它比使用 JSON 方式更不可控。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;LangGraph 偏向&lt;strong&gt;更多的控制&lt;/strong&gt;。如果你的应用程序&lt;strong&gt;涉及一系列需要以特定方式协调的步骤&lt;/strong&gt;，并&lt;strong&gt;在每个交叉点做出决策&lt;/strong&gt;，那么 LangGraph 就提供了你所需要的结构。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;由于 &lt;strong&gt;LLM 最擅长理解文本&lt;/strong&gt;，因此在能够回答问题之前，你需要&lt;strong&gt;将其他复杂模态&lt;/strong&gt;（图表、表格）转换&lt;strong&gt;为文本&lt;/strong&gt;。 ***&lt;/p&gt;
+&lt;p&gt;简单讲，如果你想&lt;strong&gt;根据每个 step 的输出设计之后的动作流程，并相应地决定下一步执行什么&lt;/strong&gt;。那么 LangGraph 是正确的框架！！&lt;/p&gt;
+&lt;h1 id=&#34;langgraph-如何工作的&#34;&gt;LangGraph 如何工作的？&lt;/h1&gt;
+&lt;p&gt;使用有向图结构来定义您的应用程序的流程。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>3.1.实例langgraph Email Tools Invoke Llm</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/3.1.%E5%AE%9E%E4%BE%8Blanggraph-email-tools-invoke-llm/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:30 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/3.1.%E5%AE%9E%E4%BE%8Blanggraph-email-tools-invoke-llm/</guid>
+      <description>&lt;p&gt;实例的完整过程在&lt;a href=&#34;https://huggingface.co/learn/agents-course/unit2/langgraph/first_graph#step-3-define-our-routing-logic&#34;&gt;这里&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;该实例的作用和功能是：&lt;/p&gt;
+&lt;h1 id=&#34;重点&#34;&gt;重点：&lt;/h1&gt;
+&lt;ol&gt;
+&lt;li&gt;State 类在定义时要足够全面，以便跟踪所有重要信息。&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;message&lt;/code&gt; 对象是 用户定义的 Prompt 内容。&lt;/li&gt;
+&lt;li&gt;一个 Node 执行结束之前要更新 &lt;code&gt;message&lt;/code&gt;。即 append 内容到之前的&lt;code&gt;message&lt;/code&gt;。&lt;/li&gt;
+&lt;li&gt;每一个 Node 的返回值应该是 states updates。&lt;/li&gt;
+&lt;li&gt;LLM 的作用是在每一个 Node 中，&lt;code&gt;model.invoke(prompt)&lt;/code&gt; 来让 model 做动作。&lt;/li&gt;
+&lt;li&gt;所有组件定义好之后，通过创建 StateGraph 将所有组件添加到这个数据结构中，组装成图。记得将 END 节点加入 StateGraph 中。&lt;/li&gt;
+&lt;li&gt;使用可观测性工具来跟踪和监控代理。比如 &lt;code&gt;LangFuse&lt;/code&gt;。Langfuse的API Key本身是免费申请的，使用Hobby计划，不需要绑定信用卡，包含50,000个单位/月的免费额度，支持两名用户，数据保留30天，以及社区支持。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h1 id=&#34;setup&#34;&gt;setup&lt;/h1&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-yml&#34; data-lang=&#34;yml&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;name&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;aiagent&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;dependencies&lt;/span&gt;:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  - &lt;span style=&#34;color:#ae81ff&#34;&gt;python=3.10.12&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  - &lt;span style=&#34;color:#ae81ff&#34;&gt;pip&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  - &lt;span style=&#34;color:#f92672&#34;&gt;pip&lt;/span&gt;:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    - &lt;span style=&#34;color:#ae81ff&#34;&gt;langgraph&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    - &lt;span style=&#34;color:#ae81ff&#34;&gt;langchain_ollama&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;conda env create --file environment.yml
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h1 id=&#34;具体步骤&#34;&gt;具体步骤：&lt;/h1&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; os
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; typing &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; TypedDict, List, Dict, Any, Optional
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langgraph.graph &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; StateGraph, START, END
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain_openai &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; ChatOpenAI
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; langchain_core.messages &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; HumanMessage
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;定义 State：&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>3.2.实例langgraph Png Tool Invoke Llm</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/3.2.%E5%AE%9E%E4%BE%8Blanggraph-png-tool-invoke-llm/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:30 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/3.2.%E5%AE%9E%E4%BE%8Blanggraph-png-tool-invoke-llm/</guid>
+      <description>&lt;p&gt;&lt;a href=&#34;https://huggingface.co/learn/agents-course/unit2/langgraph/document_analysis_agent&#34;&gt;这里&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;ReAct 模式的工作流。&lt;/p&gt;
+&lt;h1 id=&#34;该实例的作用和功能是&#34;&gt;该实例的作用和功能是&lt;/h1&gt;
+&lt;ol&gt;
+&lt;li&gt;处理图像文档&lt;/li&gt;
+&lt;li&gt;使用 VLM 提取图像中的文字&lt;/li&gt;
+&lt;li&gt;在需要时调用常规Tools&lt;/li&gt;
+&lt;li&gt;分析内容并提供摘要&lt;/li&gt;
+&lt;li&gt;执行与文档相关的特定指令&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h1 id=&#34;重点&#34;&gt;重点&lt;/h1&gt;
+&lt;h2 id=&#34;回顾-react-结构&#34;&gt;回顾 ReAct 结构&lt;/h2&gt;
+&lt;p&gt;一个复合ReAct 结构的 Agent 需要 3 步骤：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;act - 让 Agent 调用 tools&lt;/li&gt;
+&lt;li&gt;observe - 将调用 Tools 的输出传回给 model&lt;/li&gt;
+&lt;li&gt;reason - 让 model 分析 tools 的输出，并且决定下一步的行为是什么。比如可能会调用另一个 Tools，或者直接将输出返回给用户。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img alt=&#34;ReAct&#34; loading=&#34;lazy&#34; src=&#34;https://ashburnLee.github.io/blog-2-hugo/pics/Agent.png&#34;&gt;&lt;/p&gt;
+&lt;h2 id=&#34;kaqtool-calling-是agent-的行为还是-llm-的行为&#34;&gt;KAQ：Tool calling 是Agent 的行为还是 LLM 的行为？&lt;/h2&gt;
+&lt;p&gt;工具调用是 Agent 的行为，因为 Agent 管理执行流程（调用工具、处理结果）。但 LLM 驱动工具调用，即依赖 LLM 生成调用指令&lt;code&gt; {&amp;quot;tool&amp;quot;: &amp;quot;web_search&amp;quot;, &amp;quot;query&amp;quot;: &amp;quot;Shanghai city walk&amp;quot;}&lt;/code&gt;。因为它生成调用逻辑（如 JSON 或代码）。&lt;/p&gt;
+&lt;p&gt;开源LLM 中有的支持Tool calling，有的不支持。如果 LLM 不支持工具调用，Agent 无法有效解析和执行工具调用，导致功能受限。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>2.3.创建workflow</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/2.3.%E5%88%9B%E5%BB%BAworkflow/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:29 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/2.3.%E5%88%9B%E5%BB%BAworkflow/</guid>
+      <description>&lt;p&gt;上文已经知道了 LlamaIndex 中基本都 Tools 和 Agents ，现在创建可配置和可管理的 Workflow。&lt;/p&gt;
+&lt;h2 id=&#34;创建基本-workdlow&#34;&gt;创建基本 workdlow&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;@step&lt;/code&gt; 装饰器用于将一个方法标记为一个 Workflow 步骤.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;StartEvent&lt;/code&gt; 是 LlamaIndex 提供的特殊事件，用于开始 Workflow。&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;StopEvent&lt;/code&gt; 是 LlamaIndex 提供的特殊事件，用于结束 Workflow。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; llama_index.core.workflow &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; StartEvent, StopEvent, Workflow, step
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;MyWorkflow&lt;/span&gt;(Workflow):
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#a6e22e&#34;&gt;@step&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;async&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;my_step&lt;/span&gt;(self, ev: StartEvent) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; StopEvent:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#75715e&#34;&gt;# do something here&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; StopEvent(result&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Hello, world!&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;w &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; MyWorkflow(timeout&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;, verbose&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;False&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;result &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;await&lt;/span&gt; w&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;run()
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;链接多个步骤&#34;&gt;链接多个步骤&lt;/h2&gt;
+&lt;p&gt;要连接多个步骤，我们需要创建自定义事件来在步骤之间传递数据。为此，我们需要添加一个 Event ，它在步骤之间传递，并将&lt;strong&gt;第一个步骤的输出传递给第二个步骤&lt;/strong&gt;。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;@step&lt;/code&gt; 装饰器用于将一个方法标记为一个 Workflow 步骤.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;StartEvent&lt;/code&gt; 是 LlamaIndex 提供的特殊事件，用于开始 Workflow。&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;StopEvent&lt;/code&gt; 是 LlamaIndex 提供的特殊事件，用于结束 Workflow。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; llama_index.core.workflow &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; Event
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;ProcessingEvent&lt;/span&gt;(Event):
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    intermediate_result: str
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;MultiStepWorkflow&lt;/span&gt;(Workflow):
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;# 装饰器用于将一个方法标记为一个 Workflow 步骤&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;# `StartEvent` 作为输入&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;# 返回一个 ProcessingEvent 对象&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#a6e22e&#34;&gt;@step&lt;/span&gt;  
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;async&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;step_one&lt;/span&gt;(self, ev: StartEvent) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; ProcessingEvent:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#75715e&#34;&gt;# Process initial data&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; ProcessingEvent(intermediate_result&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Step 1 complete&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;# 接收一个 ProcessingEvent 作为输入。这意味着 step_two 会在 step_one 完成并发出 ProcessingEvent 后被触发。&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#75715e&#34;&gt;# 返回一个 StopEvent 对象。StopEvent 是 LlamaIndex 提供的特殊事件，用于结束 Workflow。&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#a6e22e&#34;&gt;@step&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;async&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;step_two&lt;/span&gt;(self, ev: ProcessingEvent) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; StopEvent:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#75715e&#34;&gt;# Use the intermediate result&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        final_result &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Finished processing: &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;ev&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;intermediate_result&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; StopEvent(result&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;final_result)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;w &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; MultiStepWorkflow(timeout&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;, verbose&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;False&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;result &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color:#66d9ef&#34;&gt;await&lt;/span&gt; w&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;run()
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;result
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;上述 将step_one 和 step_two 连接起来了，并且 step_two 会接收来自 step_one 的数据。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>2.0.LlamaIndex</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/2.0.llamaindex/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:28 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/2.0.llamaindex/</guid>
+      <description>&lt;p&gt;LlamaIndex 是一个用于连接自定义数据源到 LLM 的框架。 简单来说，它可以让你用你自己的数据来增强 LLM，让 LLM 能够回答关于这些数据的更具体、更准确的问题。它被设计为实现 RAG（Retrieval-Augmented Generation）的 Agent。&lt;/p&gt;
+&lt;h2 id=&#34;llamaindex-核心功能和作用&#34;&gt;LlamaIndex 核心功能和作用&lt;/h2&gt;
+&lt;h3 id=&#34;1-数据连接&#34;&gt;1. 数据连接：&lt;/h3&gt;
+&lt;p&gt;LlamaIndex 提供了各种数据连接器 (Data Connectors)，可以从不同的数据源加载数据，例如：文档 (PDF, Word, Text, Markdown 等)，网站，数据库，知识图谱，API。这些连接器负责将数据转换为 LlamaIndex 可以处理的文档格式。&lt;/p&gt;
+&lt;h3 id=&#34;2-数据索引&#34;&gt;2. 数据索引：&lt;/h3&gt;
+&lt;p&gt;LlamaIndex 将加载的数据构建成索引 (Index)，以便 LLM 可以高效地查询和检索相关信息。LlamaIndex 提供了多种索引类型，例如：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;列表索引 (List Index): 简单地将文档列表存储起来。&lt;/li&gt;
+&lt;li&gt;向量索引 (Vector Store Index): 将文档嵌入到向量空间中，以便进行语义搜索。&lt;/li&gt;
+&lt;li&gt;树索引 (Tree Index): 将文档组织成树状结构，以便进行分层搜索。&lt;/li&gt;
+&lt;li&gt;关键词表索引 (Keyword Table Index): 使用关键词来索引文档。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;你可以根据你的数据和查询需求选择合适的索引类型&lt;/p&gt;
+&lt;h3 id=&#34;3-查询引擎&#34;&gt;3. 查询引擎：&lt;/h3&gt;
+&lt;p&gt;LlamaIndex 提供了查询引擎 (Query Engine)，用于&lt;strong&gt;接收用户的查询&lt;/strong&gt;，&lt;strong&gt;并从索引中检索&lt;/strong&gt;相关信息。查询引擎使用 LLM 来理解用户的查询，并生成合适的查询语句。查询引擎还可以对检索到的信息进行排序、过滤和聚合，以便提供更准确的答案。&lt;/p&gt;
+&lt;h3 id=&#34;4-数据代理-data-agents&#34;&gt;4. 数据代理 (Data Agents):&lt;/h3&gt;
+&lt;p&gt;LlamaIndex 允许你创建数据代理，这些代理可以自动执行各种任务，例如：回答问题，生成文本，总结文档，等等。数据代理可以根据你的需求进行定制，以便更好地完成特定任务。&lt;/p&gt;
+&lt;h2 id=&#34;3个重要部分&#34;&gt;3个重要部分&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Components&lt;/strong&gt;： 最基本的构建块。这些包括提示、模型和数据库等。组件通常有助于将 LlamaIndex 与其他工具和库连接起来。比如指定模型。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Agents and Tools&lt;/strong&gt;：让 Agent 执行动作的组件，如搜索、计算或访问外部服务；Agent 是能够使用工具并做出决策的自主组件。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Workflows&lt;/strong&gt;：是逐步处理逻辑的过程。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;llamahub&#34;&gt;LlamaHub&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;LlamaHub&lt;/strong&gt; 是一个包含数百个 &lt;strong&gt;integrations&lt;/strong&gt;、Agents 和 Tools 的注册中心，属于 LlamaIndex。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>2.1.将query Engine作为tool</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/2.1.%E5%B0%86query-engine%E4%BD%9C%E4%B8%BAtool/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:28 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/2.1.%E5%B0%86query-engine%E4%BD%9C%E4%B8%BAtool/</guid>
+      <description>&lt;p&gt;使用 QueryEngineTool 转换 query engine 为 tool。&lt;/p&gt;
+&lt;h2 id=&#34;llamaindex-有4类tools&#34;&gt;LlamaIndex 有4类tools：&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;FunctionTool&lt;/code&gt; ：将任何 Python 函数转换为 Agents 可以使用的工具。它自动推断出函数的工作原理。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;QueryEngineTool&lt;/code&gt; ：一个允许 Agents 使用 queryEngine 的工具。由于 Agents 是基于 queryEngine 构建的，它们也可以将其他 Agents 作为工具使用。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;Toolspecs&lt;/code&gt; ：由社区创建的工具集，通常包含针对特定服务的工具，如 Gmail。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;code&gt;Utility Tools&lt;/code&gt;: 帮助处理 &lt;strong&gt;large amounts of data&lt;/strong&gt; from other tools. 特指 &lt;code&gt;OnDemandToolLoader&lt;/code&gt; &amp;amp; &lt;code&gt;LoadAndSearchToolSpec&lt;/code&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;functional-tool&#34;&gt;Functional Tool&lt;/h2&gt;
+&lt;p&gt;给出工具的 name 和 description 尤其重要，因为它有助于 Agent 理解什么时候应该使用该工具。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; llama_index.core.tools &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; FunctionTool
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;get_weather&lt;/span&gt;(location: str) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; str:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;Useful for getting the weather for a given location.&amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    print(&lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Getting weather for &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;location&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;return&lt;/span&gt; &lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;The weather in &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;location&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt; is sunny&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;tool &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; FunctionTool&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_defaults(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    get_weather,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    name&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;my_weather_tool&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    description&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Useful for getting the weather for a given location.&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;tool&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;call(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Shanghai&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;queryengine-tool&#34;&gt;QueryEngine Tool&lt;/h2&gt;
+&lt;p&gt;使用 &lt;code&gt;QueryEngineTool&lt;/code&gt; 转换 &lt;code&gt;QueryEngine&lt;/code&gt; 为 tool：&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>1.4.codeagent Smolagents 例</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/1.4.codeagent-smolagents-%E4%BE%8B/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:27 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/1.4.codeagent-smolagents-%E4%BE%8B/</guid>
+      <description>&lt;p&gt;传统方法使用 JSON 格式来指定工具名称和参数作为字符串，系统必须解析以确定要执行哪个工具。工具调用型 LLM 与直接生成并执行代码更有效。这是 smolagents 的核心原则。&lt;/p&gt;
+&lt;p&gt;为什么 LLM 可以生成 code ？因为高质量的 code 已经在 LLM 的训练集中了。&lt;/p&gt;
+&lt;p&gt;使用 Code 而不是JSON 的优势是：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;模块化地组合和重用&lt;/li&gt;
+&lt;li&gt;对象管理，直接处理复杂的结构&lt;/li&gt;
+&lt;li&gt;可以表达任何计算上的任务&lt;/li&gt;
+&lt;li&gt;充分利用了code 生成的能力&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;CodeAgent 是特殊的 MultiStepAgent&lt;/p&gt;
+&lt;h2 id=&#34;实例&#34;&gt;实例&lt;/h2&gt;
+&lt;p&gt;准备好 HF access token: xxx&lt;/p&gt;
+&lt;p&gt;使用 HF serveless API 时最好设置 &lt;code&gt;HF_TOKEN&lt;/code&gt;，但是对于公共的 models 和 datasets，是 optional 的。HF 中免费的API调用次数是有限的。需要付费。&lt;/p&gt;
+&lt;h2 id=&#34;他需要强大的可追溯性以供未来的监控和分析&#34;&gt;他需要强大的可追溯性以供未来的监控和分析&lt;/h2&gt;
+&lt;p&gt;代理本质上是不可预测且难以检查的。他需要可以被追溯从而，供监控和分析。有工具可以做， &lt;strong&gt;OpenTelemetry&lt;/strong&gt; 和 &lt;strong&gt;Langfuse&lt;/strong&gt; 用于跟踪和分析 Agents 的行为。&lt;/p&gt;
+&lt;p&gt;通过上述工具可以重新审视之前的 Agent 行为并进一步优化。&lt;/p&gt;
+&lt;h1 id=&#34;code&#34;&gt;code&lt;/h1&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;pip install smolagents -U
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;pip install duckduckgo-search
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;~~~def suggest_menu&lt;span style=&#34;color:#f92672&#34;&gt;(&lt;/span&gt;occasion: str&lt;span style=&#34;color:#f92672&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;~~~py
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 登陆 HF&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;from huggingface_hub import notebook_login
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;notebook_login&lt;span style=&#34;color:#f92672&#34;&gt;()&lt;/span&gt;  &lt;span style=&#34;color:#75715e&#34;&gt;# 非nodetbook时 使用 login()&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 使用  DuckDuckGoSearchTool 搜索内容&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;from smolagents import CodeAgent, DuckDuckGoSearchTool, InferenceClientModel
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;agent &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; CodeAgent&lt;span style=&#34;color:#f92672&#34;&gt;(&lt;/span&gt;tools&lt;span style=&#34;color:#f92672&#34;&gt;=[&lt;/span&gt;DuckDuckGoSearchTool&lt;span style=&#34;color:#f92672&#34;&gt;()]&lt;/span&gt;, model&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;InferenceClientModel&lt;span style=&#34;color:#f92672&#34;&gt;())&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 默认使用 InferenceClientModel - Qwen/Qwen2.5-Coder-32B-Instruct &lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 这个过程会执行多个Step，因为可以前面的Step中 生成的code有语法错误，Agent会自己修改&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;agent.run&lt;span style=&#34;color:#f92672&#34;&gt;(&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Search for the best music recommendations for a party at the Wayne&amp;#39;s mansion.&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;from smolagents import CodeAgent, InferenceClientModel
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;import numpy as np
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;import time
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;import datetime
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 代码执行有严格的安全措施 - 默认情况下会阻止 predefined safe list 之外的导入。&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 但可以通过将它们作为字符串传递给 additional_authorized_imports 来授权额外的导入&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;agent &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; CodeAgent&lt;span style=&#34;color:#f92672&#34;&gt;(&lt;/span&gt;tools&lt;span style=&#34;color:#f92672&#34;&gt;=[]&lt;/span&gt;, model&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;InferenceClientModel&lt;span style=&#34;color:#f92672&#34;&gt;()&lt;/span&gt;, additional_authorized_imports&lt;span style=&#34;color:#f92672&#34;&gt;=[&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;datetime&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;])&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;agent.run&lt;span style=&#34;color:#f92672&#34;&gt;(&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    Alfred needs to prepare for the party. Here are the tasks:
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    1. Prepare the drinks - 30 minutes
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    2. Decorate the mansion - 60 minutes
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    3. Set up the menu - 45 minutes
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    4. Prepare the music and playlist - 45 minutes
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    If we start right now, at what time will the party be ready?
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    &amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# push 到HF hub&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 改成你的 username/reponame&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;agent.push_to_hub&lt;span style=&#34;color:#f92672&#34;&gt;(&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;sergiopaniego/AlfredAgent&amp;#39;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 加载 Agent，并让他工作&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 改成你的 username/reponame&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;alfred_agent &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; agent.from_hub&lt;span style=&#34;color:#f92672&#34;&gt;(&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#39;sergiopaniego/AlfredAgent&amp;#39;&lt;/span&gt;, trust_remote_code&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;True&lt;span style=&#34;color:#f92672&#34;&gt;)&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;alfred_agent.run&lt;span style=&#34;color:#f92672&#34;&gt;(&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Give me the best playlist for a party at Wayne&amp;#39;s mansion. \
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;                    The party idea is a &amp;#39;villain masquerade&amp;#39; theme&amp;#34;&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;)&lt;/span&gt;  
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;总之， smolagents 专门用于编写和执行 Python 代码片段，提供沙盒执行以保障安全。它支持本地和基于 API 的语言模型，使其能够适应各种开发环境。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>1.5.Tools</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/1.5.tools/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:27 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/1.5.tools/</guid>
+      <description>&lt;h2 id=&#34;定义-tools&#34;&gt;定义 Tools&lt;/h2&gt;
+&lt;p&gt;工具被视为一个 LLM 可以在代理系统中调用的函数。为了使 LLM 与 tools 交互，LLM 需要一个知道这个 Tools 的 interface description，包括：Name，Tool description，Input Type and description，Output Type。&lt;/p&gt;
+&lt;h2 id=&#34;创建tools&#34;&gt;创建Tools&lt;/h2&gt;
+&lt;p&gt;在 smolagents 框架中，两种方式创建 Tools：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;使用 &lt;code&gt;@tool&lt;/code&gt; 装饰器，定义相对简单的工具&lt;/li&gt;
+&lt;li&gt;设计 &lt;code&gt;Tool&lt;/code&gt; 类 实现相对复杂的工具&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;两类创建的方式实例见 &lt;a href=&#34;1.4.codeagent-smolagents-%E4%BE%8B.md#code&#34;&gt;这里&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;其中使用 Python 类定义的 Tools 必须要定义 &lt;code&gt;forward()&lt;/code&gt;，它包含推理逻辑以执行的方法。并且是这个工具的交互接口，并且 Agent 无需关心工具的具体实现，只需知道如何调用 forward 函数即可。&lt;/p&gt;
+&lt;h2 id=&#34;默认工具&#34;&gt;默认工具&lt;/h2&gt;
+&lt;p&gt;smolagents 附带了一套预构建的工具&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;PythonInterpreterTool&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;FinalAnswerTool&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;UserInputTool&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;DuckDuckGoSearchTool&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;GoogleSearchTool&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;VisitWebpageTool&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;分享工具和导入工具&#34;&gt;分享工具和导入工具&lt;/h2&gt;
+&lt;p&gt;通过 &lt;code&gt;load_tool()&lt;/code&gt; 功能轻松导入其他用户创建的工具。通过 &lt;code&gt;Tool.from_space()&lt;/code&gt; 将一个 HF Space 作为工具导入。甚至可以重用其他框架（非 smolagents）中的 Tools，比如使用 LangChain 框架中的 Tools: &lt;code&gt;Tool.from_langchain()&lt;/code&gt;。&lt;/p&gt;
+&lt;p&gt;smolagents 也允许从 &lt;code&gt;glama.ai&lt;/code&gt; 或 &lt;code&gt;smithery.ai&lt;/code&gt; 上可用的数百个 &lt;strong&gt;MCP&lt;/strong&gt; 服务器导入工具。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>1.6.multi Agent System</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/1.6.multi-agent-system/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:27 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/1.6.multi-agent-system/</guid>
+      <description>&lt;p&gt;将一个大任务分给多个 Agent 好处：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;每个代理更专注于其核心任务，因此性能更高&lt;/li&gt;
+&lt;li&gt;分离记忆可以减少每一步输入 token 的数量，从而降低延迟和成本。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;Smolagents 中的 &lt;code&gt;managed_agents&lt;/code&gt; 参数允许一个 agent 管理多个其他 agents。&lt;/p&gt;
+&lt;p&gt;下面一个 agent，它的任务是执行 &lt;code&gt;GoogleSearchTool&lt;/code&gt;，&lt;code&gt;VisitWebpage&lt;/code&gt;，&lt;code&gt;calculate_cargo_travel_time&lt;/code&gt;。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;...&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;model &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; InferenceClientModel(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Qwen/Qwen2.5-Coder-32B-Instruct&amp;#34;&lt;/span&gt;, provider&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;together&amp;#34;&lt;/span&gt;, max_tokens&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;8096&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;web_agent &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; CodeAgent(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    model&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;model,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    tools&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        GoogleSearchTool(provider&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;serper&amp;#34;&lt;/span&gt;),
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        VisitWebpageTool(),
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        calculate_cargo_travel_time,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    ],
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    name&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;web_agent&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    description&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Browses the web to find information&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    verbosity_level&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    max_steps&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;...&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;这个 agent 作用是管理，它管理的 agent 是 web_agent。&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;...&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;manager_agent &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; CodeAgent(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    model&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;InferenceClientModel(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;deepseek-ai/DeepSeek-R1&amp;#34;&lt;/span&gt;, provider&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;together&amp;#34;&lt;/span&gt;, max_tokens&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;8096&lt;/span&gt;),
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    tools&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[calculate_cargo_travel_time],
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    managed_agents&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[web_agent],
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    additional_authorized_imports&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;geopandas&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;plotly&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;shapely&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;json&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;pandas&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;numpy&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    ],
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    planning_interval&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;5&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    verbosity_level&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    final_answer_checks&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[check_reasoning_and_plot],
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    max_steps&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;15&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;...&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;通过  &lt;code&gt;manager_agent.visualize()&lt;/code&gt; 可视化，两个 Agent 是如何协同工作的。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>1.7.agent VLM</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/1.7.agent-vlm/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:27 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/1.7.agent-vlm/</guid>
+      <description>&lt;p&gt;smolagents 对 vision-language models (VLMs) 提供了支持。&lt;/p&gt;
+&lt;p&gt;使得 Agent 能够有效地处理和解释图像。&lt;/p&gt;
+&lt;h2 id=&#34;在-agent-执行开始时提供图像&#34;&gt;在 Agent 执行开始时提供图像&lt;/h2&gt;
+&lt;p&gt;实例：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; PIL &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; Image
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; requests
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; io &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; BytesIO
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;image_urls &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; [
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;https://upload.wikimedia.org/wikipedia/commons/e/e8/The_Joker_at_Wax_Museum_Plus.jpg&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#75715e&#34;&gt;# Joker image&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;https://upload.wikimedia.org/wikipedia/en/9/98/Joker_%28DC_Comics_character%29.jpg&amp;#34;&lt;/span&gt; &lt;span style=&#34;color:#75715e&#34;&gt;# Joker image&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;]
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 模型的输入&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;images &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; []
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;for&lt;/span&gt; url &lt;span style=&#34;color:#f92672&#34;&gt;in&lt;/span&gt; image_urls:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    headers &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;        &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;User-Agent&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36&amp;#34;&lt;/span&gt; 
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    response &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; requests&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;get(url,headers&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;headers)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    image &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; Image&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;open(BytesIO(response&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;content))&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;convert(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;RGB&amp;#34;&lt;/span&gt;)  &lt;span style=&#34;color:#75715e&#34;&gt;# 只需RGB 信息&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    images&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;append(image)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; smolagents &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; CodeAgent, OpenAIServerModel
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 使用哪个模型&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;model &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; OpenAIServerModel(model_id&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;gpt-4o&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# Instantiate the agent&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;agent &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; CodeAgent(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    tools&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[],
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    model&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;model,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    max_steps&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;20&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    verbosity_level&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;2&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;response &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; agent&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;run(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&amp;#34;&amp;#34;
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    Describe the costume and makeup that the comic character in these photos is wearing and return the description.
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    Tell me if the guest is The Joker or Wonder Woman.
+&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;    &amp;#34;&amp;#34;&amp;#34;&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    images&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;images  &lt;span style=&#34;color:#75715e&#34;&gt;# 给出输入的图片&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;这个实例是使用模型描述输入 images&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>0.5.Agentic RAG</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/0.5.agentic-rag/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:26 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/0.5.agentic-rag/</guid>
+      <description>&lt;h2 id=&#34;什么是-rag&#34;&gt;什么是 RAG&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Retrieval-Augmented Generation&lt;/strong&gt; 增强 AI 模型能力的技术框架。它通过以下方式提升 AI 的表现：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;检索阶段：从&lt;strong&gt;外部知识库&lt;/strong&gt;中检索与当前问题或上下文相关的文档或段落。&lt;/li&gt;
+&lt;li&gt;生成阶段：将检索到的信息与 AI 模型结合，生成更准确、更相关的输出。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;RAG 技术框架实现的 AI 的作用是：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;减少幻觉（Hallucination） ：通过检索外部知识，确保生成内容基于真实信息。&lt;/li&gt;
+&lt;li&gt;提升上下文理解：结合外部知识，使生成内容更符合上下文。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;RAG 是一种系统。LLMs 是在庞大的数据集上进行训练以学习一般知识的。然而，它们可能没有在相关和最新的数据上进行训练。RAG 通过从您的数据中查找和检索相关信息，并将其提供给 LLM 来解决这个问题。&lt;/p&gt;
+&lt;h2 id=&#34;rag-5个关键阶段&#34;&gt;RAG 5个关键阶段&lt;/h2&gt;
+&lt;p&gt;&lt;a href=&#34;&#34;&gt;RAG in LlamaIndex&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;5阶段构成了构建的大多数更大型应用程序。&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Loading:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;指的是从数据所在的位置获取数据——无论是文本文件、PDF 文件、另一个网站、数据库还是 API，并将其导入到你的工作流程中。LlamaHub 提供了数百种可选择的集成。&lt;/p&gt;
+&lt;p&gt;【你应该熟悉 LlamaHub 加载器和 LlamaParse 解析器（来源于LlamaIndex 框架），以处理更复杂的数据源。】&lt;/p&gt;
+&lt;ol start=&#34;2&#34;&gt;
+&lt;li&gt;Indexing:&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;创建一个允许查询数据的数据结构。对于 LLMs，这几乎总是意味着创建向量嵌入(vector embeddings)。&lt;/p&gt;
+&lt;ol start=&#34;3&#34;&gt;
+&lt;li&gt;Storing：&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;一旦你的数据被索引，你将想要存储你的索引，以及其他元数据，以避免重新索引它。&lt;/p&gt;
+&lt;ol start=&#34;4&#34;&gt;
+&lt;li&gt;Querying：&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;对于任何给定的索引策略，你可以利用 LLMs 和 LlamaIndex 数据结构以多种方式查询，包括子查询、多步骤查询和混合策略。&lt;/p&gt;
+&lt;ol start=&#34;5&#34;&gt;
+&lt;li&gt;Evaluation：&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&#34;什么是-agentic-rag&#34;&gt;什么是 Agentic RAG&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Agentic RAG&lt;/strong&gt; 是 RAG 的一种扩展形式，是进化版本，它在 RAG 的基础上引入了 AI Agent。 RAG 本身并不具备 AI Agent 的自主决策能力。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>1.2.why Smolagents</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/1.2.why-smolagents/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:26 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/1.2.why-smolagents/</guid>
+      <description>&lt;p&gt;&lt;code&gt;Smolagents&lt;/code&gt; 是一个框架，用户通过它构建自己的agents。其他的框架包括 &lt;code&gt;LlamaIndex&lt;/code&gt; 和 &lt;code&gt;LangGraph&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;它专注于 CodeAgent&lt;/strong&gt;，就是通过 code 块执行 Actions，并且 Observe 结果。&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Smolagents&lt;/code&gt; 会执行 TAO cycle 来回应给他打指令。&lt;/p&gt;
+&lt;h1 id=&#34;first-glance&#34;&gt;First glance&lt;/h1&gt;
+&lt;p&gt;在 HF 自己的空间中，创建一个 &lt;code&gt;HF_TOKEN&lt;/code&gt;，确保有 inference 权限。&lt;/p&gt;
+&lt;p&gt;HF 中的 workspace 称作 &lt;code&gt;Space&lt;/code&gt;，进入自己的 &lt;code&gt;&amp;lt;USERNAME&amp;gt;/First_agent_template&lt;/code&gt; 的 &lt;code&gt;Space&lt;/code&gt;。查看 &lt;code&gt;Files&lt;/code&gt;，其中的&lt;code&gt;app.y&lt;/code&gt; 是 main 文件。&lt;/p&gt;
+&lt;p&gt;比如，Smolagents &lt;a href=&#34;https://huggingface.co/spaces/agents-course/First_agent_template/blob/main/app.py&#34;&gt;CodeAgent 模版&lt;/a&gt;&lt;/p&gt;
+&lt;h2 id=&#34;apppy-中有什么&#34;&gt;&lt;code&gt;app.py&lt;/code&gt; 中有什么&lt;/h2&gt;
+&lt;ol&gt;
+&lt;li&gt;import 了 Smolagents&lt;/li&gt;
+&lt;li&gt;定义了两个 tools，一个是计算当前时间，另一个是空的，由自己发挥&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;model = HfApiModel()&lt;/code&gt; 中给出来使用到了LLM模型：&lt;code&gt;Qwen/Qwen2.5-Coder-32B-Instruct&lt;/code&gt; 。这个就是前文提到的 serveless API。使用托管的LLM，而非本地部署的LLM。&lt;/li&gt;
+&lt;li&gt;让模型可见自定义的工具，通过在 CodeAgent 中添加 自定义工具列表即可。而且不需要给 tool 参数，LLM会自行传入。&lt;/li&gt;
+&lt;li&gt;特殊工具 &lt;code&gt;FinalAnswerTool&lt;/code&gt; 的作用是 终止 &lt;strong&gt;TAO 循环&lt;/strong&gt;并提供最终答案，表示 Agent 任务完成。&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2 id=&#34;kaqsmolagents-如何体现-tao-循环&#34;&gt;KAQ：Smolagents 如何体现 TAO 循环？&lt;/h2&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;agent &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; CodeAgent(
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    model&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;model,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    tools&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;[final_answer], &lt;span style=&#34;color:#75715e&#34;&gt;# tools 列表&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    max_steps&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;6&lt;/span&gt;,  &lt;span style=&#34;color:#75715e&#34;&gt;# 参数限制了 TAO/ReAct 循环的迭代次数，避免无限循环。&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    verbosity_level&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    grammar&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;None&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    planning_interval&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;None&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    name&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;None&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    description&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;None&lt;/span&gt;,
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    prompt_templates&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;prompt_templates  &lt;span style=&#34;color:#75715e&#34;&gt;# ！&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;strong&gt;TAO 循环&lt;/strong&gt;不是用户定义的，而是 Smolagents 框架内部架构的核心部分，通过 ReAct 框架实现。上述CodeAgent 的参数 &lt;code&gt;max_steps=6 &lt;/code&gt;限制了 TAO/ReAct 循环的迭代次数。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>1.3.agent框架类型</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/1.3.agent%E6%A1%86%E6%9E%B6%E7%B1%BB%E5%9E%8B/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:26 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/1.3.agent%E6%A1%86%E6%9E%B6%E7%B1%BB%E5%9E%8B/</guid>
+      <description>&lt;p&gt;Agents 类型有 CodeAgents, retrieval agents、tools calling agents、multi-agent systems、vision agents 和 browser agents。&lt;/p&gt;
+&lt;p&gt;这些多样的 Agents 为我构建动态的、感知上下文的应用提供了多种可能。我的目的是组合多种类型的 Agents 来构建强大的系统。&lt;/p&gt;
+&lt;h2 id=&#34;codeagents&#34;&gt;CodeAgents&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;这是 smolagents 主要 agent 类型&lt;/strong&gt;。这种 agent 不生成 JSON 而是高级语言像 python 来执行操作。&lt;/p&gt;
+&lt;h2 id=&#34;toolcallingagents&#34;&gt;ToolCallingAgents&lt;/h2&gt;
+&lt;p&gt;是 smolagents 第二种支持的 类型，这类 agents 依赖系统解析和解释 JSON 块来执行操作。&lt;/p&gt;
+&lt;p&gt;过于 Tools，如何创建工具、它们的结构以及使用 &lt;code&gt;Tool&lt;/code&gt; 类或 &lt;code&gt;@tool&lt;/code&gt; 装饰器进行不同实现方法。还将学习默认工具箱、如何与社区共享工具，以及如何加载社区贡献的工具用于我的代理。&lt;/p&gt;
+&lt;p&gt;这类 Agents 使用 &lt;strong&gt;LLM 提供商&lt;/strong&gt; 的内置工具的调用功能来生成 JSON 结构，然后执行工具调用。这是 OpenAI、Anthropic 和许多其他提供商会使用的标准方法。&lt;/p&gt;
+&lt;p&gt;比如，该 Agent 就生成 JSON 结构：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-json&#34; data-lang=&#34;json&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;[
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    {&lt;span style=&#34;color:#f92672&#34;&gt;&amp;#34;name&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;web_search&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#f92672&#34;&gt;&amp;#34;arguments&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Best catering services in Gotham City&amp;#34;&lt;/span&gt;},
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    {&lt;span style=&#34;color:#f92672&#34;&gt;&amp;#34;name&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;web_search&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#f92672&#34;&gt;&amp;#34;arguments&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Party theme ideas for superheroes&amp;#34;&lt;/span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;]
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;然后这个 JSON 会备用来执行工具调用。？？应用：&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>0.2.LLM</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/0.2.llm/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:25 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/0.2.llm/</guid>
+      <description>&lt;p&gt;来源：https://huggingface.co/learn/agents-course/unit0/onboarding#step-2-join-our-discord-community&lt;/p&gt;
+&lt;h1 id=&#34;intro&#34;&gt;Intro&lt;/h1&gt;
+&lt;h2 id=&#34;tools&#34;&gt;tools&lt;/h2&gt;
+&lt;p&gt;需要 ollama，作为Agent的大脑。smolagents 创建自己的 Agent&lt;/p&gt;
+&lt;h1 id=&#34;什么是-agents&#34;&gt;什么是 Agents&lt;/h1&gt;
+&lt;p&gt;智能体：一个能够理解自然语言，然后推理、规划和与其环境交互的 AI 模型。&lt;/p&gt;
+&lt;p&gt;比如你下达一个煮咖啡的命令，Agents &lt;strong&gt;接收指令&lt;/strong&gt;，它理解自然语言，然后进行&lt;strong&gt;推理和规划&lt;/strong&gt;，弄清楚自己需要哪些&lt;strong&gt;步骤和工具&lt;/strong&gt;。有了规划，他会&lt;strong&gt;行动&lt;/strong&gt;，使用它知道的工具来完成任务。&lt;/p&gt;
+&lt;p&gt;一个 Action, 涉及到使用多种 Tools 来完成。Tools 的作用是增强 Agent 的能力。&lt;/p&gt;
+&lt;p&gt;之所以称它为 Agent，是因为它有&lt;strong&gt;能动性&lt;/strong&gt;，就是自主行动，产生影响，即他可以与所处环境进行交互。&lt;/p&gt;
+&lt;p&gt;Agent 更精确的定义是：代理是一个利用 AI 模型与环境交互以实现用户定义目标的系统。它结合推理、规划和执行动作（通常通过外部工具）来完成任务。&lt;/p&gt;
+&lt;h2 id=&#34;agents-组成部分&#34;&gt;Agents 组成部分&lt;/h2&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;The Brain (AI Model)：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;思考推理规划，都放生在这里&lt;/li&gt;
+&lt;li&gt;在代理中找到的最常见的 AI 模型是 LLM（大型语言模型），它将文本作为输入，并以文本作为输出。已有的大模型已经经过训练，并且有很好的泛化能力，&lt;/li&gt;
+&lt;li&gt;当然也可以使用 VLM 视觉大模型&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;The Body：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;代表Agent 所有可执行的操作，取决于Agent 被配置了什么&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h1 id=&#34;什么是llm&#34;&gt;什么是LLM&lt;/h1&gt;
+&lt;p&gt;大多数 LLM 都基于 Transformer 架构构建——这是一种基于“注意力”算法的深度学习架构。有三种类型的 Transformer：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;Encoders&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;情感人类，识别文本中的实体，理解上下文提取答案&lt;/li&gt;
+&lt;li&gt;代表模型：BERT&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Decoders&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;如文本生成，文本摘要，翻译，聊天机器人，代码生成&lt;/li&gt;
+&lt;li&gt;代表模型：GPT，Llama&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Encoder-decoders (Seq2Seq)&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;处理序列到序列到问题&lt;/li&gt;
+&lt;li&gt;代表模型：原始Transformer，T5， BART&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;虽然，但是&lt;strong&gt;LLMs 通常是基于解码器的模型&lt;/strong&gt;，LLM 的基本原理简单而高效：其目标是根据先前Token的序列预测下一个Token。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Token&lt;/strong&gt;：LLM 处理文本的基本单元，可以是单词、子词或字符。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Tokenization&lt;/strong&gt;：将文本分割成 Token 的过程，是 LLM 处理文本的第一步。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Special tokens&lt;/strong&gt;：是语言模型词汇表中的预定义符号，用于指导模型的处理，而不是表示实际的词。例如：
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;&amp;lt;bos&amp;gt;&lt;/code&gt; (Beginning of Sequence)：表示序列的开始。用于指示模型开始生成文本。&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;&amp;lt;eos&amp;gt;&lt;/code&gt; (End of Sequence)：表示序列的结束。用于指示模型停止生成文本。&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;&amp;lt;pad&amp;gt;&lt;/code&gt; (Padding Token)：用于填充较短序列，以使所有输入序列具有相同的长度。这在批量处理数据时是必需的。&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;&amp;lt;unk&amp;gt;&lt;/code&gt; (Unknown Token)：表示词汇表中不存在的词。当模型遇到词汇表外的词时，会用 &lt;code&gt;&amp;lt;unk&amp;gt;&lt;/code&gt; 替换它们。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;什么是-next-token-prediction&#34;&gt;什么是 next token prediction&lt;/h2&gt;
+&lt;p&gt;LLMs 被认为具有自回归性，这意味着一次输出的内容成为下一次输入的内容。这个循环会持续进行，直到模型预测下一个标记是 &lt;code&gt;EOS&lt;/code&gt; 标记，此时模型可以停止。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>0.3.Thought Action Observation</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/0.3.thought-action-observation/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:25 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/0.3.thought-action-observation/</guid>
+      <description>&lt;h1 id=&#34;三步循环&#34;&gt;三步循环&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;Thought-Action-Observation (TAO)&lt;/strong&gt; 是 AI Agent 的完整的工作流程。在许多 Agent 框架中，规则和指示是被直接&lt;strong&gt;嵌入到&lt;/strong&gt; System prompt 中的，确保每个循环都遵循定义的逻辑。就是说，在后端，输入给 LLM 的 prompt 总是会有一些预设的信息，比如，有哪些 Tools 可以使用，等。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;三步循环&lt;/strong&gt;中可以看出：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;代理会不断循环上述三步骤，直到目标较好地达成。&lt;/li&gt;
+&lt;li&gt;第三步 Observation 其实是将上一部 Action 的结果拿到。在下一次循环中使用。&lt;/li&gt;
+&lt;li&gt;动态适应：每个循环都允许代理将最新的信息（Observation 结果）&lt;strong&gt;纳入其推理&lt;/strong&gt;（Thought）中，从而确保最终的答案是信息充分且准确的。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;上述循环称作 &lt;strong&gt;ReAct&lt;/strong&gt;（Resoning &amp;amp; Acting） cycle。&lt;/p&gt;
+&lt;h1 id=&#34;thought&#34;&gt;Thought&lt;/h1&gt;
+&lt;p&gt;ReAct 是一种简单的 Prompting 技术，在让 LLM 解码下一个标记之前，他会添加 “让我们一步一步地思考”。“一步一步地思考”会鼓励模型解码过程朝着&lt;strong&gt;生成计划而不是最终解决方案&lt;/strong&gt;的方向发展，因为模型被鼓励&lt;strong&gt;将问题分解为子任务&lt;/strong&gt;。分解成子步骤，就是 Deepseek R1 或 OpenAI 的 o1 这类模型背后的原理，它们被微调成 “在回答之前思考”。&lt;/p&gt;
+&lt;p&gt;这些训练好的模型包含特定的思考部分（在&lt;code&gt;&amp;lt;think&amp;gt;&lt;/code&gt;和&lt;code&gt;&amp;lt;/think&amp;gt;&lt;/code&gt; special token 之间）。这不仅仅是一种像 ReAct 这样的提示技术，而是一种训练方法。&lt;/p&gt;
+&lt;p&gt;这一步是由 LLM 完成的。&lt;/p&gt;
+&lt;h2 id=&#34;kaqtao-cycle-和-react-的区别&#34;&gt;KAQ：TAO-cycle 和 ReAct 的区别&lt;/h2&gt;
+&lt;p&gt;TAO 是一个更通用的概念，描述了 AI Agent 与环境交互的基本循环过程 。它强调了 Agent 需要思考、行动、并观察行动的结果，然后根据观察到的结果进行下一步的思考和行动。这是一个&lt;strong&gt;基础模型&lt;/strong&gt;。&lt;/p&gt;
+&lt;p&gt;ReAct 是一个更具体的框架，它在 TAO 循环的基础上，特别强调了推理 (Reasoning) 的重要性 。ReAct Agent 不仅仅是简单地思考和行动，而是会生成详细的推理轨迹，用于指导行动，并处理异常情况。这是个&lt;strong&gt;具体实现&lt;/strong&gt;。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>0.Transformers Big Pic | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="LLM">
+<meta name="description" content="使用一个新的 Python 环境，安装 轻量级 transformers pip install &quot;transformers[sentencepiece]&quot; 除安装主包 transformers 本身，还会安装与 sentencepiece 相关的额外依赖包，这是一种标准的 Python 包管理习惯，方便用户按需安装某些功能所需的附加依赖，而不用下载安装所有不需要的依赖。
+HF 生态中的其他库 transformers、Datasets、Tokenizers、Accelerate 和 Hugging Face Hub
+NLP
+LLMs 是 NLP 的一项重大进步，LLM 特点
+
+规模很大：参数量从百万到百亿两级
+通用能力：在没有特定任务训练的情况下执行多个任务
+情景学习：它可以从 prompt 的实例中学习
+涌现能力：随规模的增大，会出现意料之外的能力
+
+LLMs 还是有局限
+
+幻觉：他会生成不正确的信息
+不会真正理解：它是纯粹通过统计执行动作的，没有对世界的真正理解
+上下文窗口：有限
+计算资源：需要大量计算资源，包括内存资源
+
+Transformers.pipline
+Transformers 库的作用是提供了创建共享模型和使用共享模型的功能。
+最基本的对象是 pipeline() 函数。它将模型与其必要的预处理和后处理步骤连接起来。
+from transformers import pipeline
+
+classifier = pipeline(&#34;sentiment-analysis&#34;)  # 默认模型是 distilbert
+classifier(&#34;I&#39;ve been waiting for a HuggingFace course my whole life.&#34;)
+
+[{&#39;label&#39;: &#39;POSITIVE&#39;, &#39;score&#39;: 0.9598047137260437}]
+上述，当创建 classifier 对象时，模型会被下载并缓存，没有指明模型则会 load 默认的模型。如果重新运行该命令，将使用缓存的模型，而无需再次下载。默认模型这里是 distilbert/distilbert-base-uncased-finetuned-sst-2-english，不同的 pipline 有不同的 default 模型。">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/llm/0.transformers-big-pic/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/llm/0.transformers-big-pic/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/llm/0.transformers-big-pic/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="0.Transformers Big Pic">
+  <meta property="og:description" content="使用一个新的 Python 环境，安装 轻量级 transformers pip install &#34;transformers[sentencepiece]&#34; 除安装主包 transformers 本身，还会安装与 sentencepiece 相关的额外依赖包，这是一种标准的 Python 包管理习惯，方便用户按需安装某些功能所需的附加依赖，而不用下载安装所有不需要的依赖。
+HF 生态中的其他库 transformers、Datasets、Tokenizers、Accelerate 和 Hugging Face Hub
+NLP LLMs 是 NLP 的一项重大进步，LLM 特点
+规模很大：参数量从百万到百亿两级 通用能力：在没有特定任务训练的情况下执行多个任务 情景学习：它可以从 prompt 的实例中学习 涌现能力：随规模的增大，会出现意料之外的能力 LLMs 还是有局限
+幻觉：他会生成不正确的信息 不会真正理解：它是纯粹通过统计执行动作的，没有对世界的真正理解 上下文窗口：有限 计算资源：需要大量计算资源，包括内存资源 Transformers.pipline Transformers 库的作用是提供了创建共享模型和使用共享模型的功能。
+最基本的对象是 pipeline() 函数。它将模型与其必要的预处理和后处理步骤连接起来。
+from transformers import pipeline classifier = pipeline(&#34;sentiment-analysis&#34;) # 默认模型是 distilbert classifier(&#34;I&#39;ve been waiting for a HuggingFace course my whole life.&#34;) [{&#39;label&#39;: &#39;POSITIVE&#39;, &#39;score&#39;: 0.9598047137260437}] 上述，当创建 classifier 对象时，模型会被下载并缓存，没有指明模型则会 load 默认的模型。如果重新运行该命令，将使用缓存的模型，而无需再次下载。默认模型这里是 distilbert/distilbert-base-uncased-finetuned-sst-2-english，不同的 pipline 有不同的 default 模型。">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="llm">
+    <meta property="article:published_time" content="2025-08-31T12:49:35+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:49:35+08:00">
+    <meta property="article:tag" content="LLM">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="0.Transformers Big Pic">
+<meta name="twitter:description" content="使用一个新的 Python 环境，安装 轻量级 transformers pip install &quot;transformers[sentencepiece]&quot; 除安装主包 transformers 本身，还会安装与 sentencepiece 相关的额外依赖包，这是一种标准的 Python 包管理习惯，方便用户按需安装某些功能所需的附加依赖，而不用下载安装所有不需要的依赖。
+HF 生态中的其他库 transformers、Datasets、Tokenizers、Accelerate 和 Hugging Face Hub
+NLP
+LLMs 是 NLP 的一项重大进步，LLM 特点
+
+规模很大：参数量从百万到百亿两级
+通用能力：在没有特定任务训练的情况下执行多个任务
+情景学习：它可以从 prompt 的实例中学习
+涌现能力：随规模的增大，会出现意料之外的能力
+
+LLMs 还是有局限
+
+幻觉：他会生成不正确的信息
+不会真正理解：它是纯粹通过统计执行动作的，没有对世界的真正理解
+上下文窗口：有限
+计算资源：需要大量计算资源，包括内存资源
+
+Transformers.pipline
+Transformers 库的作用是提供了创建共享模型和使用共享模型的功能。
+最基本的对象是 pipeline() 函数。它将模型与其必要的预处理和后处理步骤连接起来。
+from transformers import pipeline
+
+classifier = pipeline(&#34;sentiment-analysis&#34;)  # 默认模型是 distilbert
+classifier(&#34;I&#39;ve been waiting for a HuggingFace course my whole life.&#34;)
+
+[{&#39;label&#39;: &#39;POSITIVE&#39;, &#39;score&#39;: 0.9598047137260437}]
+上述，当创建 classifier 对象时，模型会被下载并缓存，没有指明模型则会 load 默认的模型。如果重新运行该命令，将使用缓存的模型，而无需再次下载。默认模型这里是 distilbert/distilbert-base-uncased-finetuned-sst-2-english，不同的 pipline 有不同的 default 模型。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "LLM",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "0.Transformers Big Pic",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/0.transformers-big-pic/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "0.Transformers Big Pic",
+  "name": "0.Transformers Big Pic",
+  "description": "使用一个新的 Python 环境，安装 轻量级 transformers pip install \u0026quot;transformers[sentencepiece]\u0026quot; 除安装主包 transformers 本身，还会安装与 sentencepiece 相关的额外依赖包，这是一种标准的 Python 包管理习惯，方便用户按需安装某些功能所需的附加依赖，而不用下载安装所有不需要的依赖。\nHF 生态中的其他库 transformers、Datasets、Tokenizers、Accelerate 和 Hugging Face Hub\nNLP LLMs 是 NLP 的一项重大进步，LLM 特点\n规模很大：参数量从百万到百亿两级 通用能力：在没有特定任务训练的情况下执行多个任务 情景学习：它可以从 prompt 的实例中学习 涌现能力：随规模的增大，会出现意料之外的能力 LLMs 还是有局限\n幻觉：他会生成不正确的信息 不会真正理解：它是纯粹通过统计执行动作的，没有对世界的真正理解 上下文窗口：有限 计算资源：需要大量计算资源，包括内存资源 Transformers.pipline Transformers 库的作用是提供了创建共享模型和使用共享模型的功能。\n最基本的对象是 pipeline() 函数。它将模型与其必要的预处理和后处理步骤连接起来。\nfrom transformers import pipeline classifier = pipeline(\u0026#34;sentiment-analysis\u0026#34;) # 默认模型是 distilbert classifier(\u0026#34;I\u0026#39;ve been waiting for a HuggingFace course my whole life.\u0026#34;) [{\u0026#39;label\u0026#39;: \u0026#39;POSITIVE\u0026#39;, \u0026#39;score\u0026#39;: 0.9598047137260437}] 上述，当创建 classifier 对象时，模型会被下载并缓存，没有指明模型则会 load 默认的模型。如果重新运行该命令，将使用缓存的模型，而无需再次下载。默认模型这里是 distilbert/distilbert-base-uncased-finetuned-sst-2-english，不同的 pipline 有不同的 default 模型。\n",
+  "keywords": [
+    "LLM"
+  ],
+  "articleBody": "使用一个新的 Python 环境，安装 轻量级 transformers pip install \"transformers[sentencepiece]\" 除安装主包 transformers 本身，还会安装与 sentencepiece 相关的额外依赖包，这是一种标准的 Python 包管理习惯，方便用户按需安装某些功能所需的附加依赖，而不用下载安装所有不需要的依赖。\nHF 生态中的其他库 transformers、Datasets、Tokenizers、Accelerate 和 Hugging Face Hub\nNLP LLMs 是 NLP 的一项重大进步，LLM 特点\n规模很大：参数量从百万到百亿两级 通用能力：在没有特定任务训练的情况下执行多个任务 情景学习：它可以从 prompt 的实例中学习 涌现能力：随规模的增大，会出现意料之外的能力 LLMs 还是有局限\n幻觉：他会生成不正确的信息 不会真正理解：它是纯粹通过统计执行动作的，没有对世界的真正理解 上下文窗口：有限 计算资源：需要大量计算资源，包括内存资源 Transformers.pipline Transformers 库的作用是提供了创建共享模型和使用共享模型的功能。\n最基本的对象是 pipeline() 函数。它将模型与其必要的预处理和后处理步骤连接起来。\nfrom transformers import pipeline classifier = pipeline(\"sentiment-analysis\") # 默认模型是 distilbert classifier(\"I've been waiting for a HuggingFace course my whole life.\") [{'label': 'POSITIVE', 'score': 0.9598047137260437}] 上述，当创建 classifier 对象时，模型会被下载并缓存，没有指明模型则会 load 默认的模型。如果重新运行该命令，将使用缓存的模型，而无需再次下载。默认模型这里是 distilbert/distilbert-base-uncased-finetuned-sst-2-english，不同的 pipline 有不同的 default 模型。\n将自然语言传递给 classifier 后会执行三个步骤：\n将 text 变为模型可以理解的格式 pass 给模型 预测结果进行后处理，供人理解 不同模态的 pipline 上例的 pipline 是 “sentiment-analysis”，还有更多的 piplines:\ntext-generation text-classification summarization translation zero-shot-classification feature-extraction fill-mask ner question-answering 根据上下文提取信息，非生成信息 image-to-text image-classification object-detection automatic-speech-recognition audio-classification text-to-speech image-text-to-text 例：zero-shot-classification from transformers import pipeline classifier = pipeline(\"zero-shot-classification\") classifier( \"This is a course about the Transformers library\", candidate_labels=[\"education\", \"politics\", \"business\"], ) {'sequence': 'This is a course about the Transformers library', 'labels': ['education', 'business', 'politics'], 'scores': [0.8445963859558105, 0.111976258456707, 0.043427448719739914]} 即，使用我指定的，模型未见过的标签，进行分类。\n使用指定模型 上述例子中使用的是默认的模型，也可以从 HF Hub 中选择特定模型用于特定任务。如：\nfrom transformers import pipeline generator = pipeline(\"text-generation\", model=\"HuggingFaceTB/SmolLM2-360M\") # 指定模型 generator( \"In this course, we will teach you how to\", max_length=30, num_return_sequences=2, ) 当你点击一个模型时，会看到一个部件，它允许你直接在线试用该模型。这样你可以在下载之前快速测试模型的功能。避免磁盘空间、代理流量、时间的浪费。付费模型也可以在页面中试用。 【并没有找到在线使用的地方】\n通用 Transformer 架构 Transfer learning \u0026 微调 可以利用一个在英语上预训练的模型，然后在一个 arXiv 语料库上进行微调，从而得到一个基于科学/研究的模型。微调只需要有限的数据量：预训练模型所获得的知识会被“迁移”，这就是迁移学习的术语来源。迁移的是权重。\nTransfer learning 使模型适应特定任务。\n应该总是尝试利用一个预训练模型，一个尽可能接近你所面临任务的模型，并进行微调。\n通用结构 通用结构 Encoder (left): The encoder 获取inputs，然后构建 inputs 的表示。即，构建对输入的理解。\nDecoder (right): The decoder 应用 Encoder 的表示和其他输入生成目标序列。\n单独使用 encoder-only：用于需要理解输入的任务，如句子分类 Decoder-only：用于文本生成等生成任务\nAttention 层 当处理每个词的表示时，这一层会告诉模型专注于传递给它的句子中的某些特定词。\nArchitectures 和 checkpoints Architecture 定义了模型中每一层和每一操作 Checkpoints 是在给定架构中将要加载的权重 Model 是太宽泛的表达，可以指代上述两者 Transformer 如何工作的 对于 Transformer 模型，其基本思路是相同的。由于其灵活的架构，大多数模型都是Encoder、Decoder或Encoder-Decoder结构的变体。\n了解大多数任务遵循相似模式是有帮助的：输入数据通过模型进行处理，输出结果根据特定任务进行解释。差异在于数据如何准备、使用哪种模型架构变体以及如何处理输出。\nLanguage models 通过训练来预测给定上下文时某个词的概率他是自监督的。两种训练方式：\nMasked language modeling (MLM) 被 BERT 等Encoder模型使用，this approach randomly masks some tokens in the input and trains the model to predict the original tokens based on the surrounding context. This allows the model to learn bidirectional context (looking at words both before and after the masked word).\nCausal language modeling (CLM) 被 GPT 等Decoder模型使用，this approach predicts the next token based on all previous tokens in the sequence. The model can only use context from the left (previous tokens) to predict the next token.\n语言模型和 transformers 的关系是：Transformer 是语言模型的实现方式之一，他有自己的架构。但语言模型不限于 Transformer，早起的RNN 和LSTM都可以实现语言模型。\n语言模型的类型 Encoder-only models (like BERT，DistilBERT，ModernBERT) 这些模型采用双向方法，从两个方向理解上下文。它们最适合需要深度理解文本的任务。他们有bi-directional attention 机制，被称作 auto-encoding models。训练过程是将输入句子以某种方式破坏掉，让模型重建初始语句。\nDecoder-only models (like GPT, Llama，Gemma，DeepSeekv3) 些模型从左到右处理文本，特别擅长文本生成任务。它们可以完成句子、写文章。Decoder 架构中，在每个阶段，对于给定的词，注意力层只能访问句子中位于其之前的词，被称作 auto-regressive models（自回归）。训练的是预测句子中的下一个词。 所以用于生成任务。\nEncoder-decoder models (like T5, BART) 些模型结合了两种方法，使用Encoder理解输入，使用Decoder生成输出。用于从一个序列到另一个序列任务。\n语言模型通常以自监督方式（无需人工标注）在大量文本数据上进行预训练，然后在特定任务上进行微调，即迁移学习。Allows these models to adapt to many different NLP tasks with relatively small amounts of task-specific data.【这个表达很精确】\n1. Text generation GPT-2 是一个Decoder 它使用 byte pair encoding (BPE)分词法 来 tokenize words 和生成 token embedding. masked self-attention 意味着这个模型只会关注于未来的词。他的训练方式完全是 causal language modeling。\n2. Text classification 一个Encoder BEART 是深度双向性的模型，通过关注两侧的单词来学习更丰富的文本表示。\n它使用 WordPiece 分词法来生成文本的 token embeddings。\n它使用两个目标进行预训练：掩码语言建模 \u0026 下一句预测。第一个任务是输入token中的一部分会被随机掩码，模型需要预测这些掩码。这解决了双向性的问题。第二个预训练任务是下一句预测。模型必须预测句子 B 是否紧随句子 A。\n3. Token classification 在基础 BERT 模型上添加一个 token classification head\n4. Question answering 在基础 BERT 模型顶部添加一个 span classification head\n5. Summarization 像 BART 和 T5 这样的 Encoder-Decoder 模型是为摘要任务、翻译任务的序列到序列模式设计的。\nEncoder 与BERT类似，BART 通过破坏输入然后使用Decoder重建输入进行预训练。破坏输入的方式是 text infilling corruption strategy。\nEncoder的输出传递给Decoder，Decoder必须预测被掩盖的token以及Encoder输出中的任何未损坏的token。这为Decoder提供了额外的上下文，以帮助其恢复原始文本。Decoder的输出被传递给language modeling head，该 head 执行线性变换将隐藏状态转换为 logits。在 logits 和标签之间计算交叉熵损失，标签只是向右移动一个位置的token。\n6. Translation Encoder+Decoder模型 Transformers 也可以应用于语音和音频、图像以及视频等其他模态 1. Whisper 音频数据预训练的Transformer Encoder处理输入音频。原始音频首先被转换为对数梅尔谱图。然后，该谱图通过 Transformer Encoder网络进行处理。\nDecoder是一个标准的 Transformer Decoder。\n2. 视觉任务 有两种方法处理计算机视觉任务：\n将图像分割成一系列图像块，并使用 Transformer 并行处理。 使用现代卷积神经网络，如 ConvNeXT，它依赖于卷积层但采用了现代网络设计。 ViT 和 ConvNeXT 常用于图像分类。但对于其他视觉任务，如目标检测、分割和深度估计，会了解 DETR、Mask2Former 和 GLPN，这些模型更适合这些任务。\nViT 引入的主要变化在于图像如何被输入到 Transformer 中：\n一张图像被分割成不重叠的方形块，每个块都会转换成向量或块嵌入。 A learnable embedding 一个特殊的 [CLS] token——就像 BERT 一样被添加到补丁嵌入的开头。 position embeddings 也是需要学习的。 output，特别是带有 [CLS] token的输出，被传递到一个多层感知器头（MLP） Transformers 架构 Transformers 架构类型，描述了3中架构。\n当代 LLMs 大多数 LLMs 都采用仅 Decoder 架构。这些模型在过去几年中规模和能力都有了显著增长，其中一些最大的模型包含数百亿个参数。现在的LLMs 训练都要经过两个阶段：\nPretraining：在大量文本上训练模型，可以预测下一个词。 Instruction tuning：微调模型让他遵循指令，生成有意义的回复。 Seq2Seq Encoder-Decoder模型（序列到序列模型）使用 Transformer 架构的各个部分。在每个阶段，Encoder的注意力层可以访问初始句子中的所有单词，而 Decoder 的注意力层只能访问输入中给定单词之前的单词。\nLLMs 演进 Attention mechanisms：大多数 Transformer 模型使用full attention，即注意力矩阵是方阵。当处理长文本时，这可能会成为计算瓶颈。Longformer 和 reformer 是尝试提高效率的模型，它们使用稀疏版本的注意力矩阵来加速训练。 LSH attention: Reformer 使用 LSH attention. Local attention: Longformer 使用 Local Attention。 Axial positional encodings： Reformer 使用 Axial Positional Encodings。 LLM 推理背后的核心概念 推理是使用训练好的 LLM 根据给定的输入提示生成类似人类的文本。语言模型利用其训练知识逐字地构建响应。\nAttention 的作用 Attention 赋予了 LLM 理解上下文和生成连贯响应的能力。在预测下一个词时，句子中的每个词不同等重要。例如，在句子 “法国的首都是……”中，“法国”和“首都”这两个词对于确定“巴黎”应该紧随其后至关重要。这种专注于相关信息的能力，即注意力Attention。它是现代 LLMs 区别于前几代语言模型的关键。\nContext Length （ Attention Span ） context length 是生成一次响应时需要的大 token 数量（包括输入和输出 的所有tokens），可理解为模型工作时的内存大小。这个长度受限于多种因素：\n模型的架构和大小、可用的硬件资源、输入和期望输出的复杂性。\n通常不同的模型被设计成具有不同的上下文长度，以在能力和效率之间取得平衡。context length 直接和计算复杂度相关。\nAttention 需要计算每个token 对其他token 的关联，生成一个大小为 $n \\times n$ 的Attention 矩阵（其中 $n$ 是context length）。因此，内存需求随 $n^2$ 增长。\nPrompting 我们会以某种方式组织输入，引导 LLM 生成期望的输出。由于模型的主要任务是通过分析每个输入 token 的重要性来预测下一个 token，因此输入序列的措辞变得重要。\nLLMs 生成文本 过程 \u0026 策略 LLMs 实际生成文本的过程有两阶段 The Prefill Phase：是准备阶段包括一下。这个阶段计算密集，因为它需要一次性处理所有输入token，类似做阅读理解之前你要将文章通读。\nTokenization：将输入文本转换为 token（可以将其视为模型理解的基本构建块） Embedding Conversion：将这些 token 转换为能够捕捉其含义的数值表示 Initial Processing：将这些嵌入通过模型的神经网络进行处理，以创建丰富的上下文理解 The Decode Phase：解码阶段是成生 text 的地方。模型以 autoregressive process 的过程逐个生成 token。每一个 token 的生成都依赖于前面生成的token。对于每一个 token 的生成，会有几个步骤：这个阶段是内存密集型的，因为模型需要跟踪所有先前生成的token及其关系。\nAttention Computation：回顾所有先前的 token 以理解上下文 Probability Calculation：确定每个可能下一个词的几率 Token Selection 采样：根据这些概率选择下一个词 Continuation Check。决定是否继续或停止生成 模型如何选择 token 呢？这就是 Sampling Strategies 那么有哪些方法控制上述 生成文本 的过程呢？哪些方式来控制这个生成过程？模型是如何选择 token 的？即如何选择哪个token 作为生成内容的下一个。有以下方式：\n1. 从概率到 Token 的选择 当模型需要选择下一个token时，它从词汇表中每个词的原始概率（称为 logits）开始。如何讲这些概率转换为选择呢？过程：\n通过Sampler chain从概率到Token的选择 Raw Logits: 模型对每个可能的下一个单词的初步直觉，就是模型的直接输出。 Temperature Control: 设置值更高（\u003e1.0）会让选择更随机和富有创意; 设置值更低（\u003c1.0）会让选择更专注和确定。 Top-p (Nucleus) Sampling: 不可能考虑所有可能的单词，策略是只看那些累计概率达到我们选定阈值（例如，前 90%）的最可能单词。 Top-k Filtering: 一种替代方法，我们只考虑 k 个最可能的下一个词。 2. Managing Repetition: Keeping Output Fresh LLMs 的一大常见挑战是它们倾向于重复自己。复读机？为解决这个问题，使用两种类型的惩罚：\nPresence Penalty：任何之前出现过的 token 施加固定惩罚，无论出现次数多少。这有助于防止模型重复使用相同的词语。 Frequency Penalty：一个 token 出现得越频繁，再次被选中的可能性就越小。 这种惩罚策略在模型的早期使用，用于调整原始概率，然后再应用其他采样策略。可以将其视为温和的推动力，鼓励模型探索新的词汇。\n3. Controlling Generation Length: Setting Boundaries 我们需要方法来控制我们的 LLM 生成多少文本，总不能无限长。有几种方式：\nToken Limits: 设置最小和最大 token 数量 Stop Sequences: 定义特定的模式来指示生成的结束 End-of-Sequence Detection: 让模型自然地结束其回应 4. Beam Search: Looking Ahead for Better Coherence 之前的策略都是一次一个token的，Beam Search 是一种更整体的策略。它不是在每个步骤中只做出一个选择，而是同时探索多个可能的路径。\nbeam search process 过程:\n每一步都保持多个候选序列（通常为 5-10 个） 对每个候选序列，计算下一个 token 的概率 仅保留最有潜力的序列和下一个 token 的组合 继续此过程，直到达到期望 length 或停止条件 选择概率最高的序列 这种方法通常能生成更连贯、语法更正确的文本，但它需要比简单方法更多的计算资源。\n衡量模型的关键性能指标 首次令牌时间（Time to First Token，TTFT）：你能多快获得第一个响应？这对用户体验至关重要，主要受预填充阶段的影响。 输出令牌时间（Time Per Output Token，TPOT）：你能多快生成后续令牌？这决定了整体生成速度。 Throughput 吞吐量：你能同时处理多少个请求？这影响扩展性和成本效率。 VRAM 使用量：你需要多少 GPU 内存？这通常是实际应用中的主要限制因素。 挑战：The Context Length Challenge LLM 推理中最显著的挑战之一是有效管理上下文长度。更长的上下文能提供更多信息，但也伴随着巨大的成本：\n内存使用：随 context length 度呈指数级增长，Attention 矩阵大小 $ n^2 $ 处理速度：随 context length 度呈线性级下降 资源分配：需要仔细平衡 VRAM 使用 解决方法：The KV Cache Optimization 优化之一是 KV（键值）缓存。这种技术通过存储和重用中间计算结果显著提高了推理速度。这种优化 减少重复计算、提升生成速度、使长上下文生成变得实用。\n详见 KV Cache in llama.cpp\nBias 在大规模数据上进行预训练，研究人员通常会抓取他们能找到的所有内容，既包括了互联网上可用的最好内容，也包括了最糟糕的内容。\nBERT 是少数几个没有通过从互联网上抓取数据构建的 Transformer 模型之一，它是使用表面上看起来中性的数据，这些训练数据来自英语维基百科和 BookCorpus 数据集。\n原始模型很容易生成性别歧视、种族歧视或恐同内容。在你自己的数据上微调模型并不能消除这种内在偏见。\nStay curious and keep asking questions! 🧠✨\n",
+  "wordCount" : "807",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:49:35+08:00",
+  "dateModified": "2025-08-31T12:49:35+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/llm/0.transformers-big-pic/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      0.Transformers Big Pic
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:49:35 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><p>使用一个新的 Python 环境，安装 轻量级 transformers <code>pip install &quot;transformers[sentencepiece]&quot;</code> 除安装主包 transformers 本身，还会安装与 sentencepiece 相关的额外依赖包，这是一种标准的 Python 包管理习惯，方便用户按需安装某些功能所需的附加依赖，而不用下载安装所有不需要的依赖。</p>
+<p>HF 生态中的其他库 <code>transformers</code>、<code>Datasets</code>、<code>Tokenizers</code>、<code>Accelerate</code> 和 <code>Hugging Face Hub</code></p>
+<h2 id="nlp">NLP<a hidden class="anchor" aria-hidden="true" href="#nlp">#</a></h2>
+<p>LLMs 是 NLP 的一项重大进步，LLM 特点</p>
+<ul>
+<li>规模很大：参数量从百万到百亿两级</li>
+<li>通用能力：在没有特定任务训练的情况下执行多个任务</li>
+<li>情景学习：它可以从 prompt 的实例中学习</li>
+<li>涌现能力：随规模的增大，会出现意料之外的能力</li>
+</ul>
+<p>LLMs 还是有局限</p>
+<ul>
+<li>幻觉：他会生成不正确的信息</li>
+<li>不会真正理解：它是纯粹通过统计执行动作的，没有对世界的真正理解</li>
+<li>上下文窗口：有限</li>
+<li>计算资源：需要大量计算资源，包括内存资源</li>
+</ul>
+<h2 id="transformerspipline">Transformers.pipline<a hidden class="anchor" aria-hidden="true" href="#transformerspipline">#</a></h2>
+<p>Transformers 库的作用是提供了<strong>创建共享模型</strong>和<strong>使用共享模型</strong>的功能。</p>
+<p>最基本的对象是 <code>pipeline()</code> 函数。它将模型与其必要的预处理和后处理步骤连接起来。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> transformers <span style="color:#f92672">import</span> pipeline
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>classifier <span style="color:#f92672">=</span> pipeline(<span style="color:#e6db74">&#34;sentiment-analysis&#34;</span>)  <span style="color:#75715e"># 默认模型是 distilbert</span>
+</span></span><span style="display:flex;"><span>classifier(<span style="color:#e6db74">&#34;I&#39;ve been waiting for a HuggingFace course my whole life.&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>[{<span style="color:#e6db74">&#39;label&#39;</span>: <span style="color:#e6db74">&#39;POSITIVE&#39;</span>, <span style="color:#e6db74">&#39;score&#39;</span>: <span style="color:#ae81ff">0.9598047137260437</span>}]
+</span></span></code></pre></div><p>上述，当创建 classifier 对象时，模型会被下载并缓存，没有指明模型则会 load 默认的模型。如果重新运行该命令，将使用缓存的模型，而无需再次下载。默认模型这里是 <code>distilbert/distilbert-base-uncased-finetuned-sst-2-english</code>，<strong>不同的 pipline 有不同的 default 模型</strong>。</p>
+<p>将自然语言传递给 classifier 后会执行三个步骤：</p>
+<ol>
+<li>将 text 变为模型可以理解的格式</li>
+<li>pass 给模型</li>
+<li>预测结果进行后处理，供人理解</li>
+</ol>
+<h2 id="不同模态的-pipline">不同模态的 pipline<a hidden class="anchor" aria-hidden="true" href="#不同模态的-pipline">#</a></h2>
+<p>上例的 pipline 是 &ldquo;sentiment-analysis&rdquo;，还有更多的 piplines:</p>
+<ul>
+<li>text-generation</li>
+<li>text-classification</li>
+<li>summarization</li>
+<li>translation</li>
+<li>zero-shot-classification</li>
+<li>feature-extraction</li>
+<li>fill-mask</li>
+<li>ner</li>
+<li>question-answering  根据上下文提取信息，非生成信息</li>
+<li>image-to-text</li>
+<li>image-classification</li>
+<li>object-detection</li>
+<li>automatic-speech-recognition</li>
+<li>audio-classification</li>
+<li>text-to-speech</li>
+<li>image-text-to-text</li>
+</ul>
+<h2 id="例zero-shot-classification">例：zero-shot-classification<a hidden class="anchor" aria-hidden="true" href="#例zero-shot-classification">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> transformers <span style="color:#f92672">import</span> pipeline
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>classifier <span style="color:#f92672">=</span> pipeline(<span style="color:#e6db74">&#34;zero-shot-classification&#34;</span>)
+</span></span><span style="display:flex;"><span>classifier(
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;This is a course about the Transformers library&#34;</span>,
+</span></span><span style="display:flex;"><span>    candidate_labels<span style="color:#f92672">=</span>[<span style="color:#e6db74">&#34;education&#34;</span>, <span style="color:#e6db74">&#34;politics&#34;</span>, <span style="color:#e6db74">&#34;business&#34;</span>],
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>{<span style="color:#e6db74">&#39;sequence&#39;</span>: <span style="color:#e6db74">&#39;This is a course about the Transformers library&#39;</span>,
+</span></span><span style="display:flex;"><span> <span style="color:#e6db74">&#39;labels&#39;</span>: [<span style="color:#e6db74">&#39;education&#39;</span>, <span style="color:#e6db74">&#39;business&#39;</span>, <span style="color:#e6db74">&#39;politics&#39;</span>],
+</span></span><span style="display:flex;"><span> <span style="color:#e6db74">&#39;scores&#39;</span>: [<span style="color:#ae81ff">0.8445963859558105</span>, <span style="color:#ae81ff">0.111976258456707</span>, <span style="color:#ae81ff">0.043427448719739914</span>]}
+</span></span></code></pre></div><p>即，使用我指定的，模型未见过的标签，进行分类。</p>
+<h2 id="使用指定模型">使用指定模型<a hidden class="anchor" aria-hidden="true" href="#使用指定模型">#</a></h2>
+<p>上述例子中使用的是默认的模型，也可以从 HF Hub 中选择特定模型用于特定任务。如：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#f92672">from</span> transformers <span style="color:#f92672">import</span> pipeline
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>generator <span style="color:#f92672">=</span> pipeline(<span style="color:#e6db74">&#34;text-generation&#34;</span>, model<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;HuggingFaceTB/SmolLM2-360M&#34;</span>) <span style="color:#75715e"># 指定模型</span>
+</span></span><span style="display:flex;"><span>generator(
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;In this course, we will teach you how to&#34;</span>,
+</span></span><span style="display:flex;"><span>    max_length<span style="color:#f92672">=</span><span style="color:#ae81ff">30</span>,
+</span></span><span style="display:flex;"><span>    num_return_sequences<span style="color:#f92672">=</span><span style="color:#ae81ff">2</span>,
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><p>当你点击一个模型时，会看到一个部件，它允许你直接在线试用该模型。这样你可以在下载之前快速测试模型的功能。<strong>避免磁盘空间、代理流量、时间的浪费</strong>。付费模型也可以在页面中试用。 【并没有找到在线使用的地方】</p>
+<h1 id="通用-transformer-架构">通用 Transformer 架构<a hidden class="anchor" aria-hidden="true" href="#通用-transformer-架构">#</a></h1>
+<h2 id="transfer-learning--微调">Transfer learning &amp; 微调<a hidden class="anchor" aria-hidden="true" href="#transfer-learning--微调">#</a></h2>
+<p>可以利用一个在<strong>英语上预训练</strong>的模型，然后在一个 arXiv 语料库上进行微调，从而得到一个基于科学/研究的模型。微调只需要有限的数据量：预训练模型所获得的知识会被“迁移”，这就是迁移学习的术语来源。迁移的是权重。</p>
+<p>Transfer learning 使模型适应特定任务。</p>
+<p>应该总是尝试利用一个预训练模型，一个尽可能接近你所面临任务的模型，并进行微调。</p>
+<h2 id="通用结构">通用结构<a hidden class="anchor" aria-hidden="true" href="#通用结构">#</a></h2>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: center"><img alt="图片描述" loading="lazy" src="/pics/transformers_architecture.png"></th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: center"><em>通用结构</em></td>
+      </tr>
+  </tbody>
+</table>
+<p><code>Encoder</code> (left): The encoder 获取inputs，然后构建 inputs 的表示。即，构建对输入的理解。</p>
+<p><code>Decoder</code> (right): The decoder 应用 Encoder 的表示和其他输入生成目标序列。</p>
+<h2 id="单独使用">单独使用<a hidden class="anchor" aria-hidden="true" href="#单独使用">#</a></h2>
+<p>encoder-only：用于需要理解输入的任务，如句子分类
+Decoder-only：用于文本生成等生成任务</p>
+<h2 id="attention-层">Attention 层<a hidden class="anchor" aria-hidden="true" href="#attention-层">#</a></h2>
+<p>当处理每个词的表示时，这一层会告诉模型<strong>专注于</strong>传递给它的句子中的某些特定词。</p>
+<h2 id="architectures-和-checkpoints">Architectures 和 checkpoints<a hidden class="anchor" aria-hidden="true" href="#architectures-和-checkpoints">#</a></h2>
+<ul>
+<li>Architecture 定义了模型中每一层和每一操作</li>
+<li>Checkpoints 是在给定架构中将要加载的权重</li>
+<li>Model 是太宽泛的表达，可以指代上述两者</li>
+</ul>
+<h1 id="transformer-如何工作的">Transformer 如何工作的<a hidden class="anchor" aria-hidden="true" href="#transformer-如何工作的">#</a></h1>
+<p>对于 Transformer 模型，其基本思路是相同的。由于其灵活的架构，大多数模型都是Encoder、Decoder或Encoder-Decoder结构的变体。</p>
+<p>了解大多数任务遵循相似模式是有帮助的：输入数据通过模型进行处理，输出结果根据特定任务进行解释。差异在于数据如何准备、使用哪种模型架构变体以及如何处理输出。</p>
+<p>Language models 通过训练来预测给定上下文时某个词的概率他是<strong>自监督的</strong>。<strong>两种训练方式</strong>：</p>
+<ul>
+<li>
+<p><strong>Masked language modeling (MLM)</strong> 被 BERT 等Encoder模型使用，this approach randomly masks some tokens in the input and trains the model to predict the original tokens based on the surrounding context. This allows the model to learn bidirectional context (looking at words both before and after the masked word).</p>
+</li>
+<li>
+<p><strong>Causal language modeling (CLM)</strong> 被 GPT 等Decoder模型使用，this approach predicts the next token based on all previous tokens in the sequence. The model can only use context from the left (previous tokens) to predict the next token.</p>
+</li>
+</ul>
+<p>语言模型和 transformers 的关系是：Transformer 是语言模型的实现方式之一，他有自己的架构。但语言模型不限于 Transformer，早起的RNN 和LSTM都可以实现语言模型。</p>
+<h2 id="语言模型的类型">语言模型的类型<a hidden class="anchor" aria-hidden="true" href="#语言模型的类型">#</a></h2>
+<ul>
+<li>
+<p>Encoder-only models (like BERT，DistilBERT，ModernBERT) 这些模型采用双向方法，从两个方向理解上下文。它们最适合需要<strong>深度理解</strong>文本的任务。他们有<strong>bi-directional attention</strong> 机制，被称作 <strong>auto-encoding models</strong>。训练过程是将输入句子以某种方式<strong>破坏</strong>掉，让模型重建初始语句。</p>
+</li>
+<li>
+<p>Decoder-only models (like GPT, Llama，Gemma，DeepSeekv3) 些模型从左到右处理文本，特别擅长<strong>文本生成任务</strong>。它们可以完成句子、写文章。Decoder 架构中，在每个阶段，对于给定的词，注意力层只能访问句子中位于其之前的词，被称作 <strong>auto-regressive models（自回归）</strong>。训练的是预测句子中的下一个词。 所以用于生成任务。</p>
+</li>
+<li>
+<p>Encoder-decoder models (like T5, BART) 些模型结合了两种方法，使用Encoder理解输入，使用Decoder生成输出。用于<strong>从一个序列到另一个序列任务</strong>。</p>
+</li>
+</ul>
+<p>语言模型通常以<strong>自监督方式</strong>（无需人工标注）在大量文本数据上进行<strong>预训练</strong>，然后在特定任务上进行<strong>微调</strong>，即迁移学习。Allows these models to adapt to <strong>many different NLP tasks</strong> with relatively <strong>small amounts of task-specific data</strong>.【这个表达很精确】</p>
+<h3 id="1-text-generation">1. Text generation<a hidden class="anchor" aria-hidden="true" href="#1-text-generation">#</a></h3>
+<p>GPT-2 是一个Decoder 它使用 byte pair encoding (<strong>BPE</strong>)分词法 来 tokenize words 和生成 token embedding. <code>masked self-attention</code> 意味着这个模型只会关注于未来的词。他的训练方式完全是 <code>causal language modeling</code>。</p>
+<h3 id="2-text-classification">2. Text classification<a hidden class="anchor" aria-hidden="true" href="#2-text-classification">#</a></h3>
+<p>一个Encoder BEART 是<strong>深度双向性的模型</strong>，通过关注两侧的单词来学习更丰富的文本表示。</p>
+<p>它使用 <strong>WordPiece 分词法</strong>来生成文本的 token embeddings。</p>
+<p>它使用两个目标进行预训练：<strong>掩码语言建模</strong> &amp; <strong>下一句预测</strong>。第一个任务是输入token中的一部分会<strong>被随机掩码</strong>，模型需要预测这些掩码。这解决了双向性的问题。第二个预训练任务是下一句预测。模型必须预测句子 B 是否紧随句子 A。</p>
+<h3 id="3-token-classification">3. Token classification<a hidden class="anchor" aria-hidden="true" href="#3-token-classification">#</a></h3>
+<p>在基础 BERT 模型上添加一个 token classification head</p>
+<h3 id="4-question-answering">4. Question answering<a hidden class="anchor" aria-hidden="true" href="#4-question-answering">#</a></h3>
+<p>在基础 BERT 模型顶部添加一个 span classification head</p>
+<h3 id="5-summarization">5. Summarization<a hidden class="anchor" aria-hidden="true" href="#5-summarization">#</a></h3>
+<p>像 BART 和 T5 这样的 Encoder-Decoder 模型是为摘要任务、翻译任务的<strong>序列到序列</strong>模式设计的。</p>
+<p><strong>Encoder</strong> 与BERT类似，BART 通过破坏输入然后使用Decoder重建输入进行预训练。破坏输入的方式是 <strong>text infilling corruption strategy</strong>。</p>
+<p>Encoder的输出<strong>传递给Decoder</strong>，Decoder必须预测被掩盖的token以及Encoder输出中的任何未损坏的token。这为Decoder提供了额外的上下文，以帮助其恢复原始文本。Decoder的输出被传递给language modeling head，该 head 执行线性变换将隐藏状态转换为 logits。在 logits 和标签之间计算交叉熵损失，标签只是向右移动一个位置的token。</p>
+<h3 id="6-translation-encoderdecoder模型">6. Translation Encoder+Decoder模型<a hidden class="anchor" aria-hidden="true" href="#6-translation-encoderdecoder模型">#</a></h3>
+<h2 id="transformers-也可以应用于语音和音频图像以及视频等其他模态">Transformers 也可以应用于语音和音频、图像以及视频等其他模态<a hidden class="anchor" aria-hidden="true" href="#transformers-也可以应用于语音和音频图像以及视频等其他模态">#</a></h2>
+<h3 id="1-whisper-音频数据预训练的transformer">1. Whisper 音频数据预训练的Transformer<a hidden class="anchor" aria-hidden="true" href="#1-whisper-音频数据预训练的transformer">#</a></h3>
+<p>Encoder处理输入音频。原始音频首先被转换为<strong>对数梅尔谱图</strong>。然后，该谱图通过 Transformer Encoder网络进行处理。</p>
+<p>Decoder是一个标准的 Transformer Decoder。</p>
+<h3 id="2-视觉任务">2. 视觉任务<a hidden class="anchor" aria-hidden="true" href="#2-视觉任务">#</a></h3>
+<p>有两种方法处理计算机视觉任务：</p>
+<ul>
+<li>将图像分割成一系列图像块，并使用 Transformer 并行处理。</li>
+<li>使用现代卷积神经网络，如 ConvNeXT，它依赖于卷积层但采用了现代网络设计。</li>
+</ul>
+<p><code>ViT</code> 和 <code>ConvNeXT</code> 常用于图像分类。但对于其他视觉任务，如目标检测、分割和深度估计，会了解 DETR、Mask2Former 和 GLPN，这些模型更适合这些任务。</p>
+<p><code>ViT</code> 引入的主要变化在于图像如何被输入到 Transformer 中：</p>
+<ul>
+<li>一张图像被分割成不重叠的方形块，每个块都会转换成向量或块嵌入。</li>
+<li>A learnable embedding 一个特殊的 <code>[CLS]</code> token——就像 BERT 一样被添加到补丁嵌入的开头。</li>
+<li>position embeddings 也是需要学习的。</li>
+<li>output，特别是带有 <code>[CLS]</code> token的输出，被传递到一个多层感知器头（MLP）</li>
+</ul>
+<h1 id="transformers-架构">Transformers 架构<a hidden class="anchor" aria-hidden="true" href="#transformers-架构">#</a></h1>
+<p><a href="#%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B%E7%9A%84%E7%B1%BB%E5%9E%8B">Transformers 架构类型</a>，描述了3中架构。</p>
+<h2 id="当代-llms">当代 LLMs<a hidden class="anchor" aria-hidden="true" href="#当代-llms">#</a></h2>
+<p>大多数 LLMs 都采用<strong>仅 Decoder 架构</strong>。这些模型在过去几年中规模和能力都有了显著增长，其中一些最大的模型包含数百亿个参数。现在的LLMs 训练都要经过两个阶段：</p>
+<ol>
+<li>Pretraining：在大量文本上训练模型，可以预测下一个词。</li>
+<li>Instruction tuning：微调模型让他遵循指令，生成有意义的回复。</li>
+</ol>
+<h2 id="seq2seq">Seq2Seq<a hidden class="anchor" aria-hidden="true" href="#seq2seq">#</a></h2>
+<p>Encoder-Decoder模型（序列到序列模型）使用 Transformer 架构的各个部分。在每个阶段，Encoder的注意力层可以访问初始句子中的所有单词，而 Decoder 的注意力层只能访问输入中给定单词之前的单词。</p>
+<h2 id="llms-演进">LLMs 演进<a hidden class="anchor" aria-hidden="true" href="#llms-演进">#</a></h2>
+<ul>
+<li>Attention mechanisms：大多数 Transformer 模型使用<strong>full attention</strong>，即注意力矩阵是方阵。当处理长文本时，这可能会成为<strong>计算瓶颈</strong>。<code>Longformer</code> 和 <code>reformer</code> 是尝试提高效率的模型，它们使用稀疏版本的注意力矩阵来加速训练。</li>
+<li>LSH attention: Reformer 使用 LSH attention.</li>
+<li>Local attention: Longformer 使用 Local Attention。</li>
+<li>Axial positional encodings： Reformer 使用 Axial Positional Encodings。</li>
+</ul>
+<h1 id="llm-推理背后的核心概念">LLM 推理背后的核心概念<a hidden class="anchor" aria-hidden="true" href="#llm-推理背后的核心概念">#</a></h1>
+<p>推理是使用训练好的 LLM 根据给定的输入提示生成类似人类的文本。语言模型利用其训练知识<strong>逐字地构建响应</strong>。</p>
+<h2 id="attention-的作用">Attention 的作用<a hidden class="anchor" aria-hidden="true" href="#attention-的作用">#</a></h2>
+<p>Attention 赋予了 LLM 理解上下文和生成连贯响应的能力。在预测下一个词时，句子中的每个词<strong>不同等重要</strong>。例如，在句子 “法国的首都是&hellip;&hellip;”中，“法国”和“首都”这两个词对于确定“巴黎”应该紧随其后至关重要。这种专注于相关信息的能力，即注意力Attention。它是现代 LLMs 区别于前几代语言模型的关键。</p>
+<h2 id="context-length--attention-span-">Context Length （ Attention Span ）<a hidden class="anchor" aria-hidden="true" href="#context-length--attention-span-">#</a></h2>
+<p><code>context length</code> 是生成一次响应时需要的大 token 数量（包括输入和输出 的所有tokens），可理解为模型工作时的内存大小。这个长度受限于多种因素：</p>
+<p>模型的架构和大小、可用的硬件资源、输入和期望输出的复杂性。</p>
+<p>通常不同的模型被设计成具有不同的上下文长度，以在能力和效率之间取得平衡。context length 直接和计算复杂度相关。</p>
+<p>Attention 需要计算每个token 对其他token 的关联，生成一个大小为 $n \times n$ 的Attention 矩阵（其中 $n$ 是context length）。因此，内存需求随 $n^2$ 增长。</p>
+<h2 id="prompting">Prompting<a hidden class="anchor" aria-hidden="true" href="#prompting">#</a></h2>
+<p>我们会以某种方式组织输入，引导 LLM 生成期望的输出。由于模型的主要任务是通过分析<strong>每个输入 token 的重要性</strong>来预测下一个 token，因此输入序列的措辞变得重要。</p>
+<h1 id="llms-生成文本-过程--策略">LLMs 生成文本 过程 &amp; 策略<a hidden class="anchor" aria-hidden="true" href="#llms-生成文本-过程--策略">#</a></h1>
+<h2 id="llms-实际生成文本的过程有两阶段">LLMs 实际生成文本的过程有两阶段<a hidden class="anchor" aria-hidden="true" href="#llms-实际生成文本的过程有两阶段">#</a></h2>
+<ol>
+<li>
+<p><strong>The Prefill Phase</strong>：是准备阶段包括一下。这个阶段计算密集，因为它需要一次性处理所有输入token，类似做阅读理解之前你要将文章通读。</p>
+<ul>
+<li><code>Tokenization</code>：将输入文本转换为 token（可以将其视为模型理解的基本构建块）</li>
+<li><code>Embedding Conversion</code>：将这些 token 转换为能够捕捉其含义的数值表示</li>
+<li><code>Initial Processing</code>：将这些嵌入通过模型的神经网络进行处理，以创建丰富的上下文理解</li>
+</ul>
+</li>
+<li>
+<p><strong>The Decode Phase</strong>：解码阶段是成生 text 的地方。模型以 <code>autoregressive process</code> 的过程逐个生成 token。每一个 token 的生成都依赖于前面生成的token。对于每一个 token 的生成，会有几个步骤：这个阶段是内存密集型的，因为模型需要跟踪所有先前生成的token及其关系。</p>
+<ul>
+<li><code>Attention Computation</code>：回顾所有先前的 token 以理解上下文</li>
+<li><code>Probability Calculation</code>：确定每个可能下一个词的几率</li>
+<li><code>Token Selection 采样</code>：根据这些概率选择下一个词</li>
+<li><code>Continuation Check</code>。决定是否继续或停止生成</li>
+</ul>
+</li>
+</ol>
+<h2 id="模型如何选择-token-呢这就是-sampling-strategies">模型如何选择 token 呢？这就是 Sampling Strategies<a hidden class="anchor" aria-hidden="true" href="#模型如何选择-token-呢这就是-sampling-strategies">#</a></h2>
+<p>那么有哪些方法控制上述 生成文本 的过程呢？哪些方式来控制这个生成过程？模型是如何选择 token 的？即如何选择哪个token 作为生成内容的下一个。有以下方式：</p>
+<h3 id="1-从概率到-token-的选择">1. 从概率到 Token 的选择<a hidden class="anchor" aria-hidden="true" href="#1-从概率到-token-的选择">#</a></h3>
+<p>当模型需要选择下一个token时，它从词汇表中每个词的原始概率（称为 <code>logits</code>）开始。如何讲这些概率转换为选择呢？过程：</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: center"><img alt="图片描述" loading="lazy" src="/pics/prb2select.png"></th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: center"><em>通过Sampler chain从概率到Token的选择</em></td>
+      </tr>
+  </tbody>
+</table>
+<ul>
+<li><code>Raw Logits</code>: 模型对每个可能的下一个单词的<strong>初步直觉</strong>，就是模型的直接输出。</li>
+<li><code>Temperature Control</code>: 设置值更高（&gt;1.0）会让选择更随机和富有创意; 设置值更低（&lt;1.0）会让选择更专注和确定。</li>
+<li><code>Top-p (Nucleus) Sampling</code>: 不可能考虑所有可能的单词，策略是只看那些累计概率达到我们<strong>选定阈值</strong>（例如，前 90%）的最可能单词。</li>
+<li><code>Top-k Filtering</code>: 一种替代方法，我们只考虑 k 个最可能的下一个词。</li>
+</ul>
+<h3 id="2-managing-repetition-keeping-output-fresh">2. Managing Repetition: Keeping Output Fresh<a hidden class="anchor" aria-hidden="true" href="#2-managing-repetition-keeping-output-fresh">#</a></h3>
+<p>LLMs 的一大常见挑战是它们倾向于重复自己。复读机？为解决这个问题，使用两种类型的惩罚：</p>
+<ul>
+<li><strong>Presence Penalty</strong>：任何之前出现过的 token 施加固定惩罚，无论出现次数多少。这有助于防止模型重复使用相同的词语。</li>
+<li><strong>Frequency Penalty</strong>：一个 token 出现得越频繁，再次被选中的可能性就越小。</li>
+</ul>
+<p>这种惩罚策略在模型的早期使用，用于调整原始概率，然后再应用其他采样策略。可以将其视为温和的推动力，鼓励模型探索新的词汇。</p>
+<h3 id="3-controlling-generation-length-setting-boundaries">3. Controlling Generation Length: Setting Boundaries<a hidden class="anchor" aria-hidden="true" href="#3-controlling-generation-length-setting-boundaries">#</a></h3>
+<p>我们需要方法来控制我们的 LLM 生成多少文本，总不能无限长。有几种方式：</p>
+<ul>
+<li><strong>Token Limits</strong>: 设置最小和最大 token 数量</li>
+<li><strong>Stop Sequences</strong>: 定义特定的模式来指示生成的结束</li>
+<li><strong>End-of-Sequence Detection</strong>: 让模型自然地结束其回应</li>
+</ul>
+<h3 id="4-beam-search-looking-ahead-for-better-coherence">4. Beam Search: Looking Ahead for Better Coherence<a hidden class="anchor" aria-hidden="true" href="#4-beam-search-looking-ahead-for-better-coherence">#</a></h3>
+<p>之前的策略都是一次一个token的，Beam Search 是一种更整体的策略。它不是在每个步骤中只做出一个选择，而是同时探索多个可能的路径。</p>
+<table>
+  <thead>
+      <tr>
+          <th style="text-align: center"><img alt="图片描述" loading="lazy" src="/pics/beam-search.png"></th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: center"><em>beam search process</em></td>
+      </tr>
+  </tbody>
+</table>
+<p>过程:</p>
+<ol>
+<li>每一步都保持多个候选序列（通常为 5-10 个）</li>
+<li>对每个候选序列，计算下一个 token 的概率</li>
+<li>仅保留最有潜力的序列和下一个 token 的组合</li>
+<li>继续此过程，直到达到期望 length 或停止条件</li>
+<li>选择概率最高的序列</li>
+</ol>
+<p>这种方法通常能生成更连贯、语法更正确的文本，但它需要比简单方法更多的计算资源。</p>
+<h2 id="衡量模型的关键性能指标">衡量模型的关键性能指标<a hidden class="anchor" aria-hidden="true" href="#衡量模型的关键性能指标">#</a></h2>
+<ul>
+<li>首次令牌时间（Time to First Token，TTFT）：你能多快获得第一个响应？这对<strong>用户体验</strong>至关重要，主要受预填充阶段的影响。</li>
+<li>输出令牌时间（Time Per Output Token，TPOT）：你能多快生成后续令牌？这决定了<strong>整体生成速度</strong>。</li>
+<li>Throughput 吞吐量：你能同时处理多少个请求？这影响<strong>扩展性和成本</strong>效率。</li>
+<li>VRAM 使用量：你需要多少 GPU 内存？这通常是实际应用中的<strong>主要限制</strong>因素。</li>
+</ul>
+<h2 id="挑战the-context-length-challenge">挑战：The Context Length Challenge<a hidden class="anchor" aria-hidden="true" href="#挑战the-context-length-challenge">#</a></h2>
+<p>LLM 推理中最显著的挑战之一是有效管理上下文长度。更长的上下文能提供更多信息，但也伴随着巨大的成本：</p>
+<ul>
+<li>内存使用：随 context length 度呈指数级增长，Attention 矩阵大小 $ n^2 $</li>
+<li>处理速度：随 context length 度呈线性级下降</li>
+<li>资源分配：需要仔细平衡 VRAM 使用</li>
+</ul>
+<h2 id="解决方法the-kv-cache-optimization">解决方法：The KV Cache Optimization<a hidden class="anchor" aria-hidden="true" href="#解决方法the-kv-cache-optimization">#</a></h2>
+<p>优化之一是 KV（键值）缓存。这种技术通过存储和重用中间计算结果显著提高了推理速度。这种优化 减少重复计算、提升生成速度、使<strong>长上下文生成</strong>变得实用。</p>
+<p>详见 <a href="https://ashburnLee.github.io/blog-2-hugo/llm/5.10-llama.cpp-attention-kv-cache/">KV Cache in llama.cpp</a></p>
+<h1 id="bias">Bias<a hidden class="anchor" aria-hidden="true" href="#bias">#</a></h1>
+<p>在大规模数据上进行预训练，研究人员通常会抓取他们能找到的所有内容，既包括了互联网上可用的最好内容，也包括了最糟糕的内容。</p>
+<p>BERT 是少数几个没有通过从互联网上抓取数据构建的 Transformer 模型之一，它是使用表面上看起来中性的数据，这些训练数据来自<strong>英语维基百科</strong>和 <strong>BookCorpus</strong> 数据集。</p>
+<p>原始模型很容易生成性别歧视、种族歧视或恐同内容。在你自己的数据上微调模型并不能消除这种内在偏见。</p>
+<hr>
+<p>Stay curious and keep asking questions! 🧠✨</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llm/">LLM</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Ollama | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="Ollama, llama.cpp">
+<meta name="description" content="Ollama 是一个开源的本地大型语言模型（LLM）运行框架，旨在降低使用大型语言模型的门槛，同时确保数据隐私。
+硬件加速：虽然主要针对 CPU 优化，但 Ollama 也可能支持 GPU 或 TPU 加速，以进一步提升推理速度
+使用
+适用场景：CPU/GPU 显存不足或计算速度慢。
+# 查看当前模型量化类型
+ollama show deepseek-r1 --modelfile
+# 替换为更低精度的量化版本（如 2-bit）
+ollama pull deepseek-r1:2b
+适用场景：使用 AMD/NVIDIA GPU 时显存未被充分利用。
+# 尝试增加卸载层数（如 -ngl 40）
+ollama run deepseek-r1 --gpu-layers 40
+# 调整分块模式（如 row 或 layer）
+--split-mode row # 修改 GPU 核函数的分块大小（-split-mode 参数）以匹配硬件特性
+适用场景：CPU 利用率低或多卡并行效率不足。
+# 设置 CPU 线程数为物理核心数（如 16）
+ollama run deepseek-r1 --threads 16
+# 启用多 GPU 并行
+CUDA_VISIBLE_DEVICES=0,1 ollama run deepseek-r1
+适用场景：内存/显存不足导致频繁交换。
+# 减小分块大小以减少峰值内存占用
+ollama run deepseek-r1 --chunk-size 512
+llama.cpp
+llama.cpp 是一个轻量级的 C&#43;&#43; 实现，旨在高效地运行 LLaMA（Large Language Model Meta AI）模型。它通过简化的 API 与 Ollama 集成，使得用户能够在本地环境中快速部署和使用语言模型。
+最佳实践">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/ollama/ollama/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/ollama/ollama/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/ollama/ollama/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="Ollama">
+  <meta property="og:description" content="Ollama 是一个开源的本地大型语言模型（LLM）运行框架，旨在降低使用大型语言模型的门槛，同时确保数据隐私。
+硬件加速：虽然主要针对 CPU 优化，但 Ollama 也可能支持 GPU 或 TPU 加速，以进一步提升推理速度
+使用 适用场景：CPU/GPU 显存不足或计算速度慢。
+# 查看当前模型量化类型 ollama show deepseek-r1 --modelfile # 替换为更低精度的量化版本（如 2-bit） ollama pull deepseek-r1:2b 适用场景：使用 AMD/NVIDIA GPU 时显存未被充分利用。
+# 尝试增加卸载层数（如 -ngl 40） ollama run deepseek-r1 --gpu-layers 40 # 调整分块模式（如 row 或 layer） --split-mode row # 修改 GPU 核函数的分块大小（-split-mode 参数）以匹配硬件特性 适用场景：CPU 利用率低或多卡并行效率不足。
+# 设置 CPU 线程数为物理核心数（如 16） ollama run deepseek-r1 --threads 16 # 启用多 GPU 并行 CUDA_VISIBLE_DEVICES=0,1 ollama run deepseek-r1 适用场景：内存/显存不足导致频繁交换。
+# 减小分块大小以减少峰值内存占用 ollama run deepseek-r1 --chunk-size 512 llama.cpp llama.cpp 是一个轻量级的 C&#43;&#43; 实现，旨在高效地运行 LLaMA（Large Language Model Meta AI）模型。它通过简化的 API 与 Ollama 集成，使得用户能够在本地环境中快速部署和使用语言模型。 最佳实践">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="ollama">
+    <meta property="article:published_time" content="2025-08-31T12:50:42+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:50:42+08:00">
+    <meta property="article:tag" content="Ollama">
+    <meta property="article:tag" content="Llama.cpp">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Ollama">
+<meta name="twitter:description" content="Ollama 是一个开源的本地大型语言模型（LLM）运行框架，旨在降低使用大型语言模型的门槛，同时确保数据隐私。
+硬件加速：虽然主要针对 CPU 优化，但 Ollama 也可能支持 GPU 或 TPU 加速，以进一步提升推理速度
+使用
+适用场景：CPU/GPU 显存不足或计算速度慢。
+# 查看当前模型量化类型
+ollama show deepseek-r1 --modelfile
+# 替换为更低精度的量化版本（如 2-bit）
+ollama pull deepseek-r1:2b
+适用场景：使用 AMD/NVIDIA GPU 时显存未被充分利用。
+# 尝试增加卸载层数（如 -ngl 40）
+ollama run deepseek-r1 --gpu-layers 40
+# 调整分块模式（如 row 或 layer）
+--split-mode row # 修改 GPU 核函数的分块大小（-split-mode 参数）以匹配硬件特性
+适用场景：CPU 利用率低或多卡并行效率不足。
+# 设置 CPU 线程数为物理核心数（如 16）
+ollama run deepseek-r1 --threads 16
+# 启用多 GPU 并行
+CUDA_VISIBLE_DEVICES=0,1 ollama run deepseek-r1
+适用场景：内存/显存不足导致频繁交换。
+# 减小分块大小以减少峰值内存占用
+ollama run deepseek-r1 --chunk-size 512
+llama.cpp
+llama.cpp 是一个轻量级的 C&#43;&#43; 实现，旨在高效地运行 LLaMA（Large Language Model Meta AI）模型。它通过简化的 API 与 Ollama 集成，使得用户能够在本地环境中快速部署和使用语言模型。
+最佳实践">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Ollama",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/ollama/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Ollama",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/ollama/ollama/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Ollama",
+  "name": "Ollama",
+  "description": "Ollama 是一个开源的本地大型语言模型（LLM）运行框架，旨在降低使用大型语言模型的门槛，同时确保数据隐私。\n硬件加速：虽然主要针对 CPU 优化，但 Ollama 也可能支持 GPU 或 TPU 加速，以进一步提升推理速度\n使用 适用场景：CPU/GPU 显存不足或计算速度慢。\n# 查看当前模型量化类型 ollama show deepseek-r1 --modelfile # 替换为更低精度的量化版本（如 2-bit） ollama pull deepseek-r1:2b 适用场景：使用 AMD/NVIDIA GPU 时显存未被充分利用。\n# 尝试增加卸载层数（如 -ngl 40） ollama run deepseek-r1 --gpu-layers 40 # 调整分块模式（如 row 或 layer） --split-mode row # 修改 GPU 核函数的分块大小（-split-mode 参数）以匹配硬件特性 适用场景：CPU 利用率低或多卡并行效率不足。\n# 设置 CPU 线程数为物理核心数（如 16） ollama run deepseek-r1 --threads 16 # 启用多 GPU 并行 CUDA_VISIBLE_DEVICES=0,1 ollama run deepseek-r1 适用场景：内存/显存不足导致频繁交换。\n# 减小分块大小以减少峰值内存占用 ollama run deepseek-r1 --chunk-size 512 llama.cpp llama.cpp 是一个轻量级的 C++ 实现，旨在高效地运行 LLaMA（Large Language Model Meta AI）模型。它通过简化的 API 与 Ollama 集成，使得用户能够在本地环境中快速部署和使用语言模型。 最佳实践\n",
+  "keywords": [
+    "Ollama", "llama.cpp"
+  ],
+  "articleBody": "Ollama 是一个开源的本地大型语言模型（LLM）运行框架，旨在降低使用大型语言模型的门槛，同时确保数据隐私。\n硬件加速：虽然主要针对 CPU 优化，但 Ollama 也可能支持 GPU 或 TPU 加速，以进一步提升推理速度\n使用 适用场景：CPU/GPU 显存不足或计算速度慢。\n# 查看当前模型量化类型 ollama show deepseek-r1 --modelfile # 替换为更低精度的量化版本（如 2-bit） ollama pull deepseek-r1:2b 适用场景：使用 AMD/NVIDIA GPU 时显存未被充分利用。\n# 尝试增加卸载层数（如 -ngl 40） ollama run deepseek-r1 --gpu-layers 40 # 调整分块模式（如 row 或 layer） --split-mode row # 修改 GPU 核函数的分块大小（-split-mode 参数）以匹配硬件特性 适用场景：CPU 利用率低或多卡并行效率不足。\n# 设置 CPU 线程数为物理核心数（如 16） ollama run deepseek-r1 --threads 16 # 启用多 GPU 并行 CUDA_VISIBLE_DEVICES=0,1 ollama run deepseek-r1 适用场景：内存/显存不足导致频繁交换。\n# 减小分块大小以减少峰值内存占用 ollama run deepseek-r1 --chunk-size 512 llama.cpp llama.cpp 是一个轻量级的 C++ 实现，旨在高效地运行 LLaMA（Large Language Model Meta AI）模型。它通过简化的 API 与 Ollama 集成，使得用户能够在本地环境中快速部署和使用语言模型。 最佳实践\n使用命令行工具：通过命令行启动模型，使用参数来指定模型路径和生成设置。 优化性能：根据硬件配置调整参数，例如线程数和批处理大小，以提高响应速度和效率 whisper.cpp whisper.cpp 是 OpenAI 的 Whisper 语音识别模型的 C++ 实现，专注于快速和高效的语音转录。此实现旨在减少延迟并降低计算资源消耗，适合需要实时语音识别的应用。 最佳实践\n本地运行：可以在本地或远程服务器上运行 whisper.cpp，确保网络连接稳定以减少延迟。 音频格式：确保输入音频文件符合要求（如WAV格式），并使用 ffmpeg 进行必要的格式转换 stable-diffusion.cpp stable-diffusion.cpp 是用于生成图像的 Stable Diffusion 模型的 C++ 实现。它相较于其他实现（如Automatic1111）更易于安装，但每次请求时都需要加载模型，这可能导致延迟。 最佳实践\n保持模型加载：尝试使用持久化服务或其他工具（如Koboldcpp）来避免每次请求都重新加载模型，从而提高生成速度 优化GPU使用：根据GPU资源配置进行优化，以提高图像生成效率。 GGUF 模型 GGUF（Generalized Unified Format）是一种新型模型格式，旨在支持多种机器学习框架和工具。Ollama允许用户轻松运行来自Hugging Face等平台的GGUF格式模型。\n最佳实践\n简单命令运行：使用 ollama run 命令快速启动并使用GGUF模型，无需复杂设置 配置文件管理：创建 Modelfile 以便于管理和导入GGUF模型，使得模型的使用更加灵活和高效 本地成功运行，见 Jetson-ollama.md\nllama.cpp 开源，大语言模型轻量级推理框架，高效，占用资源低，适合在本地运行语言模型。 详见 LLM 中与llama.cpp 相关。\n可以运行任何语言模型都吗？\n非也，llama.cpp 设计是用来运行 基于 Transformer 架构的模型，尤其是 LLaMa 及其变种。 确认模型是否是基于 LLaMA 或类似的 decoder-only Transformer。\n",
+  "wordCount" : "158",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:50:42+08:00",
+  "dateModified": "2025-08-31T12:50:42+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/ollama/ollama/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      Ollama
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:50:42 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><p>Ollama 是一个开源的本地大型语言模型（LLM）运行框架，旨在降低使用大型语言模型的门槛，同时确保数据隐私。</p>
+<p>硬件加速：虽然主要针对 CPU 优化，但 Ollama 也可能支持 GPU 或 TPU 加速，以进一步提升推理速度</p>
+<h2 id="使用">使用<a hidden class="anchor" aria-hidden="true" href="#使用">#</a></h2>
+<p>适用场景：CPU/GPU 显存不足或计算速度慢。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span><span style="color:#75715e"># 查看当前模型量化类型</span>
+</span></span><span style="display:flex;"><span>ollama show deepseek-r1 --modelfile
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 替换为更低精度的量化版本（如 2-bit）</span>
+</span></span><span style="display:flex;"><span>ollama pull deepseek-r1:2b
+</span></span></code></pre></div><p>适用场景：使用 AMD/NVIDIA GPU 时显存未被充分利用。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span><span style="color:#75715e"># 尝试增加卸载层数（如 -ngl 40）</span>
+</span></span><span style="display:flex;"><span>ollama run deepseek-r1 --gpu-layers <span style="color:#ae81ff">40</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 调整分块模式（如 row 或 layer）</span>
+</span></span><span style="display:flex;"><span>--split-mode row <span style="color:#75715e"># 修改 GPU 核函数的分块大小（-split-mode 参数）以匹配硬件特性</span>
+</span></span></code></pre></div><p>适用场景：CPU 利用率低或多卡并行效率不足。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span><span style="color:#75715e"># 设置 CPU 线程数为物理核心数（如 16）</span>
+</span></span><span style="display:flex;"><span>ollama run deepseek-r1 --threads <span style="color:#ae81ff">16</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 启用多 GPU 并行</span>
+</span></span><span style="display:flex;"><span>CUDA_VISIBLE_DEVICES<span style="color:#f92672">=</span>0,1 ollama run deepseek-r1
+</span></span></code></pre></div><p>适用场景：内存/显存不足导致频繁交换。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span><span style="color:#75715e"># 减小分块大小以减少峰值内存占用</span>
+</span></span><span style="display:flex;"><span>ollama run deepseek-r1 --chunk-size <span style="color:#ae81ff">512</span>
+</span></span></code></pre></div><h1 id="llamacpp">llama.cpp<a hidden class="anchor" aria-hidden="true" href="#llamacpp">#</a></h1>
+<p>llama.cpp 是一个轻量级的 C++ 实现，旨在高效地运行 LLaMA（Large Language Model Meta AI）模型。它通过简化的 API 与 Ollama 集成，使得用户能够在本地环境中快速部署和使用语言模型。
+最佳实践</p>
+<ul>
+<li>使用命令行工具：通过命令行启动模型，使用参数来指定模型路径和生成设置。</li>
+<li>优化性能：根据硬件配置调整参数，例如线程数和批处理大小，以提高响应速度和效率</li>
+</ul>
+<h1 id="whispercpp">whisper.cpp<a hidden class="anchor" aria-hidden="true" href="#whispercpp">#</a></h1>
+<p>whisper.cpp 是 OpenAI 的 Whisper 语音识别模型的 C++ 实现，专注于快速和高效的语音转录。此实现旨在减少延迟并降低计算资源消耗，适合需要实时语音识别的应用。
+最佳实践</p>
+<ul>
+<li>本地运行：可以在本地或远程服务器上运行 whisper.cpp，确保网络连接稳定以减少延迟。</li>
+<li>音频格式：确保输入音频文件符合要求（如WAV格式），并使用 ffmpeg 进行必要的格式转换</li>
+</ul>
+<h1 id="stable-diffusioncpp">stable-diffusion.cpp<a hidden class="anchor" aria-hidden="true" href="#stable-diffusioncpp">#</a></h1>
+<p>stable-diffusion.cpp 是用于生成图像的 Stable Diffusion 模型的 C++ 实现。它相较于其他实现（如Automatic1111）更易于安装，但每次请求时都需要加载模型，这可能导致延迟。
+最佳实践</p>
+<ul>
+<li>保持模型加载：尝试使用持久化服务或其他工具（如Koboldcpp）来避免每次请求都重新加载模型，从而提高生成速度</li>
+<li>优化GPU使用：根据GPU资源配置进行优化，以提高图像生成效率。</li>
+</ul>
+<h1 id="gguf-模型">GGUF 模型<a hidden class="anchor" aria-hidden="true" href="#gguf-模型">#</a></h1>
+<p>GGUF（Generalized Unified Format）是一种新型模型格式，旨在支持多种机器学习框架和工具。Ollama允许用户轻松运行来自Hugging Face等平台的GGUF格式模型。</p>
+<p>最佳实践</p>
+<ul>
+<li>简单命令运行：使用 <code>ollama run &lt;model_name&gt;</code> 命令快速启动并使用GGUF模型，无需复杂设置</li>
+<li>配置文件管理：创建 Modelfile 以便于管理和导入GGUF模型，使得模型的使用更加灵活和高效</li>
+</ul>
+<p>本地成功运行，见 Jetson-ollama.md</p>
+<h1 id="llamacpp-1">llama.cpp<a hidden class="anchor" aria-hidden="true" href="#llamacpp-1">#</a></h1>
+<p>开源，大语言模型轻量级推理框架，高效，占用资源低，适合在本地运行语言模型。 详见 <a href="../LLM/">LLM</a> 中与llama.cpp 相关。</p>
+<p>可以运行任何语言模型都吗？</p>
+<p>非也，llama.cpp 设计是用来运行 基于 Transformer 架构的模型，尤其是 LLaMa 及其变种。 确认模型是否是基于 LLaMA 或类似的 decoder-only Transformer。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/ollama/">Ollama</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llama.cpp/">Llama.cpp</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

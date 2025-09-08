@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Cublas Mma | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="CUDA, cuBLAS">
+<meta name="description" content="cuBLAS 也会利用 tensor core，其性能比简单的手工写的 wmma 更优。
+https://0mean1sigma.com/tgemm/  这篇文章中的 benchmark 展示了不同方式的性能。可以把最高性能的作为标杆，自己动手优化，这里的性能指标是吞吐，还可以有其他指标 ***
+什么是 leading demension
+内存中连续存储元素的个数。
+给定一个形状为 MxN 的矩阵 ，如果它按 Row-major 存储，其 leading dimension 是 N，如果它按 Col-major 存储，其 leading dimention 是 M。
+什么是 row-major 和 col-major
+row-major 指的是按行存储，即每一行中元素是连续存储的。
+col-major 指的是按列存储，即每一列中元素是连续存储的。
+A = 1 2 3
+    4 5 6
+在 row-major order 中，内存中的存储顺序是：1 2 3 4 5 6, leading dimension 是 3.
+在 col-major order 中，内存中的存储顺序是：1 4 2 5 3 6, leading dimension 是 2.">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/cublas-mma/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/cublas-mma/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/cublas-mma/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="Cublas Mma">
+  <meta property="og:description" content="cuBLAS 也会利用 tensor core，其性能比简单的手工写的 wmma 更优。
+https://0mean1sigma.com/tgemm/ 这篇文章中的 benchmark 展示了不同方式的性能。可以把最高性能的作为标杆，自己动手优化，这里的性能指标是吞吐，还可以有其他指标 ***
+什么是 leading demension 内存中连续存储元素的个数。
+给定一个形状为 MxN 的矩阵 ，如果它按 Row-major 存储，其 leading dimension 是 N，如果它按 Col-major 存储，其 leading dimention 是 M。
+什么是 row-major 和 col-major row-major 指的是按行存储，即每一行中元素是连续存储的。 col-major 指的是按列存储，即每一列中元素是连续存储的。
+A = 1 2 3 4 5 6 在 row-major order 中，内存中的存储顺序是：1 2 3 4 5 6, leading dimension 是 3. 在 col-major order 中，内存中的存储顺序是：1 4 2 5 3 6, leading dimension 是 2.">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="cuda-notes">
+    <meta property="article:published_time" content="2025-08-31T12:45:50+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:45:50+08:00">
+    <meta property="article:tag" content="CUDA">
+    <meta property="article:tag" content="CuBLAS">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Cublas Mma">
+<meta name="twitter:description" content="cuBLAS 也会利用 tensor core，其性能比简单的手工写的 wmma 更优。
+https://0mean1sigma.com/tgemm/  这篇文章中的 benchmark 展示了不同方式的性能。可以把最高性能的作为标杆，自己动手优化，这里的性能指标是吞吐，还可以有其他指标 ***
+什么是 leading demension
+内存中连续存储元素的个数。
+给定一个形状为 MxN 的矩阵 ，如果它按 Row-major 存储，其 leading dimension 是 N，如果它按 Col-major 存储，其 leading dimention 是 M。
+什么是 row-major 和 col-major
+row-major 指的是按行存储，即每一行中元素是连续存储的。
+col-major 指的是按列存储，即每一列中元素是连续存储的。
+A = 1 2 3
+    4 5 6
+在 row-major order 中，内存中的存储顺序是：1 2 3 4 5 6, leading dimension 是 3.
+在 col-major order 中，内存中的存储顺序是：1 4 2 5 3 6, leading dimension 是 2.">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "CUDA Notes",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/cuda-notes/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Cublas Mma",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/cuda-notes/cublas-mma/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Cublas Mma",
+  "name": "Cublas Mma",
+  "description": "cuBLAS 也会利用 tensor core，其性能比简单的手工写的 wmma 更优。\nhttps://0mean1sigma.com/tgemm/ 这篇文章中的 benchmark 展示了不同方式的性能。可以把最高性能的作为标杆，自己动手优化，这里的性能指标是吞吐，还可以有其他指标 ***\n什么是 leading demension 内存中连续存储元素的个数。\n给定一个形状为 MxN 的矩阵 ，如果它按 Row-major 存储，其 leading dimension 是 N，如果它按 Col-major 存储，其 leading dimention 是 M。\n什么是 row-major 和 col-major row-major 指的是按行存储，即每一行中元素是连续存储的。 col-major 指的是按列存储，即每一列中元素是连续存储的。\nA = 1 2 3 4 5 6 在 row-major order 中，内存中的存储顺序是：1 2 3 4 5 6, leading dimension 是 3. 在 col-major order 中，内存中的存储顺序是：1 4 2 5 3 6, leading dimension 是 2.\n",
+  "keywords": [
+    "CUDA", "cuBLAS"
+  ],
+  "articleBody": "cuBLAS 也会利用 tensor core，其性能比简单的手工写的 wmma 更优。\nhttps://0mean1sigma.com/tgemm/ 这篇文章中的 benchmark 展示了不同方式的性能。可以把最高性能的作为标杆，自己动手优化，这里的性能指标是吞吐，还可以有其他指标 ***\n什么是 leading demension 内存中连续存储元素的个数。\n给定一个形状为 MxN 的矩阵 ，如果它按 Row-major 存储，其 leading dimension 是 N，如果它按 Col-major 存储，其 leading dimention 是 M。\n什么是 row-major 和 col-major row-major 指的是按行存储，即每一行中元素是连续存储的。 col-major 指的是按列存储，即每一列中元素是连续存储的。\nA = 1 2 3 4 5 6 在 row-major order 中，内存中的存储顺序是：1 2 3 4 5 6, leading dimension 是 3. 在 col-major order 中，内存中的存储顺序是：1 4 2 5 3 6, leading dimension 是 2.\nA^T = 1 4 2 5 3 6 可以看出在内存中， A row-major 存储和 A^T col-major 存储是一样的。对于 row-major 存储的矩阵，读取 A 行和读取 A^T 的列是快速且缓存友好的。读取 A 列和读取 A^T 的行是慢的且缓存不友好的。\n矩阵 MMA 有以下4种形式，并且根据内存中存储矩阵的方式，不同的形式有不同的最优访存方式（访存偏好）：\nC = A * B A row-major，B col-major 的存储方式最高效 C = A^T * B A col-major，B col-major 的存储方式最高效 C = A * B^T A row-major，B row-major 的存储方式最高效 C = A^T * B^T A col-major，B row-major 的存储方式最高效 通常一个软件框架中的所有矩阵都会使用相同的存储顺序，这意味着，根据软件存储矩阵的方式，只有 2、3 种形式是最优的。比如 cublasSgemm 库中，A 和 B 都必须是 col-major 的存储方式。\n此外，软件中，在物理上进行一次转置操作，不是一个好主意，矩阵转置本就有很大的开销。\ncublasSgemm 函数提供了 transa 和 transb 参数，用于指定是否对输入矩阵 A 和 B 进行转置。通过合理设置这两个参数，你可以在不实际转换矩阵存储顺序的情况下，使用 cublasSgemm 函数进行计算。\ncublasSgemm 接口 cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N, M, N, K, \u0026alpha, d_A, lda, d_B, ldb, \u0026beta, d_C, ldc); CUBLAS_OP_T: 表示对 A 进行转置 CUBLAS_OP_N: 表示不对 B 进行转置 CUBLAS_OP_T 的实现方式通常是通过交换索引的顺序来实现逻辑转置，而不是通过实际的内存拷贝。 Benchmark 在 cpu （ARM cortex）上的 MMA 测试结果：【./outs/cpu_mm】\nC = A * B Latency: 99.600 ms C = A^T * B Latency: 87.900 ms # 最优 (A row-major, B row-major) C = A * B^T Latency: 117.700 ms # 最差 C = A^T * B^T Latency: 102.400 ms 使用 cuBLAS 库进行4中矩阵乘法 四种方法性能没有差别：【./outs/cublas_mm】\nC = A * B Latency: 0.137 ms C = A^T * B Latency: 0.152 ms # 最差 (A col-major, B col-major) C = A * B^T Latency: 0.129 ms # 最优 C = A^T * B^T Latency: 0.148 ms TODO：这里的测试结果和预期相反，\ncuBLAS 编程模型 ",
+  "wordCount" : "280",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:45:50+08:00",
+  "dateModified": "2025-08-31T12:45:50+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/cuda-notes/cublas-mma/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      Cublas Mma
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:45:50 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><p>cuBLAS 也会利用 tensor core，其性能比简单的手工写的 wmma 更优。</p>
+<p><a href="https://0mean1sigma.com/tgemm/">https://0mean1sigma.com/tgemm/</a>  这篇文章中的 benchmark 展示了不同方式的性能。可以把最高性能的作为标杆，自己动手优化，这里的性能指标是吞吐，还可以有其他指标 ***</p>
+<h2 id="什么是-leading-demension">什么是 leading demension<a hidden class="anchor" aria-hidden="true" href="#什么是-leading-demension">#</a></h2>
+<p>内存中连续存储元素的个数。</p>
+<p>给定一个形状为 MxN 的矩阵 ，如果它按 Row-major 存储，其 leading dimension 是 N，如果它按 Col-major 存储，其 leading dimention 是 M。</p>
+<h2 id="什么是-row-major-和-col-major">什么是 row-major 和 col-major<a hidden class="anchor" aria-hidden="true" href="#什么是-row-major-和-col-major">#</a></h2>
+<p>row-major 指的是按行存储，即每一行中元素是连续存储的。
+col-major 指的是按列存储，即每一列中元素是连续存储的。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-txt" data-lang="txt"><span style="display:flex;"><span>A = 1 2 3
+</span></span><span style="display:flex;"><span>    4 5 6
+</span></span></code></pre></div><p>在 row-major order 中，内存中的存储顺序是：1 2 3 4 5 6, leading dimension 是 3.
+在 col-major order 中，内存中的存储顺序是：1 4 2 5 3 6, leading dimension 是 2.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-txt" data-lang="txt"><span style="display:flex;"><span>A^T = 1 4
+</span></span><span style="display:flex;"><span>      2 5
+</span></span><span style="display:flex;"><span>      3 6
+</span></span></code></pre></div><p>可以看出在内存中， A <code>row-major</code> 存储和 A^T <code>col-major</code> 存储是一样的。对于 row-major 存储的矩阵，<strong>读取 A 行和读取 A^T 的列是快速且缓存友好</strong>的。读取 A 列和读取 A^T 的行是慢的且缓存不友好的。</p>
+<h2 id="矩阵">矩阵<a hidden class="anchor" aria-hidden="true" href="#矩阵">#</a></h2>
+<p>MMA 有以下4种形式，并且根据内存中存储矩阵的方式，不同的形式有不同的最优访存方式（访存偏好）：</p>
+<ol>
+<li><code>C = A * B</code>            A row-major，B col-major 的存储方式最高效</li>
+<li><code>C = A^T * B</code>          A col-major，B col-major 的存储方式最高效</li>
+<li><code>C = A * B^T</code>          A row-major，B row-major 的存储方式最高效</li>
+<li><code>C = A^T * B^T</code>        A col-major，B row-major 的存储方式最高效</li>
+</ol>
+<p>通常一个软件框架中的所有矩阵都会使用相同的存储顺序，这意味着，根据软件存储矩阵的方式，<strong>只有 2、3 种形式是最优的</strong>。比如 <code>cublasSgemm</code> 库中，A 和 B 都必须是 col-major 的存储方式。</p>
+<p>此外，软件中，在物理上进行一次转置操作，不是一个好主意，<strong>矩阵转置本就有很大的开销</strong>。</p>
+<p><code>cublasSgemm</code> 函数提供了 <code>transa</code> 和 <code>transb</code> 参数，用于指定是否对输入矩阵 A 和 B 进行转置。通过合理设置这两个参数，你可以在<strong>不实际转换矩阵存储顺序</strong>的情况下，使用 <code>cublasSgemm</code> 函数进行计算。</p>
+<h2 id="cublassgemm-接口"><code>cublasSgemm</code> 接口<a hidden class="anchor" aria-hidden="true" href="#cublassgemm-接口">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>cublasSgemm(handle, CUBLAS_OP_T, CUBLAS_OP_N,
+</span></span><span style="display:flex;"><span>            M, N, K,
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&amp;</span>alpha,
+</span></span><span style="display:flex;"><span>            d_A, lda,
+</span></span><span style="display:flex;"><span>            d_B, ldb,
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">&amp;</span>beta,
+</span></span><span style="display:flex;"><span>            d_C, ldc);
+</span></span></code></pre></div><ul>
+<li><code>CUBLAS_OP_T</code>: 表示对 A 进行转置</li>
+<li><code>CUBLAS_OP_N</code>: 表示不对 B 进行转置</li>
+<li><code>CUBLAS_OP_T</code> 的实现方式通常是通过<strong>交换索引的顺序</strong>来实现逻辑转置，而不是通过实际的内存拷贝。</li>
+</ul>
+<h2 id="benchmark">Benchmark<a hidden class="anchor" aria-hidden="true" href="#benchmark">#</a></h2>
+<p>在 cpu （ARM cortex）上的 MMA 测试结果：【./outs/cpu_mm】</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>C <span style="color:#f92672">=</span> A * B      Latency: 99.600 ms
+</span></span><span style="display:flex;"><span>C <span style="color:#f92672">=</span> A^T * B    Latency: 87.900 ms  <span style="color:#75715e"># 最优 (A row-major, B row-major)</span>
+</span></span><span style="display:flex;"><span>C <span style="color:#f92672">=</span> A * B^T    Latency: 117.700 ms <span style="color:#75715e"># 最差</span>
+</span></span><span style="display:flex;"><span>C <span style="color:#f92672">=</span> A^T * B^T  Latency: 102.400 ms
+</span></span></code></pre></div><h2 id="使用-cublas-库进行4中矩阵乘法">使用 cuBLAS 库进行4中矩阵乘法<a hidden class="anchor" aria-hidden="true" href="#使用-cublas-库进行4中矩阵乘法">#</a></h2>
+<p>四种方法性能没有差别：【./outs/cublas_mm】</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>C <span style="color:#f92672">=</span> A * B     Latency: 0.137 ms
+</span></span><span style="display:flex;"><span>C <span style="color:#f92672">=</span> A^T * B   Latency: 0.152 ms  <span style="color:#75715e"># 最差 (A col-major, B col-major)</span>
+</span></span><span style="display:flex;"><span>C <span style="color:#f92672">=</span> A * B^T   Latency: 0.129 ms  <span style="color:#75715e"># 最优</span>
+</span></span><span style="display:flex;"><span>C <span style="color:#f92672">=</span> A^T * B^T Latency: 0.148 ms
+</span></span></code></pre></div><p>TODO：这里的测试结果和预期相反，</p>
+<h2 id="cublas-编程模型">cuBLAS 编程模型<a hidden class="anchor" aria-hidden="true" href="#cublas-编程模型">#</a></h2>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/cuda/">CUDA</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/cublas/">CuBLAS</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

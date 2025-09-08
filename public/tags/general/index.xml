@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>General on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/general/</link>
+    <description>Recent content in General on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:52:05 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/general/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Concept</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/concept/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:05 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/concept/</guid>
+      <description>&lt;h2 id=&#34;环境包装器-environment-wrappers&#34;&gt;环境包装器 (environment wrappers)&lt;/h2&gt;
+&lt;p&gt;是一种修改现有环境而不直接更改其底层代码的便捷方法 . 包装器允许您避免大量重复代码，并使您的环境更模块化 . 重要的是，包装器可以链接起来以组合它们的效果，并且大多数通过 gym.make() 【python gymnasium 包】生成的环境默认情况下已经被包装。&lt;/p&gt;
+&lt;h3 id=&#34;环境包装器的作用&#34;&gt;环境包装器的作用:&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;转换 Actions (动作)：&lt;/li&gt;
+&lt;li&gt;转换 Observations (观测)：&lt;/li&gt;
+&lt;li&gt;转换 Rewards (奖励)：&lt;/li&gt;
+&lt;li&gt;自动重置环境：有些用户可能想要一个包装器，当其包装的环境达到完成状态时，该包装器将自动重置其包装的环境。这种环境的一个优点是，当超出完成状态时，它永远不会像标准 gym 环境那样产生未定义的行为。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;如何使用包装器&#34;&gt;如何使用包装器&lt;/h3&gt;
+&lt;p&gt;要包装一个环境，您必须首先初始化一个基本环境。 然后，您可以将此环境以及（可能可选的）参数传递给包装器的构造函数&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; gymnasium &lt;span style=&#34;color:#66d9ef&#34;&gt;as&lt;/span&gt; gym
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; gymnasium.wrappers &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; RescaleAction
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 创建一个基本环境&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;base_env &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; gym&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;make(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Hopper-v4&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 使用 RescaleAction 包装器，将动作范围缩放到 [0, 1]&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;wrapped_env &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; RescaleAction(base_env, min_action&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, max_action&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h3 id=&#34;gymnasium-中的常见包装器&#34;&gt;Gymnasium 中的常见包装器&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;gymnasium.Wrapper: 所有包装器的基类&lt;/li&gt;
+&lt;li&gt;gymnasium.ActionWrapper: 用于转换动作的包装器&lt;/li&gt;
+&lt;li&gt;gymnasium.ObservationWrapper: 用于转换观测的包装器&lt;/li&gt;
+&lt;li&gt;gymnasium.RewardWrapper: 用于转换奖励的包装器&lt;/li&gt;
+&lt;li&gt;gym.wrappers.AutoResetWrapper: 用于自动重置环境的包装器&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;环境包装器是强化学习中一个强大的工具，可以帮助您修改和定制环境，以满足您的特定需求。它们提供了一种模块化和可重用的方式来转换动作、观测和奖励，并添加其他功能。&lt;/p&gt;
+&lt;h2 id=&#34;归一化&#34;&gt;归一化&lt;/h2&gt;
+&lt;p&gt;为什么RL 需要归一化？&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;提高训练稳定性：归一化可以使神经网络的输入或输出值接近正态分布，这有&lt;strong&gt;助于激活函数正常工作&lt;/strong&gt;，并避免随机初始化的参数需要被过度调整. 它可以减少模型对初始化的敏感性，使得训练过程更加稳定。&lt;/li&gt;
+&lt;li&gt;加速收敛：归一化消除了数据特征之间的&lt;strong&gt;量纲影响&lt;/strong&gt;，使得梯度下降算法更快地找到全局最优解，从而加速模型的收敛速度。&lt;/li&gt;
+&lt;li&gt;提高泛化能力：归一化可以减少&lt;strong&gt;特征之间的相关性&lt;/strong&gt;，从而提高模型的稳定性和精度，增强模型的泛化能力。&lt;/li&gt;
+&lt;li&gt;允许使用更高的学习率：归一化可以使&lt;strong&gt;参数空间更加平滑&lt;/strong&gt;，因此可以使用更高的学习率，而不会导致训练过程不稳定。&lt;/li&gt;
+&lt;li&gt;解决数据可比性问题：归一化可以将&lt;strong&gt;有量纲转化为无量纲&lt;/strong&gt;，同时将数据归一化至同一量级，解决数据间的可比性问题。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;bellman-方程&#34;&gt;Bellman 方程&lt;/h2&gt;
+&lt;p&gt;Value-based methods 通过迭代更新价值函数来学习。更新的依据是 贝尔曼方程 (Bellman Equation)，该方程描述了当前状态的价值与未来状态的价值之间的关系&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Concepts</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/llm/concepts/</link>
+      <pubDate>Sun, 31 Aug 2025 12:49:41 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/llm/concepts/</guid>
+      <description>&lt;h2 id=&#34;json-lines-vs-json&#34;&gt;JSON Lines vs JSON&lt;/h2&gt;
+&lt;p&gt;JSON Lines（也称为 JSONL）是一种数据格式，其中每个记录都是一个单独的 JSON 对象，并以换行符分隔。如：&lt;/p&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code class=&#34;language-jsonl&#34; data-lang=&#34;jsonl&#34;&gt;{&amp;#34;name&amp;#34;: &amp;#34;Alice&amp;#34;, &amp;#34;age&amp;#34;: 30}
+{&amp;#34;name&amp;#34;: &amp;#34;Bob&amp;#34;, &amp;#34;age&amp;#34;: 25}
+...
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;相比之下，传统的 JSON 数据通常包含一个数组或对象，如下所示：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-json&#34; data-lang=&#34;json&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;{
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  &lt;span style=&#34;color:#f92672&#34;&gt;&amp;#34;people&amp;#34;&lt;/span&gt;: [
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    {&lt;span style=&#34;color:#f92672&#34;&gt;&amp;#34;name&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Alice&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#f92672&#34;&gt;&amp;#34;age&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;30&lt;/span&gt;},
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    {&lt;span style=&#34;color:#f92672&#34;&gt;&amp;#34;name&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Bob&amp;#34;&lt;/span&gt;, &lt;span style=&#34;color:#f92672&#34;&gt;&amp;#34;age&amp;#34;&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;25&lt;/span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  ]
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;ul&gt;
+&lt;li&gt;JSON Lines 更适合处理&lt;strong&gt;大量独立的数据条目&lt;/strong&gt;，因为每条记录都是独立的实体，易于逐个读取和处理。&lt;/li&gt;
+&lt;li&gt;传统 JSON 更适用于&lt;strong&gt;嵌套结构和复杂的多层关系&lt;/strong&gt;，更适合一次性加载整个数据集到内存中进行分析或操作。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;查看内存使用&#34;&gt;查看内存使用&lt;/h2&gt;
+&lt;p&gt;在 Python 中测量内存使用的一种简单方法是使用 psutil 库。数据集在磁盘上的大小，使用 dataset_size 属性&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; psutil
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# Process.memory_info is expressed in bytes, so convert to megabytes&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(&lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;RAM used: &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;psutil&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;Process()&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;memory_info()&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;rss &lt;span style=&#34;color:#f92672&#34;&gt;/&lt;/span&gt; (&lt;span style=&#34;color:#ae81ff&#34;&gt;1024&lt;/span&gt; &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;1024&lt;/span&gt;)&lt;span style=&#34;color:#e6db74&#34;&gt;:&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;.2f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt; MB&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(&lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Dataset size in bytes: &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;pubmed_dataset&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;dataset_size&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;size_gb &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; pubmed_dataset&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;dataset_size &lt;span style=&#34;color:#f92672&#34;&gt;/&lt;/span&gt; (&lt;span style=&#34;color:#ae81ff&#34;&gt;1024&lt;/span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;**&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;3&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;print(&lt;span style=&#34;color:#e6db74&#34;&gt;f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Dataset size (cache file) : &lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;{&lt;/span&gt;size_gb&lt;span style=&#34;color:#e6db74&#34;&gt;:&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;.2f&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt;}&lt;/span&gt;&lt;span style=&#34;color:#e6db74&#34;&gt; GB&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;http-请求的头部信息-header&#34;&gt;HTTP 请求的头部信息 header&lt;/h2&gt;
+&lt;p&gt;请求中非常重要的组成部分，用来传递额外的&lt;strong&gt;元信息&lt;/strong&gt;，提升请求的准确性和安全性。内容包括：&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>通用硬件知识</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/cuda-notes/%E9%80%9A%E7%94%A8%E7%A1%AC%E4%BB%B6%E7%9F%A5%E8%AF%86/</link>
+      <pubDate>Sun, 31 Aug 2025 12:45:58 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/cuda-notes/%E9%80%9A%E7%94%A8%E7%A1%AC%E4%BB%B6%E7%9F%A5%E8%AF%86/</guid>
+      <description>&lt;h1 id=&#34;硬件通用&#34;&gt;硬件通用&lt;/h1&gt;
+&lt;h2 id=&#34;单核-cpu-实际是串行的&#34;&gt;单核 CPU 实际是串行的&lt;/h2&gt;
+&lt;p&gt;在单核 CPU 上，多线程的并发执行是通过上下文切换实现的&lt;strong&gt;假象&lt;/strong&gt;。 实际上，任何一个时间点上，CPU 核心只执行一个线程的指令。 多线程的并行性是通过快速地在不同线程之间切换来实现的，切换速度快到足以让人感觉多个线程同时运行。&lt;/p&gt;
+&lt;h2 id=&#34;compute-capability&#34;&gt;Compute Capability&lt;/h2&gt;
+&lt;p&gt;Compute Capability 也称作 SM 版本。在应用中，通常会指定最低 Compute Capability 版本，告诉编译器，如果硬件支持的 Compute Capability 版本低于 6.0，那么将无法执行这个和函数。做法是使用 nvcc 时增加一个选项 &lt;code&gt;nvcc -arch=sm_60&lt;/code&gt;。A100 SM 版本是7.5， H100 的SM 版本是8.0。&lt;/p&gt;
+&lt;p&gt;高版本的 Compute Capability 是低版本 Compute Capability 的超集。即高版本包含低版本所有性质和功能。&lt;/p&gt;
+&lt;p&gt;这里官方给出不同 SM 版本的细节信息，包括 warp 调度器 个数，
+&lt;a href=&#34;https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#architecture-7-x&#34;&gt;https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#architecture-7-x&lt;/a&gt;&lt;/p&gt;
+&lt;h2 id=&#34;gpu-频率-和-传输带宽&#34;&gt;GPU 频率 和 传输带宽&lt;/h2&gt;
+&lt;p&gt;处理器频率衡量的是处理器的速度，而带宽衡量的是数据传输速率。比喻：处理器频率快比作翻书的节奏快。存储器带宽大比作读完一页很快。两者需要匹配上，才能达到最佳效率。***&lt;/p&gt;
+&lt;p&gt;即：CPU/GPU 频率和带宽之间的关系是间接的。更高的 CPU/GPU 频率意味着处理器可以更快地处理数据，但这并不直接决定数据传输速度。带宽限制了 CPU/GPU 可以从内存或存储设备中读取数据以及将数据写入内存或存储设备的速度。如果带宽不足，即使 CPU/GPU 频率很高，性能也会受到限制，因为处理器必须等待数据传输完成。 因此，为了获得最佳性能，需要 CPU/GPU 频率和足够的带宽共同作用。&lt;/p&gt;
+&lt;h2 id=&#34;一个时钟周期-时钟频率&#34;&gt;一个时钟周期 时钟频率&lt;/h2&gt;
+&lt;p&gt;晶体管电路中时钟信号的一个完整振荡周期。&lt;strong&gt;它是芯片执行操作的最小单位&lt;/strong&gt;。时钟周期的长度由时钟频率决定。比如翻书，一个时钟周期就是翻一页的时间。时钟周期越短，翻书的速度越快， 1 GHz 表示每秒 10 亿个时钟周期，每秒翻页10亿页书。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Concepts</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/agent/concepts/</link>
+      <pubDate>Sun, 31 Aug 2025 12:13:33 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/agent/concepts/</guid>
+      <description>&lt;h1 id=&#34;serverless-api--server-based-api&#34;&gt;Serverless API &amp;amp; Server-based API&lt;/h1&gt;
+&lt;p&gt;Serverless API:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;基础设施管理：无需管理服务器。云服务提供商负责所有底层基础设施的管理。&lt;/li&gt;
+&lt;li&gt;扩展性：自动扩展，根据流量需求动态调整资源。&lt;/li&gt;
+&lt;li&gt;成本：按需付费，只需为实际使用的计算资源付费。&lt;/li&gt;
+&lt;li&gt;部署：通常通过函数即服务 (FaaS) 平台部署，如 AWS Lambda、Azure Functions、Google Cloud Functions。&lt;/li&gt;
+&lt;li&gt;运维：运维工作量较少，主要关注业务逻辑。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Server-based API:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;基础设施管理：需要自行管理服务器，包括配置、维护和扩展。&lt;/li&gt;
+&lt;li&gt;扩展性：需要手动配置和扩展服务器，以应对流量高峰。&lt;/li&gt;
+&lt;li&gt;成本：需要为服务器的运行时间付费，即使在低流量时段也需要支付费用。&lt;/li&gt;
+&lt;li&gt;部署：通常部署在传统的服务器或虚拟机上，如 Apache、Nginx 等。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;文本检索-text-retieval&#34;&gt;文本检索 Text retieval&lt;/h2&gt;
+&lt;p&gt;其核心作用是根据用户输入的查询（query），快速高效地在庞大的文档集合中筛选出与查询最相关的文档或文本片段。&lt;/p&gt;
+&lt;p&gt;BM25Retriever，是 BM25 的python library，基于词频概率统计估计相关性，是目前经典且广泛使用的排名算法。&lt;/p&gt;
+&lt;p&gt;SentenceTransformers 是基于embedding 的文本检索方法 Python library。&lt;/p&gt;
+&lt;h2 id=&#34;rag-检索增强生成-用途&#34;&gt;RAG 检索增强生成 用途&lt;/h2&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-py&#34; data-lang=&#34;py&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# doc is a list of documents&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;bm25_retriever &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; BM25Retriever&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;from_documents(docs)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# query is a string&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;results &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; bm25_retriever&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;invoke(query)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;RAG 模式的 AI Agent 适用于需要&lt;strong&gt;结合外部知识&lt;/strong&gt;生成准确回答的场景，如知识库问答、搜索整合、客服、法律分析、医疗支持和教育。&lt;/p&gt;
+&lt;h2 id=&#34;sglang-structured-generation-language-与-vllmvectorized-large-language-model-inference&#34;&gt;SGLang （Structured Generation Language） 与 vLLM（Vectorized Large Language Model Inference）&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;SGLang：是复杂多轮交互及结构化生成的语言模型服务框架。适用于需要&lt;strong&gt;多步骤&lt;/strong&gt;任务、&lt;strong&gt;多GPU协作&lt;/strong&gt;、&lt;strong&gt;大规模&lt;/strong&gt;模型复杂应用。需要&lt;strong&gt;多轮复杂任务&lt;/strong&gt;支持场景。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

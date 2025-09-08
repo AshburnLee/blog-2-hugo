@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>5.1.llama.cpp | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="LLM, llama.cpp">
+<meta name="description" content="@ 库有哪些内容
+
+
+大模型推理实现，Transformer 模型的核心组件，如注意力机制、前馈神经网络、层归一化等。模型加载和解析。量化技术。
+
+
+性能优化，SIMD 指令和 CUDA 加速，多线程编程等。
+
+
+现代 C&#43;&#43; 在高性能场景中的应用。
+
+
+llama-cli，命令行交互生成文本。类似 ollama
+
+
+llama-serve, 开启本地 llm 推理服务，便于集成到其他应用中。类似 ollama
+
+
+。。。
+
+
+@ 学习资源
+
+
+Karpathy 的视频，理解 Transformer 和采样。
+
+
+KV cache，top-k top-p等内容的引用：https://medium.com/data-science/llama-cpp-writing-a-simple-c-inference-program-for-gguf-llm-models-12bc5f58505f
+
+
+检查编译环境
+sudo apt update
+sudo apt install build-essential git cmake g&#43;&#43; make
+sudo apt install nvidia-cuda-toolkit
+nvidia-smi
+sudo apt install libcudart11.0
+源码编译
+git clone https://github.com/ggerganov/llama.cpp
+cd llama.cpp
+
+mkdir build &amp;&amp; cd build
+# GPU 编译
+cmake .. -DGGML_CUDA=ON -DCMAKE_BUILD_TYPE=Debug
+make
+注意：
+
+这里的 build type 还可以是：RelWithDebInfo，带 debug 调试信息的 release 模式。
+debug 模式启用了断言检查，debug 时可能要报错。
+
+报错1：
+-- Could NOT find CURL (missing: CURL_LIBRARY CURL_INCLUDE_DIR)
+CMake Error at common/CMakeLists.txt:85 (message):
+  Could NOT find CURL.  Hint: to disable this feature, set -DLLAMA_CURL=OFF
+解释：llama.cpp 使用 CURL 实现 HTTP 相关功能（例如通过 HTTP 下载模型或提供 API 服务）">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/llm/5.1.llama.cpp/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/llm/5.1.llama.cpp/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/llm/5.1.llama.cpp/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="5.1.llama.cpp">
+  <meta property="og:description" content="@ 库有哪些内容 大模型推理实现，Transformer 模型的核心组件，如注意力机制、前馈神经网络、层归一化等。模型加载和解析。量化技术。
+性能优化，SIMD 指令和 CUDA 加速，多线程编程等。
+现代 C&#43;&#43; 在高性能场景中的应用。
+llama-cli，命令行交互生成文本。类似 ollama
+llama-serve, 开启本地 llm 推理服务，便于集成到其他应用中。类似 ollama
+。。。
+@ 学习资源 Karpathy 的视频，理解 Transformer 和采样。
+KV cache，top-k top-p等内容的引用：https://medium.com/data-science/llama-cpp-writing-a-simple-c-inference-program-for-gguf-llm-models-12bc5f58505f
+检查编译环境 sudo apt update sudo apt install build-essential git cmake g&#43;&#43; make sudo apt install nvidia-cuda-toolkit nvidia-smi sudo apt install libcudart11.0 源码编译 git clone https://github.com/ggerganov/llama.cpp cd llama.cpp mkdir build &amp;&amp; cd build # GPU 编译 cmake .. -DGGML_CUDA=ON -DCMAKE_BUILD_TYPE=Debug make 注意：
+这里的 build type 还可以是：RelWithDebInfo，带 debug 调试信息的 release 模式。 debug 模式启用了断言检查，debug 时可能要报错。 报错1： -- Could NOT find CURL (missing: CURL_LIBRARY CURL_INCLUDE_DIR) CMake Error at common/CMakeLists.txt:85 (message): Could NOT find CURL. Hint: to disable this feature, set -DLLAMA_CURL=OFF 解释：llama.cpp 使用 CURL 实现 HTTP 相关功能（例如通过 HTTP 下载模型或提供 API 服务）">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="llm">
+    <meta property="article:published_time" content="2025-08-31T12:49:39+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:49:39+08:00">
+    <meta property="article:tag" content="LLM">
+    <meta property="article:tag" content="Llama.cpp">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="5.1.llama.cpp">
+<meta name="twitter:description" content="@ 库有哪些内容
+
+
+大模型推理实现，Transformer 模型的核心组件，如注意力机制、前馈神经网络、层归一化等。模型加载和解析。量化技术。
+
+
+性能优化，SIMD 指令和 CUDA 加速，多线程编程等。
+
+
+现代 C&#43;&#43; 在高性能场景中的应用。
+
+
+llama-cli，命令行交互生成文本。类似 ollama
+
+
+llama-serve, 开启本地 llm 推理服务，便于集成到其他应用中。类似 ollama
+
+
+。。。
+
+
+@ 学习资源
+
+
+Karpathy 的视频，理解 Transformer 和采样。
+
+
+KV cache，top-k top-p等内容的引用：https://medium.com/data-science/llama-cpp-writing-a-simple-c-inference-program-for-gguf-llm-models-12bc5f58505f
+
+
+检查编译环境
+sudo apt update
+sudo apt install build-essential git cmake g&#43;&#43; make
+sudo apt install nvidia-cuda-toolkit
+nvidia-smi
+sudo apt install libcudart11.0
+源码编译
+git clone https://github.com/ggerganov/llama.cpp
+cd llama.cpp
+
+mkdir build &amp;&amp; cd build
+# GPU 编译
+cmake .. -DGGML_CUDA=ON -DCMAKE_BUILD_TYPE=Debug
+make
+注意：
+
+这里的 build type 还可以是：RelWithDebInfo，带 debug 调试信息的 release 模式。
+debug 模式启用了断言检查，debug 时可能要报错。
+
+报错1：
+-- Could NOT find CURL (missing: CURL_LIBRARY CURL_INCLUDE_DIR)
+CMake Error at common/CMakeLists.txt:85 (message):
+  Could NOT find CURL.  Hint: to disable this feature, set -DLLAMA_CURL=OFF
+解释：llama.cpp 使用 CURL 实现 HTTP 相关功能（例如通过 HTTP 下载模型或提供 API 服务）">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "LLM",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "5.1.llama.cpp",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/5.1.llama.cpp/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "5.1.llama.cpp",
+  "name": "5.1.llama.cpp",
+  "description": "@ 库有哪些内容 大模型推理实现，Transformer 模型的核心组件，如注意力机制、前馈神经网络、层归一化等。模型加载和解析。量化技术。\n性能优化，SIMD 指令和 CUDA 加速，多线程编程等。\n现代 C++ 在高性能场景中的应用。\nllama-cli，命令行交互生成文本。类似 ollama\nllama-serve, 开启本地 llm 推理服务，便于集成到其他应用中。类似 ollama\n。。。\n@ 学习资源 Karpathy 的视频，理解 Transformer 和采样。\nKV cache，top-k top-p等内容的引用：https://medium.com/data-science/llama-cpp-writing-a-simple-c-inference-program-for-gguf-llm-models-12bc5f58505f\n检查编译环境 sudo apt update sudo apt install build-essential git cmake g++ make sudo apt install nvidia-cuda-toolkit nvidia-smi sudo apt install libcudart11.0 源码编译 git clone https://github.com/ggerganov/llama.cpp cd llama.cpp mkdir build \u0026amp;\u0026amp; cd build # GPU 编译 cmake .. -DGGML_CUDA=ON -DCMAKE_BUILD_TYPE=Debug make 注意：\n这里的 build type 还可以是：RelWithDebInfo，带 debug 调试信息的 release 模式。 debug 模式启用了断言检查，debug 时可能要报错。 报错1： -- Could NOT find CURL (missing: CURL_LIBRARY CURL_INCLUDE_DIR) CMake Error at common/CMakeLists.txt:85 (message): Could NOT find CURL. Hint: to disable this feature, set -DLLAMA_CURL=OFF 解释：llama.cpp 使用 CURL 实现 HTTP 相关功能（例如通过 HTTP 下载模型或提供 API 服务）\n",
+  "keywords": [
+    "LLM", "llama.cpp"
+  ],
+  "articleBody": "@ 库有哪些内容 大模型推理实现，Transformer 模型的核心组件，如注意力机制、前馈神经网络、层归一化等。模型加载和解析。量化技术。\n性能优化，SIMD 指令和 CUDA 加速，多线程编程等。\n现代 C++ 在高性能场景中的应用。\nllama-cli，命令行交互生成文本。类似 ollama\nllama-serve, 开启本地 llm 推理服务，便于集成到其他应用中。类似 ollama\n。。。\n@ 学习资源 Karpathy 的视频，理解 Transformer 和采样。\nKV cache，top-k top-p等内容的引用：https://medium.com/data-science/llama-cpp-writing-a-simple-c-inference-program-for-gguf-llm-models-12bc5f58505f\n检查编译环境 sudo apt update sudo apt install build-essential git cmake g++ make sudo apt install nvidia-cuda-toolkit nvidia-smi sudo apt install libcudart11.0 源码编译 git clone https://github.com/ggerganov/llama.cpp cd llama.cpp mkdir build \u0026\u0026 cd build # GPU 编译 cmake .. -DGGML_CUDA=ON -DCMAKE_BUILD_TYPE=Debug make 注意：\n这里的 build type 还可以是：RelWithDebInfo，带 debug 调试信息的 release 模式。 debug 模式启用了断言检查，debug 时可能要报错。 报错1： -- Could NOT find CURL (missing: CURL_LIBRARY CURL_INCLUDE_DIR) CMake Error at common/CMakeLists.txt:85 (message): Could NOT find CURL. Hint: to disable this feature, set -DLLAMA_CURL=OFF 解释：llama.cpp 使用 CURL 实现 HTTP 相关功能（例如通过 HTTP 下载模型或提供 API 服务）\n文档提示需要安装 curl ：sudo apt-get install libcurl4-openssl-dev\n报错2： 构建时 make -j 报错：c++: fatal error: Killed signal terminated program cc1plus 原因是系统资源不足，内存或交换空间不足。不要使用全部的核心编译 make -j2。\n验证编译结果 ll ./build/bin 应该包含了所有编译好的二进制文件。\n./bin/llama-cli --version 应该返回命令版本。\n./build/bin/llama-cli -m /path/to/model.gguf -p \"Hello, world!\" -n 50 --n-gpu-layers 999 使用一个 GGUF 格式的模型进行简单推理测试（需要先下载模型）。应该返回模型响应。 --n-gpu-layers 999 表示尽可能多的用 GPU 进行计算。\n@ 以下log的含义 ggml_cuda_init: GGML_CUDA_FORCE_MMQ: no ggml_cuda_init: GGML_CUDA_FORCE_CUBLAS: no ggml_cuda_init: found 1 CUDA devices: Device 0: Orin, compute capability 8.7, VMM: yes 两个 no 表示 llama.cpp 在初始化 CUDA 时未强制启用特定的 CUDA 优化选项。\nGGML_CUDA_FORCE_MMQ: no ： 表示未强制启用 MMQ（Matrix Multiplication Quantization，矩阵乘法量化） 优化。设置为 no 时，llama.cpp 会根据模型类型和硬件特性自动选择是否使用 MMQ，而不是强制启用。所以保持 no 是安全的，llama.cpp 会自动选择合适的实现。\n开启方式：export GGML_CUDA_FORCE_MMQ=1\nggml_cuda_init: GGML_CUDA_FORCE_CUBLAS: no 未强制启用 cuBLAS 库来执行矩阵运算。设置为 no 时，llama.cpp 使用其自有的 CUDA 内核（基于 GGML 的实现），而不是 cuBLAS。GGML 的自定义 CUDA 内核通常更灵活，支持量化模型和特定优化，可能比 cuBLAS 在某些场景下更高效（尤其是在量化推理中）.\n若要开启：export GGML_CUDA_FORCE_CUBLAS=1\n@ llama.cpp 项目核心内容 llama.cpp 的核心目标是在资源受限的硬件上高效运行 LLMs（主要是 Transformer 架构的模型）。价值在于优化推理。\n它本身并不专注于定义或实现 Transformer 模型的结构（如注意力机制、层归一化等）。这些结构通常由预训练模型（如 LLaMA、Grok、Gemma 等）提供，存储在模型权重文件中（通常为 GGUF 格式）。llama.cpp 的作用是加载这些预训练的 Transformer 模型权重并执行推理。\n它的主要功能之一是实现 Transformer 模型的推理（forward pass），包括注意力计算、矩阵乘法、前馈网络等操作。但它的核心价值在于高效推理，通过优化（如量化、硬件加速）在各种设备上运行 LLMs。\n具体讲：\nllama.cpp 实现了 Transformer 模型推理的核心逻辑。包括加载 GGUF 格式模型（llama_model_load_from_file）、执行前向传播 forward pass、支持上下文管理（如 KV 缓存）、提供多种采样策略生成文本。src/llama.cpp 中的 llama_eval 和 llama_decode 函数实现了推理的主要逻辑。\n支持多种量化技术（如 4 位、8 位整数量化，Q4_0、Q4_K、Q8_0 等），大幅降低模型的内存需求和计算开销。llama-quantize 是其量化工具。相关实现在 ggml/src/ggml-quants.c 和 llama.cpp 中。\n跨平台加速。使用 SIMD 指令、使用 SIMD 指令、适配 ARM 架构。相关实现：ggml/src/ggml-cuda.cu 。动态选择计算后端，根据硬件自动优化性能.从高性能服务器到边缘计算设备都可以运行 llama.cpp。\n它的模块化设计和工具生态便于集成到现有的工作流中。\n轻量级，无依赖。\n@ llama.cpp 加载 GGUF 模型后，不需要实现模型架构，为什么 因为，GGUF 文件已经包含了模型的权重和配置，定义了完整的 Transformer 架构。llama.cpp 提供通用的 Transformer 推理逻辑，能够动态适配不同模型的结构。\nGGUF 格式是 GGML 的升级，是一种高效的模型文件格式，它包含了：\n模型权重：Transformer 的所有参数（如注意力矩阵、前馈网络权重等）。 模型配置：包括层数、隐藏层维度、注意力头数、上下文长度等超参数。 元数据：如分词器信息、模型类型（例如 LLaMA、Grok、Gemma）。 llama.cpp 的 llama_model_load_from_file 函数（在 src/llama.cpp 中）会解析 GGUF 文件，提取这些信息，并将权重加载到内存中，配置推理所需的计算图。\n因此，GGUF 文件已经定义了模型的架构（其实是 hard code 了所有 LLM 结构），llama.cpp 无需为每个模型硬编码特定架构。\n验证这个说法 【done】\n实际上 实际上，llama.cpp 为很多 LLM arch 都实现了其 Graph 架构，当 generate tokens 时，会通过 arch 找到对应的模型结构的搭建，比如对于 Qwen3 ，代码在运行时，会找到 llm_build_qwen3，这其中就是对应的 28 层模型结构。所以 llama.cpp 为每个模型硬编码特定架构。通过 gguf 文件找到对应的 struct 即可构建模型架构。\n",
+  "wordCount" : "352",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:49:39+08:00",
+  "dateModified": "2025-08-31T12:49:39+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/llm/5.1.llama.cpp/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      5.1.llama.cpp
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:49:39 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><h2 id="-库有哪些内容">@ 库有哪些内容<a hidden class="anchor" aria-hidden="true" href="#-库有哪些内容">#</a></h2>
+<ul>
+<li>
+<p>大模型推理实现，Transformer 模型的核心组件，如注意力机制、前馈神经网络、层归一化等。模型加载和解析。量化技术。</p>
+</li>
+<li>
+<p>性能优化，SIMD 指令和 CUDA 加速，多线程编程等。</p>
+</li>
+<li>
+<p>现代 C++ 在高性能场景中的应用。</p>
+</li>
+<li>
+<p>llama-cli，命令行交互生成文本。类似 ollama</p>
+</li>
+<li>
+<p>llama-serve, 开启本地 llm 推理服务，便于集成到其他应用中。类似 ollama</p>
+</li>
+<li>
+<p>。。。</p>
+</li>
+</ul>
+<h2 id="-学习资源">@ 学习资源<a hidden class="anchor" aria-hidden="true" href="#-学习资源">#</a></h2>
+<ul>
+<li>
+<p>Karpathy 的视频，理解 Transformer 和采样。</p>
+</li>
+<li>
+<p>KV cache，top-k top-p等内容的引用：https://medium.com/data-science/llama-cpp-writing-a-simple-c-inference-program-for-gguf-llm-models-12bc5f58505f</p>
+</li>
+</ul>
+<h2 id="检查编译环境">检查编译环境<a hidden class="anchor" aria-hidden="true" href="#检查编译环境">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>sudo apt update
+</span></span><span style="display:flex;"><span>sudo apt install build-essential git cmake g++ make
+</span></span><span style="display:flex;"><span>sudo apt install nvidia-cuda-toolkit
+</span></span><span style="display:flex;"><span>nvidia-smi
+</span></span><span style="display:flex;"><span>sudo apt install libcudart11.0
+</span></span></code></pre></div><h2 id="源码编译">源码编译<a hidden class="anchor" aria-hidden="true" href="#源码编译">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>git clone https://github.com/ggerganov/llama.cpp
+</span></span><span style="display:flex;"><span>cd llama.cpp
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>mkdir build <span style="color:#f92672">&amp;&amp;</span> cd build
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># GPU 编译</span>
+</span></span><span style="display:flex;"><span>cmake .. -DGGML_CUDA<span style="color:#f92672">=</span>ON -DCMAKE_BUILD_TYPE<span style="color:#f92672">=</span>Debug
+</span></span><span style="display:flex;"><span>make
+</span></span></code></pre></div><p>注意：</p>
+<ol>
+<li>这里的 build type 还可以是：<code>RelWithDebInfo</code>，带 debug 调试信息的 release 模式。</li>
+<li>debug 模式启用了断言检查，debug 时可能要报错。</li>
+</ol>
+<h3 id="报错1">报错1：<a hidden class="anchor" aria-hidden="true" href="#报错1">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-txt" data-lang="txt"><span style="display:flex;"><span>-- Could NOT find CURL (missing: CURL_LIBRARY CURL_INCLUDE_DIR)
+</span></span><span style="display:flex;"><span>CMake Error at common/CMakeLists.txt:85 (message):
+</span></span><span style="display:flex;"><span>  Could NOT find CURL.  Hint: to disable this feature, set -DLLAMA_CURL=OFF
+</span></span></code></pre></div><p>解释：<code>llama.cpp</code> 使用 <code>CURL</code> 实现 <code>HTTP</code> 相关功能（例如通过 <code>HTTP</code> 下载模型或提供 <code>API</code> 服务）</p>
+<p>文档提示需要安装 curl ：<code>sudo apt-get install libcurl4-openssl-dev</code></p>
+<h3 id="报错2">报错2：<a hidden class="anchor" aria-hidden="true" href="#报错2">#</a></h3>
+<p>构建时 <code>make -j</code> 报错：<code>c++: fatal error: Killed signal terminated program cc1plus</code> 原因是系统资源不足，内存或交换空间不足。不要使用全部的核心编译 <code>make -j2</code>。</p>
+<h2 id="验证编译结果">验证编译结果<a hidden class="anchor" aria-hidden="true" href="#验证编译结果">#</a></h2>
+<p><code>ll ./build/bin</code> 应该包含了所有编译好的二进制文件。</p>
+<p><code>./bin/llama-cli --version</code> 应该返回命令版本。</p>
+<p><code>./build/bin/llama-cli -m /path/to/model.gguf -p &quot;Hello, world!&quot; -n 50 --n-gpu-layers 999</code> 使用一个 GGUF 格式的模型进行简单推理测试（需要先下载模型）。应该返回模型响应。 <code>--n-gpu-layers 999</code> 表示尽可能多的用 GPU 进行计算。</p>
+<h2 id="-以下log的含义">@ 以下log的含义<a hidden class="anchor" aria-hidden="true" href="#-以下log的含义">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>ggml_cuda_init: GGML_CUDA_FORCE_MMQ:    no
+</span></span><span style="display:flex;"><span>ggml_cuda_init: GGML_CUDA_FORCE_CUBLAS: no
+</span></span><span style="display:flex;"><span>ggml_cuda_init: found <span style="color:#ae81ff">1</span> CUDA devices:
+</span></span><span style="display:flex;"><span>  Device 0: Orin, compute capability 8.7, VMM: yes
+</span></span></code></pre></div><p>两个 <code>no</code> 表示 <code>llama.cpp</code> 在初始化 CUDA 时<strong>未强制启用</strong>特定的 CUDA 优化选项。</p>
+<p><code>GGML_CUDA_FORCE_MMQ: no</code> ： 表示未强制启用 MMQ（Matrix Multiplication Quantization，矩阵乘法量化） 优化。设置为 no 时，llama.cpp 会根据模型类型和硬件特性自动选择是否使用 MMQ，而不是强制启用。所以<strong>保持 <code>no</code> 是安全的</strong>，<code>llama.cpp</code> 会自动选择合适的实现。</p>
+<p>开启方式：<code>export GGML_CUDA_FORCE_MMQ=1</code></p>
+<p><code>ggml_cuda_init: GGML_CUDA_FORCE_CUBLAS: no</code> 未强制启用 <code>cuBLAS</code> 库来执行矩阵运算。设置为 <code>no</code> 时，<code>llama.cpp</code> 使用其自有的 CUDA 内核（基于 GGML 的实现），而不是 <code>cuBLAS</code>。GGML 的<strong>自定义 CUDA 内核通常更灵活</strong>，支持量化模型和特定优化，可能比 cuBLAS 在某些场景下更高效（尤其是在量化推理中）.</p>
+<p>若要开启：<code>export GGML_CUDA_FORCE_CUBLAS=1</code></p>
+<h2 id="-llamacpp-项目核心内容">@ <code>llama.cpp</code> 项目核心内容<a hidden class="anchor" aria-hidden="true" href="#-llamacpp-项目核心内容">#</a></h2>
+<p><code>llama.cpp</code> 的<strong>核心目标</strong>是在资源受限的硬件上<strong>高效运行 LLMs</strong>（主要是 Transformer 架构的模型）。价值在于<strong>优化推理</strong>。</p>
+<p>它本身<strong>并不专注于</strong>定义或实现 Transformer 模型的结构（如注意力机制、层归一化等）。这些结构通常由预训练模型（如 LLaMA、Grok、Gemma 等）提供，存储在模型权重文件中（通常为 GGUF 格式）。<code>llama.cpp</code> 的作用是<strong>加载这些预训练的 Transformer 模型权重并执行推理</strong>。</p>
+<p>它的主要功能之一是<strong>实现 Transformer 模型的推理（forward pass）</strong>，包括<strong>注意力计算</strong>、<strong>矩阵乘法</strong>、<strong>前馈网络</strong>等操作。但它的核心价值在于<strong>高效推理</strong>，通过优化（如量化、硬件加速）在各种设备上运行 LLMs。</p>
+<p>具体讲：</p>
+<ul>
+<li>
+<p><code>llama.cpp</code> 实现了 Transformer 模型推理的核心逻辑。包括加载 GGUF 格式模型（<code>llama_model_load_from_file</code>）、执行前向传播 forward pass、支持上下文管理（如 KV 缓存）、提供多种采样策略生成文本。<code>src/llama.cpp</code> 中的 <code>llama_eval</code> 和 <code>llama_decode</code> 函数实现了推理的主要逻辑。</p>
+</li>
+<li>
+<p>支持多种量化技术（如 4 位、8 位整数量化，Q4_0、Q4_K、Q8_0 等），大幅降低模型的内存需求和计算开销。llama-quantize 是其量化工具。相关实现在 <code>ggml/src/ggml-quants.c</code> 和 <code>llama.cpp</code> 中。</p>
+</li>
+<li>
+<p>跨平台加速。使用 SIMD 指令、使用 SIMD 指令、适配 ARM 架构。相关实现：<code>ggml/src/ggml-cuda.cu</code> 。<strong>动态选择计算后端，根据硬件自动优化性能</strong>.从高性能服务器到边缘计算设备都可以运行 <code>llama.cpp</code>。</p>
+</li>
+<li>
+<p>它的模块化设计和工具生态便于集成到现有的工作流中。</p>
+</li>
+<li>
+<p>轻量级，无依赖。</p>
+</li>
+</ul>
+<h2 id="-llamacpp-加载-gguf-模型后不需要实现模型架构为什么">@ <code>llama.cpp</code> 加载 GGUF 模型后，不需要实现模型架构，为什么<a hidden class="anchor" aria-hidden="true" href="#-llamacpp-加载-gguf-模型后不需要实现模型架构为什么">#</a></h2>
+<p>因为，<strong>GGUF 文件已经包含了模型的权重和配置，定义了完整的 Transformer 架构</strong>。<code>llama.cpp</code> 提供通用的 Transformer 推理逻辑，能<strong>够<del>动态</del>适配不同模型的结构</strong>。</p>
+<p>GGUF 格式是 GGML 的升级，是一种高效的模型文件格式，它包含了：</p>
+<ol>
+<li>模型权重：Transformer 的所有参数（如注意力矩阵、前馈网络权重等）。</li>
+<li><strong>模型配置</strong>：包括层数、隐藏层维度、注意力头数、上下文长度等超参数。</li>
+<li>元数据：如分词器信息、模型类型（例如 LLaMA、Grok、Gemma）。</li>
+</ol>
+<p><code>llama.cpp</code> 的 <code>llama_model_load_from_file</code> 函数（在 <code>src/llama.cpp</code> 中）会解析 GGUF 文件，提取这些信息，并将权重加载到内存中，<strong>配置推理所需的计算图</strong>。</p>
+<p>因此，GGUF 文件已经定义了模型的架构（其实是 hard code 了所有 LLM 结构），<del><code>llama.cpp</code> 无需为每个模型硬编码特定架构。</del></p>
+<p>验证这个说法 【done】</p>
+<h2 id="实际上">实际上<a hidden class="anchor" aria-hidden="true" href="#实际上">#</a></h2>
+<p>实际上，<code>llama.cpp</code> 为很多 LLM arch 都实现了其 Graph 架构，当 generate tokens 时，会通过 arch 找到对应的模型结构的搭建，比如对于 Qwen3 ，代码在运行时，会找到 <code>llm_build_qwen3</code>，这其中就是对应的 28 层模型结构。所以 <code>llama.cpp</code> 为每个模型硬编码特定架构。通过 gguf 文件找到对应的 struct 即可构建模型架构。</p>
+<hr>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llm/">LLM</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llama.cpp/">Llama.cpp</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

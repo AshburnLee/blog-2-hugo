@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Cost Model | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="Compiler">
+<meta name="description" content="计算各个角度的cost
+thread utilization 【done】
+computation intensity
+cache locality 【done】
+memory requirements
+computation unit efficiency
+padding/pack cost 【done】
+workload balance 【done】
+communication
+previous matmul
+vector register
+// calculate the cost of the hardware efficiency(whether the vector register is
+// fully utilized)
+double vectorRegEfficiencyCost(linalg::LinalgOp &amp;linalgOp,
+                               ArrayRef&lt;uint32_t&gt; shape,
+                               const MatmulConfig &amp;config,
+                               CPUTargetDescriptionAnalysis &amp;sysDesc) {
+  size_t dtypeSize = DataLayout().getTypeSizeInBits(
+      ShapeAdaptor(linalgOp.getDpsInputs()[1].getType()).getElementType());
+  size_t maxVectorWidth = sysDesc.getMaxVectorWidth() / dtypeSize;
+  // TODO: take matrix register like amx into account
+  double cost = (maxVectorWidth - config.innerMostMBlock % maxVectorWidth) %
+                    maxVectorWidth * 1.0 / config.innerMostMBlock &#43;
+                (maxVectorWidth - config.innerMostKBlock % maxVectorWidth) %
+                    maxVectorWidth * 1.0 / config.innerMostKBlock &#43;
+                (maxVectorWidth - config.innerMostNBlock % maxVectorWidth) %
+                    maxVectorWidth * 1.0 / config.innerMostNBlock;
+  return cost;
+}
+
+这个计算cost的原理是什么？
+
+计算向量寄存器的利用效率。向量寄存器是CPU中用于存储多个数据元素以供SIMD指令并行处理的寄存器。理想情况下，为了最大化性能，你希望在每个SIMD指令中完全填满向量寄存器，没有浪费的空间。这个函数通过计算在矩阵乘法的最内层循环中，向量寄存器未被完全利用的程度来估算代价。">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/compiler/cost_model/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/compiler/cost_model/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/compiler/cost_model/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="Cost Model">
+  <meta property="og:description" content="计算各个角度的cost thread utilization 【done】 computation intensity cache locality 【done】 memory requirements computation unit efficiency padding/pack cost 【done】 workload balance 【done】 communication previous matmul
+vector register // calculate the cost of the hardware efficiency(whether the vector register is // fully utilized) double vectorRegEfficiencyCost(linalg::LinalgOp &amp;linalgOp, ArrayRef&lt;uint32_t&gt; shape, const MatmulConfig &amp;config, CPUTargetDescriptionAnalysis &amp;sysDesc) { size_t dtypeSize = DataLayout().getTypeSizeInBits( ShapeAdaptor(linalgOp.getDpsInputs()[1].getType()).getElementType()); size_t maxVectorWidth = sysDesc.getMaxVectorWidth() / dtypeSize; // TODO: take matrix register like amx into account double cost = (maxVectorWidth - config.innerMostMBlock % maxVectorWidth) % maxVectorWidth * 1.0 / config.innerMostMBlock &#43; (maxVectorWidth - config.innerMostKBlock % maxVectorWidth) % maxVectorWidth * 1.0 / config.innerMostKBlock &#43; (maxVectorWidth - config.innerMostNBlock % maxVectorWidth) % maxVectorWidth * 1.0 / config.innerMostNBlock; return cost; } 这个计算cost的原理是什么？ 计算向量寄存器的利用效率。向量寄存器是CPU中用于存储多个数据元素以供SIMD指令并行处理的寄存器。理想情况下，为了最大化性能，你希望在每个SIMD指令中完全填满向量寄存器，没有浪费的空间。这个函数通过计算在矩阵乘法的最内层循环中，向量寄存器未被完全利用的程度来估算代价。">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="compiler">
+    <meta property="article:published_time" content="2025-08-31T12:15:29+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:15:29+08:00">
+    <meta property="article:tag" content="Compiler">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Cost Model">
+<meta name="twitter:description" content="计算各个角度的cost
+thread utilization 【done】
+computation intensity
+cache locality 【done】
+memory requirements
+computation unit efficiency
+padding/pack cost 【done】
+workload balance 【done】
+communication
+previous matmul
+vector register
+// calculate the cost of the hardware efficiency(whether the vector register is
+// fully utilized)
+double vectorRegEfficiencyCost(linalg::LinalgOp &amp;linalgOp,
+                               ArrayRef&lt;uint32_t&gt; shape,
+                               const MatmulConfig &amp;config,
+                               CPUTargetDescriptionAnalysis &amp;sysDesc) {
+  size_t dtypeSize = DataLayout().getTypeSizeInBits(
+      ShapeAdaptor(linalgOp.getDpsInputs()[1].getType()).getElementType());
+  size_t maxVectorWidth = sysDesc.getMaxVectorWidth() / dtypeSize;
+  // TODO: take matrix register like amx into account
+  double cost = (maxVectorWidth - config.innerMostMBlock % maxVectorWidth) %
+                    maxVectorWidth * 1.0 / config.innerMostMBlock &#43;
+                (maxVectorWidth - config.innerMostKBlock % maxVectorWidth) %
+                    maxVectorWidth * 1.0 / config.innerMostKBlock &#43;
+                (maxVectorWidth - config.innerMostNBlock % maxVectorWidth) %
+                    maxVectorWidth * 1.0 / config.innerMostNBlock;
+  return cost;
+}
+
+这个计算cost的原理是什么？
+
+计算向量寄存器的利用效率。向量寄存器是CPU中用于存储多个数据元素以供SIMD指令并行处理的寄存器。理想情况下，为了最大化性能，你希望在每个SIMD指令中完全填满向量寄存器，没有浪费的空间。这个函数通过计算在矩阵乘法的最内层循环中，向量寄存器未被完全利用的程度来估算代价。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Compiler",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/compiler/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Cost Model",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/compiler/cost_model/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Cost Model",
+  "name": "Cost Model",
+  "description": "计算各个角度的cost thread utilization 【done】 computation intensity cache locality 【done】 memory requirements computation unit efficiency padding/pack cost 【done】 workload balance 【done】 communication previous matmul\nvector register // calculate the cost of the hardware efficiency(whether the vector register is // fully utilized) double vectorRegEfficiencyCost(linalg::LinalgOp \u0026amp;linalgOp, ArrayRef\u0026lt;uint32_t\u0026gt; shape, const MatmulConfig \u0026amp;config, CPUTargetDescriptionAnalysis \u0026amp;sysDesc) { size_t dtypeSize = DataLayout().getTypeSizeInBits( ShapeAdaptor(linalgOp.getDpsInputs()[1].getType()).getElementType()); size_t maxVectorWidth = sysDesc.getMaxVectorWidth() / dtypeSize; // TODO: take matrix register like amx into account double cost = (maxVectorWidth - config.innerMostMBlock % maxVectorWidth) % maxVectorWidth * 1.0 / config.innerMostMBlock + (maxVectorWidth - config.innerMostKBlock % maxVectorWidth) % maxVectorWidth * 1.0 / config.innerMostKBlock + (maxVectorWidth - config.innerMostNBlock % maxVectorWidth) % maxVectorWidth * 1.0 / config.innerMostNBlock; return cost; } 这个计算cost的原理是什么？ 计算向量寄存器的利用效率。向量寄存器是CPU中用于存储多个数据元素以供SIMD指令并行处理的寄存器。理想情况下，为了最大化性能，你希望在每个SIMD指令中完全填满向量寄存器，没有浪费的空间。这个函数通过计算在矩阵乘法的最内层循环中，向量寄存器未被完全利用的程度来估算代价。\n",
+  "keywords": [
+    "Compiler"
+  ],
+  "articleBody": "计算各个角度的cost thread utilization 【done】 computation intensity cache locality 【done】 memory requirements computation unit efficiency padding/pack cost 【done】 workload balance 【done】 communication previous matmul\nvector register // calculate the cost of the hardware efficiency(whether the vector register is // fully utilized) double vectorRegEfficiencyCost(linalg::LinalgOp \u0026linalgOp, ArrayRef\u003cuint32_t\u003e shape, const MatmulConfig \u0026config, CPUTargetDescriptionAnalysis \u0026sysDesc) { size_t dtypeSize = DataLayout().getTypeSizeInBits( ShapeAdaptor(linalgOp.getDpsInputs()[1].getType()).getElementType()); size_t maxVectorWidth = sysDesc.getMaxVectorWidth() / dtypeSize; // TODO: take matrix register like amx into account double cost = (maxVectorWidth - config.innerMostMBlock % maxVectorWidth) % maxVectorWidth * 1.0 / config.innerMostMBlock + (maxVectorWidth - config.innerMostKBlock % maxVectorWidth) % maxVectorWidth * 1.0 / config.innerMostKBlock + (maxVectorWidth - config.innerMostNBlock % maxVectorWidth) % maxVectorWidth * 1.0 / config.innerMostNBlock; return cost; } 这个计算cost的原理是什么？ 计算向量寄存器的利用效率。向量寄存器是CPU中用于存储多个数据元素以供SIMD指令并行处理的寄存器。理想情况下，为了最大化性能，你希望在每个SIMD指令中完全填满向量寄存器，没有浪费的空间。这个函数通过计算在矩阵乘法的最内层循环中，向量寄存器未被完全利用的程度来估算代价。\n为什么要这样计算cost？ 如果向量寄存器没有被完全利用，那么你就没有最大化硬件的计算能力，这会导致性能下降。通过计算这个代价，你可以评估不同的分块大小（由config.innerMostMBlock、config.innerMostKBlock和config.innerMostNBlock指定）对向量寄存器利用效率的影响，通过给出一个cost值 指导选择能够最大化向量寄存器利用的配置。\n给出实例？ padding cost double paddingCost(linalg::LinalgOp \u0026linalgOp, ArrayRef\u003cuint32_t\u003e shape, const MatmulConfig \u0026config, CPUTargetDescriptionAnalysis \u0026sysDesc) { double cost = 0; uint32_t M = shape[0], N = shape[1], K = shape[2]; bool isPadOnM = M % config.innerMostMBlock != 0, isPadOnK = K % config.innerMostKBlock != 0, isPadOnN = N % config.innerMostNBlock != 0; if (isPadOnM || isPadOnK) { cost += llvm::divideCeil(M, config.innerMostMBlock) * llvm::divideCeil(K, config.innerMostKBlock); } if (isPadOnK || isPadOnN) { cost += llvm::divideCeil(N, config.innerMostNBlock) * llvm::divideCeil(K, config.innerMostKBlock); } if (isPadOnM || isPadOnN) { cost += llvm::divideCeil(N, config.innerMostNBlock) * llvm::divideCeil(M, config.innerMostMBlock); } return cost; } 因为填充（padding）而产生的额外计算成本。这里的填充指的是为了满足特定的硬件要求（如内存对齐或特定的块大小），在矩阵的边缘添加额外的零元素以调整矩阵的维度。 这里的cost是根据 需要填充的块的数量来计算的。\n比如，形状为shape = [4096, 4096, 4096]，并且 config.innerMostMBlock = 512; config.innerMostKBlock = 512; config.innerMostNBlock = 512; 由于 4096 能被 512 整除，所以不需要在任何维度上进行填充，因此填充成本cost将是0。\nthread utilization double memoryConsumptionOnThreadCost(linalg::LinalgOp \u0026linalgOp, ArrayRef\u003cuint32_t\u003e shape, const MatmulConfig \u0026config, CPUTargetDescriptionAnalysis \u0026sysDesc) { assert(shape.size() \u003e= 3 \u0026\u0026 \"shape.size() should \u003e= 3\"); uint32_t M = shape[0], N = shape[1], K = shape[2]; size_t dtypeSize = DataLayout().getTypeSize( ShapeAdaptor(linalgOp.getDpsInputs()[1].getType()).getElementType()); // if use K split, there will be one more final reduce and break the post // fusion double KSplitPenalty = 8.0 * dtypeSize; double memoryConsumptionPerThread = M * K * 1.0 / config.MThreads / config.KThreads + K * N * 1.0 / config.KThreads / config.NThreads + M * N * ((config.KThreads - 1) * KSplitPenalty + 1.0) / config.MThreads / config.NThreads; return memoryConsumptionPerThread; } 这个计算cost的原理是什么？ 为什么要这样计算cost？ 给出实例？ cache locality // calculate the cost of the computation intensity on the L2 cache double computationIntensityOnL2Cache(linalg::LinalgOp \u0026linalgOp, ArrayRef\u003cuint32_t\u003e shape, const MatmulConfig \u0026config, CPUTargetDescriptionAnalysis \u0026sysDesc) { double fullLoadRatio = 0.7; // 缓存满载比例（Cache Load Factor）见 doc/hardare-basis.md uint32_t L2Cache = sysDesc.getCacheSize(2); // 1024 * 1024 size_t dtypeSize = DataLayout().getTypeSize( ShapeAdaptor(linalgOp.getDpsInputs()[1].getType()).getElementType()); uint32_t outOfCachePenalty = 1024; // 理论上浮点计算次数 double FLOPS = 2.0 * config.MBlock * config.NBlock * config.KBlock; // 内存消耗 double memoryConsumption = config.MBlock * config.NBlock + config.NBlock * config.KBlock + config.MBlock * config.KBlock; // 计算强度，意味着每次内存访问可以完成更多的计算，所以这个值越大越好 double computationIntensity = FLOPS / memoryConsumption; if (memoryConsumption * dtypeSize \u003e L2Cache * fullLoadRatio) computationIntensity /= outOfCachePenalty; return 1 / computationIntensity; } 这个计算cost的原理是什么？ 计算强度（computationIntensity）是通过将浮点运算的数量（FLOPS）除以内存消耗来计算的。FLOPS是指每次矩阵乘法操作中执行的浮点运算次数，而内存消耗是指执行这些运算所需读取或写入的数据量。\n通过估算计算强度和考虑缓存未命中的影响，可以选择最优的分块策略，以提高矩阵乘法在特定硬件上的性能。\n如果内存消耗超过了L2缓存的这个比例（0.7），那么就认为缓存不足以容纳所有数据，导致缓存未命中率上升。理想情况下，你希望尽可能多地执行计算，同时尽可能少地访问内存，特别是避免缓存未命中，这样可以提高计算效率。\n为什么要这样计算cost？ 量化不同配置下这个 Op 对缓存的利用效率。每次内存访问可以完成更多的计算，则认为这个配置是高效的。\n矩阵乘的 浮点运算次数 和 内存消耗 如何计算？ 浮点运算次数：乘法次数[MNK] + 加法次数[MN(K-1)]，一般MNK值很大，所以总的 FLOPS 可以认为是[2MNK]。 内存消耗：写次数[MN] + 读次数[MK+NK]，这里是通过shared memeory 使得A，B矩阵每个元素只读一次。 workload balance // calculate the cost of the workload balance double workloadBalancedCost(linalg::LinalgOp \u0026linalgOp, ArrayRef\u003cuint32_t\u003e shape, const MatmulConfig \u0026config, CPUTargetDescriptionAnalysis \u0026sysDesc) { assert(shape.size() \u003e= 3 \u0026\u0026 \"shape.size() should \u003e= 3\"); // 1. 计算每个维度上的任务数量 uint32_t M = shape[0], N = shape[1], K = shape[2]; uint32_t MTaskNum = llvm::divideCeil(M, config.MBlock); uint32_t NTaskNum = llvm::divideCeil(N, config.NBlock); uint32_t KTaskNum = llvm::divideCeil(K, config.KBlock); // 2. 计算每个维度上任务数与线程数之间的不匹配程度。 // 每个维度上任务数不能整除线程数所产生的余数，除以该维度的任务总数来实现的。这个比值反映了任务分配的不平衡程度 double cost = (MTaskNum % config.MThreads) * 1.0 / MTaskNum + (NTaskNum % config.NThreads) * 1.0 / NTaskNum + (KTaskNum % config.KThreads) * 1.0 / KTaskNum; // 3. 如果任何维度上的任务数少于分配的线程数，则认为存在线程未充分利用的情况，这会通过乘以一个较大的惩罚因子（threadNotFulllyUtilizedPenalty）来增加成本。 if (MTaskNum \u003c config.MThreads || NTaskNum \u003c config.NThreads || KTaskNum \u003c config.KThreads) { double threadNotFulllyUtilizedPenalty = 10.0; cost *= threadNotFulllyUtilizedPenalty; } return cost; } 这个计算cost的原理是什么？ 首先计算每个维度上的任务数，然后得到每个维度上任务数不能整除线程数所产生的余数，除以该维度的任务总数，这个比值反映了任务分配的不平衡程度。最后如果某一维度上的任务数小于线程数，则认为没有充分利用线程。此时上述得到的cost 会乘以一个较大的因子。\n为什么要这样计算cost？ 这种计算方式旨在量化工作负载在并行计算环境中的平衡程度。如果某些线程比其他线程拥有更多的工作量，那么整体性能将受到这些“瓶颈”线程的限制。通过计算成本，可以评估不同配置下工作负载的均衡性，进而选择cost最小的配置。\n给出实例？ 假设有以下矩阵乘法配置：\n矩阵形状：M=100, N=100, K=100 块大小：MBlock=25, NBlock=25, KBlock=25 线程配置：MThreads=4, NThreads=4, KThreads=4 计算过程：\nMTaskNum = 100 / 25 = 4 NTaskNum = 100 / 25 = 4 KTaskNum = 100 / 25 = 4 每个维度的任务数都能被线程数整除，因此：\n不平衡成本 = (0/4 + 0/4 + 0/4) = 0 无需应用线程未充分利用惩罚 最终成本为0，表示这是一个非常均衡的工作负载分配。\nthread utilization double dynamicBufferizationCost(linalg::LinalgOp \u0026linalgOp, ArrayRef\u003cuint32_t\u003e shape, const MatmulConfig \u0026config, CPUTargetDescriptionAnalysis \u0026sysDesc) { assert(validateConfig(config) \u0026\u0026 \"config is invalid\"); assert(shape.size() \u003e= 3 \u0026\u0026 \"shape.size() should \u003e= 3\"); uint32_t M = shape[0], N = shape[1]; double cost = 0; // M 维度上每个线程要处理的block数量 uint32_t MNumBlockPerThread = llvm::divideCeil(M / config.innerMostMBlock, config.MThreads); // 每个block含有多少个inner block uint32_t MNumInnerBlockPerBlock = llvm::divideCeil(config.MBlock, config.innerMostMBlock); // 如果满足下面的计算，则返回true，表示没有额外的cost uint32_t MCost = MNumBlockPerThread % MNumInnerBlockPerBlock != 0 || (M / config.innerMostNBlock % config.MThreads != 0 \u0026\u0026 config.MBlock != config.innerMostMBlock); uint32_t NNumBlockPerThread = llvm::divideCeil(N / config.innerMostNBlock, config.NThreads); uint32_t NNumInnerBlockPerBlock = llvm::divideCeil(config.NBlock, config.innerMostNBlock); uint32_t NCost = NNumBlockPerThread % NNumInnerBlockPerBlock != 0 || (N / config.innerMostNBlock % config.NThreads != 0 \u0026\u0026 config.NBlock != config.innerMostNBlock); cost = MCost + NCost; return cost; } 这个计算cost的原理是什么？ 它计算的是某个线性代数 op 在给定的 shape 和 MatmulConfig 下，是否有额外的 cost。具体讲，它考虑了M和N维度如何分割成更小的块，以及如何进一步分割给不同的线程。\n块分割：矩阵M和N被分割成多个块，这些块的大小由配置（config）中的参数（如MBlock, NBlock, innerMostMBlock, innerMostNBlock）决定。这些块的大小和数量影响了数据访问模式和并行化的效率。 线程分配：每个块被进一步分配给多个线程处理，具体数量由MThreads和NThreads决定。线程的数量和块的分配方式影响了计算的负载均衡和线程间的同步成本。 计算成本：判断块和线程分配的均衡性，以及是否有特殊边界需要处理。如果块不能被线程均匀分配，或者块的分割方式与配置中的内层块大小不匹配，那么将有额外的cost，该函数就是返回是否有额外的cost。\n为什么要这样计算cost？ 原因是为了评估在给定的线程和块配置下，数据块是否可以被均匀地分配给各个线程，以及是否存在因块大小不匹配或分配不均而导致的额外处理成本。如果块不能被均匀分配，或者分配的方式导致了一些线程比其他线程更忙或更闲，那么这可能会降低并行计算的效率，增加同步的复杂性，或导致缓存未命中率上升。\n实例 假设我们有以下配置：\nM = 128 config.MBlock = 32 config.innerMostMBlock = 16 config.MThreads = 4 MNumBlockPerThread = llvm::divideCeil(128 / 16, 4) = llvm::divideCeil(8, 4) = 2（每个线程处理2个最内层块） MNumInnerBlockPerBlock = llvm::divideCeil(32, 16) = 2（每个外部块包含2个最内层块） MCost = 2 % 2 != 0 || (128 / 16 % 4 != 0 \u0026\u0026 32 != 16) = false || (8 % 4 != 0 \u0026\u0026 false) = false（因为所有条件都不满足，所以MCost为false）\n但是，如果我们将config.MThreads改为3，那么：\nMNumBlockPerThread = llvm::divideCeil(128 / 16, 3) = llvm::divideCeil(8, 3) = 3（每个线程处理3个最内层块，但最后一个线程可能不足3个） MCost = 3 % 2 != 0 = true（因为每个线程处理的块数不能被每个块内部的最内层块数整除）\n如何利用上述的所有cost // Analyze the workload and system description to generate the default config // Factor to consider: /// thread utilization 【done】 /// computation intensity /// cache locality 【done】 /// memory requirements /// computation unit efficiency /// padding/pack cost 【done】 /// workload balance 【done】 /// communication /// previous matmul MatmulConfig MatmulConfigAnalysis::getConfig() { if (!hasConfig) { if (auto linalgOp = dyn_cast\u003clinalg::LinalgOp\u003e(root)) { // 动态类型转换尝试获取当前的线性代数操作 CPUTargetDescriptionAnalysis sysDesc(root); // 获取当前系统的描述，这可能包括CPU的架构、核心数、缓存大小等信息 // 提取矩阵维度并操作 SmallVector\u003cSmallVector\u003cDimType\u003e\u003e oprandDimType = *getOprandDimType(linalgOp); // get the origin M,N,K size SmallVector\u003cunsigned\u003e MDimTypeIdx = extractDimTypeIdx(oprandDimType[0], DimType::M); SmallVector\u003cunsigned\u003e KDimTypeIdx = extractDimTypeIdx(oprandDimType[1], DimType::K); SmallVector\u003cunsigned\u003e NDimTypeIdx = extractDimTypeIdx(oprandDimType[1], DimType::N); uint32_t M = 1U, N = 1U, K = 1U; for (auto \u0026\u0026[s, dimType] : llvm::zip(linalgOp.getShape(linalgOp.getDpsInputOperand(0)), oprandDimType[0])) if (dimType == DimType::M) M *= s; for (auto \u0026\u0026[s, dimType] : llvm::zip(linalgOp.getShape(linalgOp.getDpsInputOperand(1)), oprandDimType[1])) { if (dimType == DimType::N) N *= s; else if (dimType == DimType::K) K *= s; } // innermost Block, if the layout is blocked layout, the innermost block // will derived from the layout directly uint32_t defaultBlock = 32; config.innerMostMBlock = M % defaultBlock == 0 ? defaultBlock : M; config.innerMostNBlock = N % defaultBlock == 0 ? defaultBlock : N; config.innerMostKBlock = K % defaultBlock == 0 ? defaultBlock : K; SmallVector\u003cuint32_t\u003e givenInnermostBlock; if (MDimTypeIdx.size() \u003e 1) { config.innerMostMBlock = 1; for (auto \u0026\u0026[i, d] : llvm::enumerate(MDimTypeIdx)) if (i != 0) config.innerMostMBlock *= linalgOp.getShape(linalgOp.getDpsInputOperand(0))[d]; givenInnermostBlock.push_back(config.innerMostMBlock); } else { givenInnermostBlock.push_back(0); } if (NDimTypeIdx.size() \u003e 1) { config.innerMostNBlock = 1; for (auto \u0026\u0026[i, d] : llvm::enumerate(NDimTypeIdx)) if (i != 0) config.innerMostNBlock *= linalgOp.getShape(linalgOp.getDpsInputOperand(1))[d]; givenInnermostBlock.push_back(config.innerMostNBlock); } else { givenInnermostBlock.push_back(0); } if (KDimTypeIdx.size() \u003e 1) { config.innerMostKBlock = 1; for (auto \u0026\u0026[i, d] : llvm::enumerate(KDimTypeIdx)) if (i != 0) config.innerMostKBlock *= linalgOp.getShape(linalgOp.getDpsInputOperand(1))[d]; givenInnermostBlock.push_back(config.innerMostKBlock); } else { givenInnermostBlock.push_back(0); } LLVM_DEBUG(llvm::dbgs() \u003c\u003c \"M: \" \u003c\u003c M \u003c\u003c \", N: \" \u003c\u003c N \u003c\u003c \", K: \" \u003c\u003c K \u003c\u003c \"\\n\"); // try to read the config from the attributes SmallVector\u003cNamedAttribute\u003e attrs(linalgOp-\u003egetAttrs()); bool hasPredefinedConfig = readConfigFromAttrs(config, attrs); // if there is a given config, skip the cost model if (!hasPredefinedConfig) { LLVM_DEBUG(llvm::dbgs() \u003c\u003c \"No predefined config\\n\"); // TODO: Could add a weight or priority for cost model SmallVector\u003cstd::tuple\u003cCostModelFn, std::string, double\u003e\u003e costModelList = { // threshold 0 mean using static shape if possible {dynamicBufferizationCost, \"dynamicBufferizationCost\", 0}, {workloadBalancedCost, \"workloadBalancedCost\", 1}, {vectorRegEfficiencyCost, \"vectorRegEfficiencyCost \", -1}, {computationIntensityOnL2Cache, \"computationIntensityOnL2Cache\", -1}, {memoryConsumptionOnThreadCost, \"memoryConsumptionOnThreadCost\", -1}, {paddingCost, \"paddingCost\", -1}}; SmallVector\u003cuint32_t\u003e shape = {M, N, K}; // 某种规则下穷举出来的所有matmul config 集合作为candidate std::vector\u003cMatmulConfig\u003e configCandidates = prepareConfigCandidates( root, sysDesc, shape, givenInnermostBlock, allowIndivisibleInnerBlock); for (auto \u0026\u0026[fn, name, threshold] : costModelList) { LLVM_DEBUG(llvm::dbgs() \u003c\u003c name \u003c\u003c \"\\n\"); // 这里对configCandidates进行这个fn的cost计算，根据指定的 preserveRatio=0.5 得到对于这个fn的cost最小的前50% 的config，作为下一个fn的configCandidates // 相当于我有6个fn，configCandidates会从最初的scope缩小为原来的 0.5**5 configCandidates = filterConfigByCostModel( configCandidates, linalgOp, shape, sysDesc, fn, 0.5, threshold); } // 最终只取cost最小的config if (!configCandidates.empty()) config = configCandidates[0]; } LLVM_DEBUG(llvm::dbgs() \u003c\u003c \"Final config\\nNumThreads: \" \u003c\u003c sysDesc.getNumThreads() \u003c\u003c \", MatmulConfig: \" \u003c\u003c config \u003c\u003c \"\\n\"); } hasConfig = true; } assert(validateConfig(config) \u0026\u0026 \"config is invalid\"); return config; } 上述getConfig() 在matmul相关的变换的 匹配重写（matchAndRewrite）过程中调用，根据task中的输入输出矩阵的shape和硬件信息得到最少的cost配置。见 Pass deep-tile-contraction-op 相关的.mlir 文件，其实shape是给出了的。确实，AI compiler编译的是一个计算，这个计算的前端表达中可定是给出shape信息的。所以上述的cost计算过程发生在compile time，就是应用这个pass的过程中。\n关于Cost计算，并不是真正的就这个config执行matmul，而是根据【Factor to consider】中提到的各个方面计算对期望的偏离，偏离越多，cost越大，所以你需要知道对于各个Factor，什么样的情况是最优的(期望)。\nKAQ 这个计算cost 的过程发生在什么阶段？compile OR runtime？计算cost需要知道shape，但是compile时应该不知道shape，所以是在runtime？\n",
+  "wordCount" : "1327",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:15:29+08:00",
+  "dateModified": "2025-08-31T12:15:29+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/compiler/cost_model/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      Cost Model
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:15:29 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><h1 id="计算各个角度的cost">计算各个角度的cost<a hidden class="anchor" aria-hidden="true" href="#计算各个角度的cost">#</a></h1>
+<p>thread utilization 【done】
+computation intensity
+cache locality 【done】
+memory requirements
+computation unit efficiency
+padding/pack cost 【done】
+workload balance 【done】
+communication
+previous matmul</p>
+<h2 id="vector-register">vector register<a hidden class="anchor" aria-hidden="true" href="#vector-register">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// calculate the cost of the hardware efficiency(whether the vector register is
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// fully utilized)
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">double</span> <span style="color:#a6e22e">vectorRegEfficiencyCost</span>(linalg<span style="color:#f92672">::</span>LinalgOp <span style="color:#f92672">&amp;</span>linalgOp,
+</span></span><span style="display:flex;"><span>                               ArrayRef<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">uint32_t</span><span style="color:#f92672">&gt;</span> shape,
+</span></span><span style="display:flex;"><span>                               <span style="color:#66d9ef">const</span> MatmulConfig <span style="color:#f92672">&amp;</span>config,
+</span></span><span style="display:flex;"><span>                               CPUTargetDescriptionAnalysis <span style="color:#f92672">&amp;</span>sysDesc) {
+</span></span><span style="display:flex;"><span>  size_t dtypeSize <span style="color:#f92672">=</span> DataLayout().getTypeSizeInBits(
+</span></span><span style="display:flex;"><span>      ShapeAdaptor(linalgOp.getDpsInputs()[<span style="color:#ae81ff">1</span>].getType()).getElementType());
+</span></span><span style="display:flex;"><span>  size_t maxVectorWidth <span style="color:#f92672">=</span> sysDesc.getMaxVectorWidth() <span style="color:#f92672">/</span> dtypeSize;
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// TODO: take matrix register like amx into account
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">double</span> cost <span style="color:#f92672">=</span> (maxVectorWidth <span style="color:#f92672">-</span> config.innerMostMBlock <span style="color:#f92672">%</span> maxVectorWidth) <span style="color:#f92672">%</span>
+</span></span><span style="display:flex;"><span>                    maxVectorWidth <span style="color:#f92672">*</span> <span style="color:#ae81ff">1.0</span> <span style="color:#f92672">/</span> config.innerMostMBlock <span style="color:#f92672">+</span>
+</span></span><span style="display:flex;"><span>                (maxVectorWidth <span style="color:#f92672">-</span> config.innerMostKBlock <span style="color:#f92672">%</span> maxVectorWidth) <span style="color:#f92672">%</span>
+</span></span><span style="display:flex;"><span>                    maxVectorWidth <span style="color:#f92672">*</span> <span style="color:#ae81ff">1.0</span> <span style="color:#f92672">/</span> config.innerMostKBlock <span style="color:#f92672">+</span>
+</span></span><span style="display:flex;"><span>                (maxVectorWidth <span style="color:#f92672">-</span> config.innerMostNBlock <span style="color:#f92672">%</span> maxVectorWidth) <span style="color:#f92672">%</span>
+</span></span><span style="display:flex;"><span>                    maxVectorWidth <span style="color:#f92672">*</span> <span style="color:#ae81ff">1.0</span> <span style="color:#f92672">/</span> config.innerMostNBlock;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> cost;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><ol>
+<li>这个计算cost的原理是什么？</li>
+</ol>
+<p>计算向量寄存器的利用效率。向量寄存器是CPU中用于存储多个数据元素以供SIMD指令并行处理的寄存器。理想情况下，为了最大化性能，你希望在每个SIMD指令中完全填满向量寄存器，没有浪费的空间。这个函数通过计算在矩阵乘法的<strong>最内层循环</strong>中，向量寄存器未被完全利用的程度来估算代价。</p>
+<ol start="2">
+<li>为什么要这样计算cost？</li>
+</ol>
+<p>如果向量寄存器没有被完全利用，那么你就没有最大化硬件的计算能力，这会导致性能下降。通过计算这个代价，你可以评估不同的分块大小（由config.innerMostMBlock、config.innerMostKBlock和config.innerMostNBlock指定）对向量寄存器利用效率的影响，通过给出一个cost值 指导选择能够最大化向量寄存器利用的配置。</p>
+<ol start="3">
+<li>给出实例？</li>
+</ol>
+<h2 id="padding-cost">padding cost<a hidden class="anchor" aria-hidden="true" href="#padding-cost">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">double</span> <span style="color:#a6e22e">paddingCost</span>(linalg<span style="color:#f92672">::</span>LinalgOp <span style="color:#f92672">&amp;</span>linalgOp, ArrayRef<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">uint32_t</span><span style="color:#f92672">&gt;</span> shape,
+</span></span><span style="display:flex;"><span>                   <span style="color:#66d9ef">const</span> MatmulConfig <span style="color:#f92672">&amp;</span>config,
+</span></span><span style="display:flex;"><span>                   CPUTargetDescriptionAnalysis <span style="color:#f92672">&amp;</span>sysDesc) {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">double</span> cost <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint32_t</span> M <span style="color:#f92672">=</span> shape[<span style="color:#ae81ff">0</span>], N <span style="color:#f92672">=</span> shape[<span style="color:#ae81ff">1</span>], K <span style="color:#f92672">=</span> shape[<span style="color:#ae81ff">2</span>];
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">bool</span> isPadOnM <span style="color:#f92672">=</span> M <span style="color:#f92672">%</span> config.innerMostMBlock <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>,
+</span></span><span style="display:flex;"><span>       isPadOnK <span style="color:#f92672">=</span> K <span style="color:#f92672">%</span> config.innerMostKBlock <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>,
+</span></span><span style="display:flex;"><span>       isPadOnN <span style="color:#f92672">=</span> N <span style="color:#f92672">%</span> config.innerMostNBlock <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (isPadOnM <span style="color:#f92672">||</span> isPadOnK) {
+</span></span><span style="display:flex;"><span>    cost <span style="color:#f92672">+=</span> llvm<span style="color:#f92672">::</span>divideCeil(M, config.innerMostMBlock) <span style="color:#f92672">*</span>
+</span></span><span style="display:flex;"><span>            llvm<span style="color:#f92672">::</span>divideCeil(K, config.innerMostKBlock);
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (isPadOnK <span style="color:#f92672">||</span> isPadOnN) {
+</span></span><span style="display:flex;"><span>    cost <span style="color:#f92672">+=</span> llvm<span style="color:#f92672">::</span>divideCeil(N, config.innerMostNBlock) <span style="color:#f92672">*</span>
+</span></span><span style="display:flex;"><span>            llvm<span style="color:#f92672">::</span>divideCeil(K, config.innerMostKBlock);
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (isPadOnM <span style="color:#f92672">||</span> isPadOnN) {
+</span></span><span style="display:flex;"><span>    cost <span style="color:#f92672">+=</span> llvm<span style="color:#f92672">::</span>divideCeil(N, config.innerMostNBlock) <span style="color:#f92672">*</span>
+</span></span><span style="display:flex;"><span>            llvm<span style="color:#f92672">::</span>divideCeil(M, config.innerMostMBlock);
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> cost;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>因为填充（padding）而产生的额外计算成本。这里的填充指的是为了满足特定的硬件要求（如内存对齐或特定的块大小），在矩阵的边缘添加额外的零元素以调整矩阵的维度。
+这里的cost是根据 需要填充的块的数量来计算的。</p>
+<p>比如，形状为shape = [4096, 4096, 4096]，并且
+config.innerMostMBlock = 512;
+config.innerMostKBlock = 512;
+config.innerMostNBlock = 512;
+由于 4096 能被 512 整除，所以不需要在任何维度上进行填充，因此填充成本cost将是0。</p>
+<h2 id="thread-utilization">thread utilization<a hidden class="anchor" aria-hidden="true" href="#thread-utilization">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">double</span> <span style="color:#a6e22e">memoryConsumptionOnThreadCost</span>(linalg<span style="color:#f92672">::</span>LinalgOp <span style="color:#f92672">&amp;</span>linalgOp,
+</span></span><span style="display:flex;"><span>                                     ArrayRef<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">uint32_t</span><span style="color:#f92672">&gt;</span> shape,
+</span></span><span style="display:flex;"><span>                                     <span style="color:#66d9ef">const</span> MatmulConfig <span style="color:#f92672">&amp;</span>config,
+</span></span><span style="display:flex;"><span>                                     CPUTargetDescriptionAnalysis <span style="color:#f92672">&amp;</span>sysDesc) {
+</span></span><span style="display:flex;"><span>  assert(shape.size() <span style="color:#f92672">&gt;=</span> <span style="color:#ae81ff">3</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#e6db74">&#34;shape.size() should &gt;= 3&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint32_t</span> M <span style="color:#f92672">=</span> shape[<span style="color:#ae81ff">0</span>], N <span style="color:#f92672">=</span> shape[<span style="color:#ae81ff">1</span>], K <span style="color:#f92672">=</span> shape[<span style="color:#ae81ff">2</span>];
+</span></span><span style="display:flex;"><span>  size_t dtypeSize <span style="color:#f92672">=</span> DataLayout().getTypeSize(
+</span></span><span style="display:flex;"><span>      ShapeAdaptor(linalgOp.getDpsInputs()[<span style="color:#ae81ff">1</span>].getType()).getElementType());
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// if use K split, there will be one more final reduce and break the post
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// fusion
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">double</span> KSplitPenalty <span style="color:#f92672">=</span> <span style="color:#ae81ff">8.0</span> <span style="color:#f92672">*</span> dtypeSize;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">double</span> memoryConsumptionPerThread <span style="color:#f92672">=</span>
+</span></span><span style="display:flex;"><span>      M <span style="color:#f92672">*</span> K <span style="color:#f92672">*</span> <span style="color:#ae81ff">1.0</span> <span style="color:#f92672">/</span> config.MThreads <span style="color:#f92672">/</span> config.KThreads <span style="color:#f92672">+</span>
+</span></span><span style="display:flex;"><span>      K <span style="color:#f92672">*</span> N <span style="color:#f92672">*</span> <span style="color:#ae81ff">1.0</span> <span style="color:#f92672">/</span> config.KThreads <span style="color:#f92672">/</span> config.NThreads <span style="color:#f92672">+</span>
+</span></span><span style="display:flex;"><span>      M <span style="color:#f92672">*</span> N <span style="color:#f92672">*</span> ((config.KThreads <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>) <span style="color:#f92672">*</span> KSplitPenalty <span style="color:#f92672">+</span> <span style="color:#ae81ff">1.0</span>) <span style="color:#f92672">/</span> config.MThreads <span style="color:#f92672">/</span>
+</span></span><span style="display:flex;"><span>          config.NThreads;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> memoryConsumptionPerThread;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><ol>
+<li>这个计算cost的原理是什么？</li>
+<li>为什么要这样计算cost？</li>
+<li>给出实例？</li>
+</ol>
+<h2 id="cache-locality">cache locality<a hidden class="anchor" aria-hidden="true" href="#cache-locality">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// calculate the cost of the computation intensity on the L2 cache
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">double</span> <span style="color:#a6e22e">computationIntensityOnL2Cache</span>(linalg<span style="color:#f92672">::</span>LinalgOp <span style="color:#f92672">&amp;</span>linalgOp,
+</span></span><span style="display:flex;"><span>                                     ArrayRef<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">uint32_t</span><span style="color:#f92672">&gt;</span> shape,
+</span></span><span style="display:flex;"><span>                                     <span style="color:#66d9ef">const</span> MatmulConfig <span style="color:#f92672">&amp;</span>config,
+</span></span><span style="display:flex;"><span>                                     CPUTargetDescriptionAnalysis <span style="color:#f92672">&amp;</span>sysDesc) {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">double</span> fullLoadRatio <span style="color:#f92672">=</span> <span style="color:#ae81ff">0.7</span>;  <span style="color:#75715e">// 缓存满载比例（Cache Load Factor）见 doc/hardare-basis.md
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">uint32_t</span> L2Cache <span style="color:#f92672">=</span> sysDesc.getCacheSize(<span style="color:#ae81ff">2</span>);  <span style="color:#75715e">// 1024 * 1024
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  size_t dtypeSize <span style="color:#f92672">=</span> DataLayout().getTypeSize(
+</span></span><span style="display:flex;"><span>      ShapeAdaptor(linalgOp.getDpsInputs()[<span style="color:#ae81ff">1</span>].getType()).getElementType());
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint32_t</span> outOfCachePenalty <span style="color:#f92672">=</span> <span style="color:#ae81ff">1024</span>;
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// 理论上浮点计算次数
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">double</span> FLOPS <span style="color:#f92672">=</span> <span style="color:#ae81ff">2.0</span> <span style="color:#f92672">*</span> config.MBlock <span style="color:#f92672">*</span> config.NBlock <span style="color:#f92672">*</span> config.KBlock;
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// 内存消耗
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">double</span> memoryConsumption <span style="color:#f92672">=</span> config.MBlock <span style="color:#f92672">*</span> config.NBlock <span style="color:#f92672">+</span>
+</span></span><span style="display:flex;"><span>                             config.NBlock <span style="color:#f92672">*</span> config.KBlock <span style="color:#f92672">+</span>
+</span></span><span style="display:flex;"><span>                             config.MBlock <span style="color:#f92672">*</span> config.KBlock;
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// 计算强度，意味着每次内存访问可以完成更多的计算，所以这个值越大越好
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">double</span> computationIntensity <span style="color:#f92672">=</span> FLOPS <span style="color:#f92672">/</span> memoryConsumption;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (memoryConsumption <span style="color:#f92672">*</span> dtypeSize <span style="color:#f92672">&gt;</span> L2Cache <span style="color:#f92672">*</span> fullLoadRatio)
+</span></span><span style="display:flex;"><span>    computationIntensity <span style="color:#f92672">/=</span> outOfCachePenalty;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">/</span> computationIntensity;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><ol>
+<li>这个计算cost的原理是什么？</li>
+</ol>
+<p>计算强度（computationIntensity）是通过将浮点运算的数量（FLOPS）除以内存消耗来计算的。FLOPS是指每次矩阵乘法操作中执行的<strong>浮点运算次数</strong>，而<strong>内存消耗</strong>是指执行这些运算所需读取或写入的数据量。</p>
+<p>通过估算计算强度和考虑缓存未命中的影响，可以选择最优的分块策略，以提高矩阵乘法在特定硬件上的性能。</p>
+<p>如果内存消耗超过了L2缓存的这个比例（0.7），那么就认为缓存不足以容纳所有数据，导致缓存未命中率上升。理想情况下，你希望尽可能多地执行计算，同时尽可能少地访问内存，特别是避免缓存未命中，这样可以提高计算效率。</p>
+<ol start="2">
+<li>为什么要这样计算cost？</li>
+</ol>
+<p>量化不同配置下这个 Op 对缓存的利用效率。每次内存访问可以完成更多的计算，则认为这个配置是高效的。</p>
+<ol start="3">
+<li>矩阵乘的 浮点运算次数 和 内存消耗 如何计算？
+浮点运算次数：乘法次数[M<em>N</em>K] + 加法次数[M<em>N</em>(K-1)]，一般MNK值很大，所以总的 FLOPS 可以认为是[2<em>M</em>N<em>K]。
+内存消耗：写次数[M</em>N] + 读次数[M<em>K+N</em>K]，这里是通过shared memeory 使得A，B矩阵每个元素只读一次。</li>
+</ol>
+<h2 id="workload-balance">workload balance<a hidden class="anchor" aria-hidden="true" href="#workload-balance">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// calculate the cost of the workload balance
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">double</span> <span style="color:#a6e22e">workloadBalancedCost</span>(linalg<span style="color:#f92672">::</span>LinalgOp <span style="color:#f92672">&amp;</span>linalgOp,
+</span></span><span style="display:flex;"><span>                            ArrayRef<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">uint32_t</span><span style="color:#f92672">&gt;</span> shape,
+</span></span><span style="display:flex;"><span>                            <span style="color:#66d9ef">const</span> MatmulConfig <span style="color:#f92672">&amp;</span>config,
+</span></span><span style="display:flex;"><span>                            CPUTargetDescriptionAnalysis <span style="color:#f92672">&amp;</span>sysDesc) {
+</span></span><span style="display:flex;"><span>  assert(shape.size() <span style="color:#f92672">&gt;=</span> <span style="color:#ae81ff">3</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#e6db74">&#34;shape.size() should &gt;= 3&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// 1. 计算每个维度上的任务数量
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">uint32_t</span> M <span style="color:#f92672">=</span> shape[<span style="color:#ae81ff">0</span>], N <span style="color:#f92672">=</span> shape[<span style="color:#ae81ff">1</span>], K <span style="color:#f92672">=</span> shape[<span style="color:#ae81ff">2</span>];
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint32_t</span> MTaskNum <span style="color:#f92672">=</span> llvm<span style="color:#f92672">::</span>divideCeil(M, config.MBlock);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint32_t</span> NTaskNum <span style="color:#f92672">=</span> llvm<span style="color:#f92672">::</span>divideCeil(N, config.NBlock);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint32_t</span> KTaskNum <span style="color:#f92672">=</span> llvm<span style="color:#f92672">::</span>divideCeil(K, config.KBlock);
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// 2. 计算每个维度上任务数与线程数之间的不匹配程度。
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// 每个维度上任务数不能整除线程数所产生的余数，除以该维度的任务总数来实现的。这个比值反映了任务分配的不平衡程度
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">double</span> cost <span style="color:#f92672">=</span> (MTaskNum <span style="color:#f92672">%</span> config.MThreads) <span style="color:#f92672">*</span> <span style="color:#ae81ff">1.0</span> <span style="color:#f92672">/</span> MTaskNum <span style="color:#f92672">+</span>
+</span></span><span style="display:flex;"><span>                (NTaskNum <span style="color:#f92672">%</span> config.NThreads) <span style="color:#f92672">*</span> <span style="color:#ae81ff">1.0</span> <span style="color:#f92672">/</span> NTaskNum <span style="color:#f92672">+</span>
+</span></span><span style="display:flex;"><span>                (KTaskNum <span style="color:#f92672">%</span> config.KThreads) <span style="color:#f92672">*</span> <span style="color:#ae81ff">1.0</span> <span style="color:#f92672">/</span> KTaskNum;
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// 3. 如果任何维度上的任务数少于分配的线程数，则认为存在线程未充分利用的情况，这会通过乘以一个较大的惩罚因子（threadNotFulllyUtilizedPenalty）来增加成本。
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">if</span> (MTaskNum <span style="color:#f92672">&lt;</span> config.MThreads <span style="color:#f92672">||</span> NTaskNum <span style="color:#f92672">&lt;</span> config.NThreads <span style="color:#f92672">||</span>
+</span></span><span style="display:flex;"><span>      KTaskNum <span style="color:#f92672">&lt;</span> config.KThreads) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">double</span> threadNotFulllyUtilizedPenalty <span style="color:#f92672">=</span> <span style="color:#ae81ff">10.0</span>;
+</span></span><span style="display:flex;"><span>    cost <span style="color:#f92672">*=</span> threadNotFulllyUtilizedPenalty;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> cost;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><ol>
+<li>这个计算cost的原理是什么？</li>
+</ol>
+<p>首先计算每个维度上的任务数，然后得到每个维度上任务数不能整除线程数所产生的余数，除以该维度的任务总数，这个比值反映了任务分配的不平衡程度。最后如果某一维度上的任务数小于线程数，则认为没有充分利用线程。此时上述得到的cost 会乘以一个较大的因子。</p>
+<ol start="2">
+<li>为什么要这样计算cost？</li>
+</ol>
+<p>这种计算方式旨在量化工作负载在并行计算环境中的平衡程度。如果某些线程比其他线程拥有更多的工作量，那么整体性能将受到这些“瓶颈”线程的限制。通过计算成本，可以评估不同配置下工作负载的均衡性，进而选择cost最小的配置。</p>
+<ol start="3">
+<li>给出实例？</li>
+</ol>
+<p>假设有以下矩阵乘法配置：</p>
+<p>矩阵形状：M=100, N=100, K=100
+块大小：MBlock=25, NBlock=25, KBlock=25
+线程配置：MThreads=4, NThreads=4, KThreads=4
+计算过程：</p>
+<p>MTaskNum = 100 / 25 = 4
+NTaskNum = 100 / 25 = 4
+KTaskNum = 100 / 25 = 4
+每个维度的任务数都能被线程数整除，因此：</p>
+<p>不平衡成本 = (0/4 + 0/4 + 0/4) = 0
+无需应用线程未充分利用惩罚
+最终成本为0，表示这是一个非常均衡的工作负载分配。</p>
+<h2 id="thread-utilization-1">thread utilization<a hidden class="anchor" aria-hidden="true" href="#thread-utilization-1">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">double</span> <span style="color:#a6e22e">dynamicBufferizationCost</span>(linalg<span style="color:#f92672">::</span>LinalgOp <span style="color:#f92672">&amp;</span>linalgOp,
+</span></span><span style="display:flex;"><span>                                ArrayRef<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">uint32_t</span><span style="color:#f92672">&gt;</span> shape,
+</span></span><span style="display:flex;"><span>                                <span style="color:#66d9ef">const</span> MatmulConfig <span style="color:#f92672">&amp;</span>config,
+</span></span><span style="display:flex;"><span>                                CPUTargetDescriptionAnalysis <span style="color:#f92672">&amp;</span>sysDesc) {
+</span></span><span style="display:flex;"><span>  assert(validateConfig(config) <span style="color:#f92672">&amp;&amp;</span> <span style="color:#e6db74">&#34;config is invalid&#34;</span>);
+</span></span><span style="display:flex;"><span>  assert(shape.size() <span style="color:#f92672">&gt;=</span> <span style="color:#ae81ff">3</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#e6db74">&#34;shape.size() should &gt;= 3&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint32_t</span> M <span style="color:#f92672">=</span> shape[<span style="color:#ae81ff">0</span>], N <span style="color:#f92672">=</span> shape[<span style="color:#ae81ff">1</span>];
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">double</span> cost <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// M 维度上每个线程要处理的block数量
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">uint32_t</span> MNumBlockPerThread <span style="color:#f92672">=</span>
+</span></span><span style="display:flex;"><span>      llvm<span style="color:#f92672">::</span>divideCeil(M <span style="color:#f92672">/</span> config.innerMostMBlock, config.MThreads);
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// 每个block含有多少个inner block
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">uint32_t</span> MNumInnerBlockPerBlock <span style="color:#f92672">=</span>
+</span></span><span style="display:flex;"><span>      llvm<span style="color:#f92672">::</span>divideCeil(config.MBlock, config.innerMostMBlock);
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// 如果满足下面的计算，则返回true，表示没有额外的cost
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">uint32_t</span> MCost <span style="color:#f92672">=</span> MNumBlockPerThread <span style="color:#f92672">%</span> MNumInnerBlockPerBlock <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">||</span>
+</span></span><span style="display:flex;"><span>                   (M <span style="color:#f92672">/</span> config.innerMostNBlock <span style="color:#f92672">%</span> config.MThreads <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span>
+</span></span><span style="display:flex;"><span>                    config.MBlock <span style="color:#f92672">!=</span> config.innerMostMBlock);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint32_t</span> NNumBlockPerThread <span style="color:#f92672">=</span>
+</span></span><span style="display:flex;"><span>      llvm<span style="color:#f92672">::</span>divideCeil(N <span style="color:#f92672">/</span> config.innerMostNBlock, config.NThreads);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint32_t</span> NNumInnerBlockPerBlock <span style="color:#f92672">=</span>
+</span></span><span style="display:flex;"><span>      llvm<span style="color:#f92672">::</span>divideCeil(config.NBlock, config.innerMostNBlock);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">uint32_t</span> NCost <span style="color:#f92672">=</span> NNumBlockPerThread <span style="color:#f92672">%</span> NNumInnerBlockPerBlock <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">||</span>
+</span></span><span style="display:flex;"><span>                   (N <span style="color:#f92672">/</span> config.innerMostNBlock <span style="color:#f92672">%</span> config.NThreads <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span>
+</span></span><span style="display:flex;"><span>                    config.NBlock <span style="color:#f92672">!=</span> config.innerMostNBlock);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  cost <span style="color:#f92672">=</span> MCost <span style="color:#f92672">+</span> NCost;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> cost;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><ol>
+<li>这个计算cost的原理是什么？</li>
+</ol>
+<p>它计算的是某个线性代数 op 在给定的 shape 和 MatmulConfig 下，是否有额外的 cost。具体讲，它考虑了M和N维度如何分割成更小的块，以及如何进一步分割给不同的线程。</p>
+<p>块分割：矩阵M和N被分割成多个块，这些块的大小由配置（config）中的参数（如MBlock, NBlock, innerMostMBlock, innerMostNBlock）决定。这些块的大小和数量影响了数据访问模式和并行化的效率。
+线程分配：每个块被进一步分配给多个线程处理，具体数量由MThreads和NThreads决定。线程的数量和块的分配方式影响了计算的负载均衡和线程间的同步成本。
+计算成本：判断块和线程分配的均衡性，以及是否有特殊边界需要处理。如果块不能被线程均匀分配，或者块的分割方式与配置中的内层块大小不匹配，那么将有额外的cost，该函数就是返回是否有额外的cost。</p>
+<ol start="2">
+<li>为什么要这样计算cost？</li>
+</ol>
+<p>原因是为了评估在给定的线程和块配置下，数据块是否可以被均匀地分配给各个线程，以及是否存在因块大小不匹配或分配不均而导致的额外处理成本。如果块不能被均匀分配，或者分配的方式导致了一些线程比其他线程更忙或更闲，那么这可能会降低并行计算的效率，增加同步的复杂性，或导致缓存未命中率上升。</p>
+<ol start="3">
+<li>实例</li>
+</ol>
+<p>假设我们有以下配置：</p>
+<p>M = 128
+config.MBlock = 32
+config.innerMostMBlock = 16
+config.MThreads = 4
+MNumBlockPerThread = llvm::divideCeil(128 / 16, 4) = llvm::divideCeil(8, 4) = 2（每个线程处理2个最内层块）
+MNumInnerBlockPerBlock = llvm::divideCeil(32, 16) = 2（每个外部块包含2个最内层块）
+MCost = 2 % 2 != 0 || (128 / 16 % 4 != 0 &amp;&amp; 32 != 16) = false || (8 % 4 != 0 &amp;&amp; false) = false（因为所有条件都不满足，所以MCost为false）</p>
+<p>但是，如果我们将config.MThreads改为3，那么：</p>
+<p>MNumBlockPerThread = llvm::divideCeil(128 / 16, 3) = llvm::divideCeil(8, 3) = 3（每个线程处理3个最内层块，但最后一个线程可能不足3个）
+MCost = 3 % 2 != 0 = true（因为每个线程处理的块数不能被每个块内部的最内层块数整除）</p>
+<h2 id="如何利用上述的所有cost">如何利用上述的所有cost<a hidden class="anchor" aria-hidden="true" href="#如何利用上述的所有cost">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// Analyze the workload and system description to generate the default config
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">// Factor to consider:
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">/// thread utilization 【done】
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">/// computation intensity
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">/// cache locality 【done】
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">/// memory requirements
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">/// computation unit efficiency
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">/// padding/pack cost 【done】
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">/// workload balance 【done】
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">/// communication
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">/// previous matmul
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>MatmulConfig MatmulConfigAnalysis<span style="color:#f92672">::</span>getConfig() {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>hasConfig) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (<span style="color:#66d9ef">auto</span> linalgOp <span style="color:#f92672">=</span> dyn_cast<span style="color:#f92672">&lt;</span>linalg<span style="color:#f92672">::</span>LinalgOp<span style="color:#f92672">&gt;</span>(root)) {  <span style="color:#75715e">// 动态类型转换尝试获取当前的线性代数操作
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>      CPUTargetDescriptionAnalysis <span style="color:#a6e22e">sysDesc</span>(root);            <span style="color:#75715e">// 获取当前系统的描述，这可能包括CPU的架构、核心数、缓存大小等信息
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">// 提取矩阵维度并操作
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>      SmallVector<span style="color:#f92672">&lt;</span>SmallVector<span style="color:#f92672">&lt;</span>DimType<span style="color:#f92672">&gt;&gt;</span> oprandDimType <span style="color:#f92672">=</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#f92672">*</span>getOprandDimType(linalgOp);
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">// get the origin M,N,K size
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>      SmallVector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">unsigned</span><span style="color:#f92672">&gt;</span> MDimTypeIdx <span style="color:#f92672">=</span>
+</span></span><span style="display:flex;"><span>          extractDimTypeIdx(oprandDimType[<span style="color:#ae81ff">0</span>], DimType<span style="color:#f92672">::</span>M);
+</span></span><span style="display:flex;"><span>      SmallVector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">unsigned</span><span style="color:#f92672">&gt;</span> KDimTypeIdx <span style="color:#f92672">=</span>
+</span></span><span style="display:flex;"><span>          extractDimTypeIdx(oprandDimType[<span style="color:#ae81ff">1</span>], DimType<span style="color:#f92672">::</span>K);
+</span></span><span style="display:flex;"><span>      SmallVector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">unsigned</span><span style="color:#f92672">&gt;</span> NDimTypeIdx <span style="color:#f92672">=</span>
+</span></span><span style="display:flex;"><span>          extractDimTypeIdx(oprandDimType[<span style="color:#ae81ff">1</span>], DimType<span style="color:#f92672">::</span>N);
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">uint32_t</span> M <span style="color:#f92672">=</span> <span style="color:#ae81ff">1U</span>, N <span style="color:#f92672">=</span> <span style="color:#ae81ff">1U</span>, K <span style="color:#f92672">=</span> <span style="color:#ae81ff">1U</span>;
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">auto</span> <span style="color:#f92672">&amp;&amp;</span>[s, dimType] <span style="color:#f92672">:</span>
+</span></span><span style="display:flex;"><span>           llvm<span style="color:#f92672">::</span>zip(linalgOp.getShape(linalgOp.getDpsInputOperand(<span style="color:#ae81ff">0</span>)),
+</span></span><span style="display:flex;"><span>                     oprandDimType[<span style="color:#ae81ff">0</span>]))
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (dimType <span style="color:#f92672">==</span> DimType<span style="color:#f92672">::</span>M)
+</span></span><span style="display:flex;"><span>          M <span style="color:#f92672">*=</span> s;
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">auto</span> <span style="color:#f92672">&amp;&amp;</span>[s, dimType] <span style="color:#f92672">:</span>
+</span></span><span style="display:flex;"><span>           llvm<span style="color:#f92672">::</span>zip(linalgOp.getShape(linalgOp.getDpsInputOperand(<span style="color:#ae81ff">1</span>)),
+</span></span><span style="display:flex;"><span>                     oprandDimType[<span style="color:#ae81ff">1</span>])) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (dimType <span style="color:#f92672">==</span> DimType<span style="color:#f92672">::</span>N)
+</span></span><span style="display:flex;"><span>          N <span style="color:#f92672">*=</span> s;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">else</span> <span style="color:#a6e22e">if</span> (dimType <span style="color:#f92672">==</span> DimType<span style="color:#f92672">::</span>K)
+</span></span><span style="display:flex;"><span>          K <span style="color:#f92672">*=</span> s;
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">// innermost Block, if the layout is blocked layout, the innermost block
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>      <span style="color:#75715e">// will derived from the layout directly
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>      <span style="color:#66d9ef">uint32_t</span> defaultBlock <span style="color:#f92672">=</span> <span style="color:#ae81ff">32</span>;
+</span></span><span style="display:flex;"><span>      config.innerMostMBlock <span style="color:#f92672">=</span> M <span style="color:#f92672">%</span> defaultBlock <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">?</span> defaultBlock : M;
+</span></span><span style="display:flex;"><span>      config.innerMostNBlock <span style="color:#f92672">=</span> N <span style="color:#f92672">%</span> defaultBlock <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">?</span> defaultBlock : N;
+</span></span><span style="display:flex;"><span>      config.innerMostKBlock <span style="color:#f92672">=</span> K <span style="color:#f92672">%</span> defaultBlock <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">?</span> defaultBlock : K;
+</span></span><span style="display:flex;"><span>      SmallVector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">uint32_t</span><span style="color:#f92672">&gt;</span> givenInnermostBlock;
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">if</span> (MDimTypeIdx.size() <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">1</span>) {
+</span></span><span style="display:flex;"><span>        config.innerMostMBlock <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">auto</span> <span style="color:#f92672">&amp;&amp;</span>[i, d] <span style="color:#f92672">:</span> llvm<span style="color:#f92672">::</span>enumerate(MDimTypeIdx))
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">if</span> (i <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>            config.innerMostMBlock <span style="color:#f92672">*=</span>
+</span></span><span style="display:flex;"><span>                linalgOp.getShape(linalgOp.getDpsInputOperand(<span style="color:#ae81ff">0</span>))[d];
+</span></span><span style="display:flex;"><span>        givenInnermostBlock.push_back(config.innerMostMBlock);
+</span></span><span style="display:flex;"><span>      } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>        givenInnermostBlock.push_back(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">if</span> (NDimTypeIdx.size() <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">1</span>) {
+</span></span><span style="display:flex;"><span>        config.innerMostNBlock <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">auto</span> <span style="color:#f92672">&amp;&amp;</span>[i, d] <span style="color:#f92672">:</span> llvm<span style="color:#f92672">::</span>enumerate(NDimTypeIdx))
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">if</span> (i <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>            config.innerMostNBlock <span style="color:#f92672">*=</span>
+</span></span><span style="display:flex;"><span>                linalgOp.getShape(linalgOp.getDpsInputOperand(<span style="color:#ae81ff">1</span>))[d];
+</span></span><span style="display:flex;"><span>        givenInnermostBlock.push_back(config.innerMostNBlock);
+</span></span><span style="display:flex;"><span>      } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>        givenInnermostBlock.push_back(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">if</span> (KDimTypeIdx.size() <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">1</span>) {
+</span></span><span style="display:flex;"><span>        config.innerMostKBlock <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">auto</span> <span style="color:#f92672">&amp;&amp;</span>[i, d] <span style="color:#f92672">:</span> llvm<span style="color:#f92672">::</span>enumerate(KDimTypeIdx))
+</span></span><span style="display:flex;"><span>          <span style="color:#66d9ef">if</span> (i <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>)
+</span></span><span style="display:flex;"><span>            config.innerMostKBlock <span style="color:#f92672">*=</span>
+</span></span><span style="display:flex;"><span>                linalgOp.getShape(linalgOp.getDpsInputOperand(<span style="color:#ae81ff">1</span>))[d];
+</span></span><span style="display:flex;"><span>        givenInnermostBlock.push_back(config.innerMostKBlock);
+</span></span><span style="display:flex;"><span>      } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>        givenInnermostBlock.push_back(<span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      LLVM_DEBUG(llvm<span style="color:#f92672">::</span>dbgs()
+</span></span><span style="display:flex;"><span>                 <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;M: &#34;</span> <span style="color:#f92672">&lt;&lt;</span> M <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;, N: &#34;</span> <span style="color:#f92672">&lt;&lt;</span> N <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;, K: &#34;</span> <span style="color:#f92672">&lt;&lt;</span> K <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">// try to read the config from the attributes
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>      SmallVector<span style="color:#f92672">&lt;</span>NamedAttribute<span style="color:#f92672">&gt;</span> attrs(linalgOp<span style="color:#f92672">-&gt;</span>getAttrs());
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">bool</span> hasPredefinedConfig <span style="color:#f92672">=</span> readConfigFromAttrs(config, attrs);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">// if there is a given config, skip the cost model
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>      <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>hasPredefinedConfig) {
+</span></span><span style="display:flex;"><span>        LLVM_DEBUG(llvm<span style="color:#f92672">::</span>dbgs() <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;No predefined config</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// TODO: Could add a weight or priority for cost model
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        SmallVector<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>tuple<span style="color:#f92672">&lt;</span>CostModelFn, std<span style="color:#f92672">::</span>string, <span style="color:#66d9ef">double</span><span style="color:#f92672">&gt;&gt;</span>
+</span></span><span style="display:flex;"><span>            costModelList <span style="color:#f92672">=</span> {
+</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// threshold 0 mean using static shape if possible
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>                {dynamicBufferizationCost, <span style="color:#e6db74">&#34;dynamicBufferizationCost&#34;</span>, <span style="color:#ae81ff">0</span>},
+</span></span><span style="display:flex;"><span>                {workloadBalancedCost, <span style="color:#e6db74">&#34;workloadBalancedCost&#34;</span>, <span style="color:#ae81ff">1</span>},
+</span></span><span style="display:flex;"><span>                {vectorRegEfficiencyCost, <span style="color:#e6db74">&#34;vectorRegEfficiencyCost &#34;</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>},
+</span></span><span style="display:flex;"><span>                {computationIntensityOnL2Cache, <span style="color:#e6db74">&#34;computationIntensityOnL2Cache&#34;</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>},
+</span></span><span style="display:flex;"><span>                {memoryConsumptionOnThreadCost, <span style="color:#e6db74">&#34;memoryConsumptionOnThreadCost&#34;</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>},
+</span></span><span style="display:flex;"><span>                {paddingCost, <span style="color:#e6db74">&#34;paddingCost&#34;</span>, <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>}};
+</span></span><span style="display:flex;"><span>        SmallVector<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">uint32_t</span><span style="color:#f92672">&gt;</span> shape <span style="color:#f92672">=</span> {M, N, K};
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 某种规则下穷举出来的所有matmul config 集合作为candidate
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        std<span style="color:#f92672">::</span>vector<span style="color:#f92672">&lt;</span>MatmulConfig<span style="color:#f92672">&gt;</span> configCandidates <span style="color:#f92672">=</span> prepareConfigCandidates(
+</span></span><span style="display:flex;"><span>            root, sysDesc, shape, givenInnermostBlock, allowIndivisibleInnerBlock);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">auto</span> <span style="color:#f92672">&amp;&amp;</span>[fn, name, threshold] <span style="color:#f92672">:</span> costModelList) {
+</span></span><span style="display:flex;"><span>          LLVM_DEBUG(llvm<span style="color:#f92672">::</span>dbgs() <span style="color:#f92672">&lt;&lt;</span> name <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>          <span style="color:#75715e">// 这里对configCandidates进行这个fn的cost计算，根据指定的 preserveRatio=0.5 得到对于这个fn的cost最小的前50% 的config，作为下一个fn的configCandidates
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>          <span style="color:#75715e">// 相当于我有6个fn，configCandidates会从最初的scope缩小为原来的 0.5**5
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>          configCandidates <span style="color:#f92672">=</span> filterConfigByCostModel(
+</span></span><span style="display:flex;"><span>              configCandidates, linalgOp, shape, sysDesc, fn, <span style="color:#ae81ff">0.5</span>, threshold);
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// 最终只取cost最小的config
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>configCandidates.empty())
+</span></span><span style="display:flex;"><span>          config <span style="color:#f92672">=</span> configCandidates[<span style="color:#ae81ff">0</span>];
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>      LLVM_DEBUG(llvm<span style="color:#f92672">::</span>dbgs()
+</span></span><span style="display:flex;"><span>                 <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;Final config</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">NumThreads: &#34;</span> <span style="color:#f92672">&lt;&lt;</span> sysDesc.getNumThreads()
+</span></span><span style="display:flex;"><span>                 <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;, MatmulConfig: &#34;</span> <span style="color:#f92672">&lt;&lt;</span> config <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    hasConfig <span style="color:#f92672">=</span> true;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  assert(validateConfig(config) <span style="color:#f92672">&amp;&amp;</span> <span style="color:#e6db74">&#34;config is invalid&#34;</span>);
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> config;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>上述getConfig() 在matmul相关的变换的 匹配重写（matchAndRewrite）过程中调用，根据task中的输入输出矩阵的shape和硬件信息得到最少的cost配置。见 Pass deep-tile-contraction-op 相关的.mlir 文件，其实shape是给出了的。确实，AI compiler编译的是一个计算，这个计算的前端表达中可定是给出shape信息的。所以上述的cost计算过程发生在compile time，就是应用这个pass的过程中。</p>
+<p>关于Cost计算，并不是真正的就这个config执行matmul，而是根据【Factor to consider】中提到的各个方面计算对期望的偏离，偏离越多，cost越大，所以你需要知道对于各个Factor，什么样的情况是最优的(期望)。</p>
+<h2 id="kaq">KAQ<a hidden class="anchor" aria-hidden="true" href="#kaq">#</a></h2>
+<p>这个计算cost 的过程发生在什么阶段？compile OR runtime？计算cost需要知道shape，但是compile时应该不知道shape，所以是在runtime？</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/compiler/">Compiler</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Concepts | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="Agent, General">
+<meta name="description" content="Serverless API &amp; Server-based API
+Serverless API:
+
+基础设施管理：无需管理服务器。云服务提供商负责所有底层基础设施的管理。
+扩展性：自动扩展，根据流量需求动态调整资源。
+成本：按需付费，只需为实际使用的计算资源付费。
+部署：通常通过函数即服务 (FaaS) 平台部署，如 AWS Lambda、Azure Functions、Google Cloud Functions。
+运维：运维工作量较少，主要关注业务逻辑。
+
+Server-based API:
+
+基础设施管理：需要自行管理服务器，包括配置、维护和扩展。
+扩展性：需要手动配置和扩展服务器，以应对流量高峰。
+成本：需要为服务器的运行时间付费，即使在低流量时段也需要支付费用。
+部署：通常部署在传统的服务器或虚拟机上，如 Apache、Nginx 等。
+
+文本检索 Text retieval
+其核心作用是根据用户输入的查询（query），快速高效地在庞大的文档集合中筛选出与查询最相关的文档或文本片段。
+BM25Retriever，是 BM25 的python library，基于词频概率统计估计相关性，是目前经典且广泛使用的排名算法。
+SentenceTransformers 是基于embedding 的文本检索方法 Python library。
+RAG 检索增强生成 用途
+# doc is a list of documents
+bm25_retriever = BM25Retriever.from_documents(docs)
+# query is a string
+results = bm25_retriever.invoke(query)
+RAG 模式的 AI Agent 适用于需要结合外部知识生成准确回答的场景，如知识库问答、搜索整合、客服、法律分析、医疗支持和教育。
+SGLang （Structured Generation Language） 与 vLLM（Vectorized Large Language Model Inference）
+
+
+SGLang：是复杂多轮交互及结构化生成的语言模型服务框架。适用于需要多步骤任务、多GPU协作、大规模模型复杂应用。需要多轮复杂任务支持场景。">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/agent/concepts/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/agent/concepts/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/agent/concepts/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="Concepts">
+  <meta property="og:description" content="Serverless API &amp; Server-based API Serverless API:
+基础设施管理：无需管理服务器。云服务提供商负责所有底层基础设施的管理。 扩展性：自动扩展，根据流量需求动态调整资源。 成本：按需付费，只需为实际使用的计算资源付费。 部署：通常通过函数即服务 (FaaS) 平台部署，如 AWS Lambda、Azure Functions、Google Cloud Functions。 运维：运维工作量较少，主要关注业务逻辑。 Server-based API:
+基础设施管理：需要自行管理服务器，包括配置、维护和扩展。 扩展性：需要手动配置和扩展服务器，以应对流量高峰。 成本：需要为服务器的运行时间付费，即使在低流量时段也需要支付费用。 部署：通常部署在传统的服务器或虚拟机上，如 Apache、Nginx 等。 文本检索 Text retieval 其核心作用是根据用户输入的查询（query），快速高效地在庞大的文档集合中筛选出与查询最相关的文档或文本片段。
+BM25Retriever，是 BM25 的python library，基于词频概率统计估计相关性，是目前经典且广泛使用的排名算法。
+SentenceTransformers 是基于embedding 的文本检索方法 Python library。
+RAG 检索增强生成 用途 # doc is a list of documents bm25_retriever = BM25Retriever.from_documents(docs) # query is a string results = bm25_retriever.invoke(query) RAG 模式的 AI Agent 适用于需要结合外部知识生成准确回答的场景，如知识库问答、搜索整合、客服、法律分析、医疗支持和教育。
+SGLang （Structured Generation Language） 与 vLLM（Vectorized Large Language Model Inference） SGLang：是复杂多轮交互及结构化生成的语言模型服务框架。适用于需要多步骤任务、多GPU协作、大规模模型复杂应用。需要多轮复杂任务支持场景。">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="agent">
+    <meta property="article:published_time" content="2025-08-31T12:13:33+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:13:33+08:00">
+    <meta property="article:tag" content="Agent">
+    <meta property="article:tag" content="General">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Concepts">
+<meta name="twitter:description" content="Serverless API &amp; Server-based API
+Serverless API:
+
+基础设施管理：无需管理服务器。云服务提供商负责所有底层基础设施的管理。
+扩展性：自动扩展，根据流量需求动态调整资源。
+成本：按需付费，只需为实际使用的计算资源付费。
+部署：通常通过函数即服务 (FaaS) 平台部署，如 AWS Lambda、Azure Functions、Google Cloud Functions。
+运维：运维工作量较少，主要关注业务逻辑。
+
+Server-based API:
+
+基础设施管理：需要自行管理服务器，包括配置、维护和扩展。
+扩展性：需要手动配置和扩展服务器，以应对流量高峰。
+成本：需要为服务器的运行时间付费，即使在低流量时段也需要支付费用。
+部署：通常部署在传统的服务器或虚拟机上，如 Apache、Nginx 等。
+
+文本检索 Text retieval
+其核心作用是根据用户输入的查询（query），快速高效地在庞大的文档集合中筛选出与查询最相关的文档或文本片段。
+BM25Retriever，是 BM25 的python library，基于词频概率统计估计相关性，是目前经典且广泛使用的排名算法。
+SentenceTransformers 是基于embedding 的文本检索方法 Python library。
+RAG 检索增强生成 用途
+# doc is a list of documents
+bm25_retriever = BM25Retriever.from_documents(docs)
+# query is a string
+results = bm25_retriever.invoke(query)
+RAG 模式的 AI Agent 适用于需要结合外部知识生成准确回答的场景，如知识库问答、搜索整合、客服、法律分析、医疗支持和教育。
+SGLang （Structured Generation Language） 与 vLLM（Vectorized Large Language Model Inference）
+
+
+SGLang：是复杂多轮交互及结构化生成的语言模型服务框架。适用于需要多步骤任务、多GPU协作、大规模模型复杂应用。需要多轮复杂任务支持场景。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Agent",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/agent/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Concepts",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/agent/concepts/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Concepts",
+  "name": "Concepts",
+  "description": "Serverless API \u0026amp; Server-based API Serverless API:\n基础设施管理：无需管理服务器。云服务提供商负责所有底层基础设施的管理。 扩展性：自动扩展，根据流量需求动态调整资源。 成本：按需付费，只需为实际使用的计算资源付费。 部署：通常通过函数即服务 (FaaS) 平台部署，如 AWS Lambda、Azure Functions、Google Cloud Functions。 运维：运维工作量较少，主要关注业务逻辑。 Server-based API:\n基础设施管理：需要自行管理服务器，包括配置、维护和扩展。 扩展性：需要手动配置和扩展服务器，以应对流量高峰。 成本：需要为服务器的运行时间付费，即使在低流量时段也需要支付费用。 部署：通常部署在传统的服务器或虚拟机上，如 Apache、Nginx 等。 文本检索 Text retieval 其核心作用是根据用户输入的查询（query），快速高效地在庞大的文档集合中筛选出与查询最相关的文档或文本片段。\nBM25Retriever，是 BM25 的python library，基于词频概率统计估计相关性，是目前经典且广泛使用的排名算法。\nSentenceTransformers 是基于embedding 的文本检索方法 Python library。\nRAG 检索增强生成 用途 # doc is a list of documents bm25_retriever = BM25Retriever.from_documents(docs) # query is a string results = bm25_retriever.invoke(query) RAG 模式的 AI Agent 适用于需要结合外部知识生成准确回答的场景，如知识库问答、搜索整合、客服、法律分析、医疗支持和教育。\nSGLang （Structured Generation Language） 与 vLLM（Vectorized Large Language Model Inference） SGLang：是复杂多轮交互及结构化生成的语言模型服务框架。适用于需要多步骤任务、多GPU协作、大规模模型复杂应用。需要多轮复杂任务支持场景。\n",
+  "keywords": [
+    "Agent", "General"
+  ],
+  "articleBody": "Serverless API \u0026 Server-based API Serverless API:\n基础设施管理：无需管理服务器。云服务提供商负责所有底层基础设施的管理。 扩展性：自动扩展，根据流量需求动态调整资源。 成本：按需付费，只需为实际使用的计算资源付费。 部署：通常通过函数即服务 (FaaS) 平台部署，如 AWS Lambda、Azure Functions、Google Cloud Functions。 运维：运维工作量较少，主要关注业务逻辑。 Server-based API:\n基础设施管理：需要自行管理服务器，包括配置、维护和扩展。 扩展性：需要手动配置和扩展服务器，以应对流量高峰。 成本：需要为服务器的运行时间付费，即使在低流量时段也需要支付费用。 部署：通常部署在传统的服务器或虚拟机上，如 Apache、Nginx 等。 文本检索 Text retieval 其核心作用是根据用户输入的查询（query），快速高效地在庞大的文档集合中筛选出与查询最相关的文档或文本片段。\nBM25Retriever，是 BM25 的python library，基于词频概率统计估计相关性，是目前经典且广泛使用的排名算法。\nSentenceTransformers 是基于embedding 的文本检索方法 Python library。\nRAG 检索增强生成 用途 # doc is a list of documents bm25_retriever = BM25Retriever.from_documents(docs) # query is a string results = bm25_retriever.invoke(query) RAG 模式的 AI Agent 适用于需要结合外部知识生成准确回答的场景，如知识库问答、搜索整合、客服、法律分析、医疗支持和教育。\nSGLang （Structured Generation Language） 与 vLLM（Vectorized Large Language Model Inference） SGLang：是复杂多轮交互及结构化生成的语言模型服务框架。适用于需要多步骤任务、多GPU协作、大规模模型复杂应用。需要多轮复杂任务支持场景。\nvLLM：是高吞吐量、高效内存管理的单轮推理框架。适用于高并发请求、多用户低延迟响应场景。需要极致吞吐和易用性的场景。 极致吞吐和易用性（vLLM）。\nOllama\nLMStudio： 桌面化多模型UI与API服务器。适用于“开箱即用”的 LLM 桌面客户端与推理引擎场景，内置聊天界面，也可作为本地API服务器使用。\nMLX-LM： 专为 Apple Silicon\nllama.cpp： 是 Llama 及同类大模型的高性能本地 C/C++ 实现，被广泛用于框架底层和自定义推理。有极高的性能和扩展性。需要极致性能/资源优化的本地部署、高度自定义下的嵌入式系统、移动端推理。\nKTransformers: 是高性能、低成本本地大型模型推理优化的 Python 框架。适用于高性能推理、科研工程优化、自定义部署、对响应速度和内存利用要求极高的应用。\nGAIA A benchmark for General AI Assistants\n",
+  "wordCount" : "105",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:13:33+08:00",
+  "dateModified": "2025-08-31T12:13:33+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/agent/concepts/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      Concepts
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:13:33 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><h1 id="serverless-api--server-based-api">Serverless API &amp; Server-based API<a hidden class="anchor" aria-hidden="true" href="#serverless-api--server-based-api">#</a></h1>
+<p>Serverless API:</p>
+<ul>
+<li>基础设施管理：无需管理服务器。云服务提供商负责所有底层基础设施的管理。</li>
+<li>扩展性：自动扩展，根据流量需求动态调整资源。</li>
+<li>成本：按需付费，只需为实际使用的计算资源付费。</li>
+<li>部署：通常通过函数即服务 (FaaS) 平台部署，如 AWS Lambda、Azure Functions、Google Cloud Functions。</li>
+<li>运维：运维工作量较少，主要关注业务逻辑。</li>
+</ul>
+<p>Server-based API:</p>
+<ul>
+<li>基础设施管理：需要自行管理服务器，包括配置、维护和扩展。</li>
+<li>扩展性：需要手动配置和扩展服务器，以应对流量高峰。</li>
+<li>成本：需要为服务器的运行时间付费，即使在低流量时段也需要支付费用。</li>
+<li>部署：通常部署在传统的服务器或虚拟机上，如 Apache、Nginx 等。</li>
+</ul>
+<h2 id="文本检索-text-retieval">文本检索 Text retieval<a hidden class="anchor" aria-hidden="true" href="#文本检索-text-retieval">#</a></h2>
+<p>其核心作用是根据用户输入的查询（query），快速高效地在庞大的文档集合中筛选出与查询最相关的文档或文本片段。</p>
+<p>BM25Retriever，是 BM25 的python library，基于词频概率统计估计相关性，是目前经典且广泛使用的排名算法。</p>
+<p>SentenceTransformers 是基于embedding 的文本检索方法 Python library。</p>
+<h2 id="rag-检索增强生成-用途">RAG 检索增强生成 用途<a hidden class="anchor" aria-hidden="true" href="#rag-检索增强生成-用途">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-py" data-lang="py"><span style="display:flex;"><span><span style="color:#75715e"># doc is a list of documents</span>
+</span></span><span style="display:flex;"><span>bm25_retriever <span style="color:#f92672">=</span> BM25Retriever<span style="color:#f92672">.</span>from_documents(docs)
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># query is a string</span>
+</span></span><span style="display:flex;"><span>results <span style="color:#f92672">=</span> bm25_retriever<span style="color:#f92672">.</span>invoke(query)
+</span></span></code></pre></div><p>RAG 模式的 AI Agent 适用于需要<strong>结合外部知识</strong>生成准确回答的场景，如知识库问答、搜索整合、客服、法律分析、医疗支持和教育。</p>
+<h2 id="sglang-structured-generation-language-与-vllmvectorized-large-language-model-inference">SGLang （Structured Generation Language） 与 vLLM（Vectorized Large Language Model Inference）<a hidden class="anchor" aria-hidden="true" href="#sglang-structured-generation-language-与-vllmvectorized-large-language-model-inference">#</a></h2>
+<ul>
+<li>
+<p>SGLang：是复杂多轮交互及结构化生成的语言模型服务框架。适用于需要<strong>多步骤</strong>任务、<strong>多GPU协作</strong>、<strong>大规模</strong>模型复杂应用。需要<strong>多轮复杂任务</strong>支持场景。</p>
+</li>
+<li>
+<p>vLLM：是高吞吐量、高效内存管理的单轮推理框架。适用于高并发请求、多用户低延迟响应场景。需要<strong>极致吞吐</strong>和<strong>易用性</strong>的场景。
+极致吞吐和易用性（vLLM）。</p>
+</li>
+<li>
+<p>Ollama</p>
+</li>
+<li>
+<p>LMStudio： 桌面化多模型UI与API服务器。适用于“开箱即用”的 LLM <strong>桌面客户端与推理引擎</strong>场景，内置聊天界面，也可作为本地API服务器使用。</p>
+</li>
+<li>
+<p>MLX-LM： 专为 Apple Silicon</p>
+</li>
+<li>
+<p>llama.cpp： 是 Llama 及同类大模型的高性能本地 C/C++ 实现，被广泛用于框架底层和自定义推理。有<strong>极高的性能和扩展性</strong>。需要极致性能/资源优化的本地部署、高度自定义下的嵌入式系统、移动端推理。</p>
+</li>
+<li>
+<p>KTransformers: 是<strong>高性能、低成本</strong>本地大型模型推理优化的 Python 框架。适用于高性能推理、科研工程优化、自定义部署、对响应速度和内存利用要求极高的应用。</p>
+</li>
+</ul>
+<h2 id="gaia">GAIA<a hidden class="anchor" aria-hidden="true" href="#gaia">#</a></h2>
+<p>A benchmark for General AI Assistants</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/agent/">Agent</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/general/">General</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

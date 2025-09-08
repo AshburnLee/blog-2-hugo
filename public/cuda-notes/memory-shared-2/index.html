@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Memory Shared 2 | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="CUDA, Shared Memory, Bank">
+<meta name="description" content="为什么会冲突
+假设:
+
+TILE_DIM = 32
+Shared Memory 有 32 个 Banks
+每个 Bank 宽度为 4 字节 (float)
+线程块维度为 (32, 32)，即每个线程块有 1024 个线程
+
+我们声明一个共享内存数组：
+__shared__ float tile[TILE_DIM][TILE_DIM]; // __shared__ float tile[32][32];
+现在，
+如果线程配置是 dim3 blockDim(1, 32)
+这些线程的 threadIdx.x 都为 0，而 threadIdx.y 从 0 到 31，
+通过 int index = threadIdx.y &#43; blockIdx.x * blockDim.y = threadIdx.y; 得到线程id和其对应的tile元素索引:
+// tile[threadIdx.x][threadsIdx.y]
+Thread 0: tile[0][0]
+Thread 1: tile[0][1]
+Thread 2: tile[0][2]
+...
+Thread 31: tile[0][31]
+由于 tile 数组是按行存储的，并且每个 float 占用 4 bytes，根据行存储公式： Address = base_address &#43; (row * num_cols &#43; col) * element_size 得到这些线程访问的地址如下：">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/memory-shared-2/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/memory-shared-2/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/cuda-notes/memory-shared-2/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="Memory Shared 2">
+  <meta property="og:description" content="为什么会冲突 假设:
+TILE_DIM = 32 Shared Memory 有 32 个 Banks 每个 Bank 宽度为 4 字节 (float) 线程块维度为 (32, 32)，即每个线程块有 1024 个线程 我们声明一个共享内存数组：
+__shared__ float tile[TILE_DIM][TILE_DIM]; // __shared__ float tile[32][32]; 现在，
+如果线程配置是 dim3 blockDim(1, 32) 这些线程的 threadIdx.x 都为 0，而 threadIdx.y 从 0 到 31， 通过 int index = threadIdx.y &#43; blockIdx.x * blockDim.y = threadIdx.y; 得到线程id和其对应的tile元素索引:
+// tile[threadIdx.x][threadsIdx.y] Thread 0: tile[0][0] Thread 1: tile[0][1] Thread 2: tile[0][2] ... Thread 31: tile[0][31] 由于 tile 数组是按行存储的，并且每个 float 占用 4 bytes，根据行存储公式： Address = base_address &#43; (row * num_cols &#43; col) * element_size 得到这些线程访问的地址如下：">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="cuda-notes">
+    <meta property="article:published_time" content="2025-08-31T12:45:52+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:45:52+08:00">
+    <meta property="article:tag" content="CUDA">
+    <meta property="article:tag" content="Shared Memory">
+    <meta property="article:tag" content="Bank">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Memory Shared 2">
+<meta name="twitter:description" content="为什么会冲突
+假设:
+
+TILE_DIM = 32
+Shared Memory 有 32 个 Banks
+每个 Bank 宽度为 4 字节 (float)
+线程块维度为 (32, 32)，即每个线程块有 1024 个线程
+
+我们声明一个共享内存数组：
+__shared__ float tile[TILE_DIM][TILE_DIM]; // __shared__ float tile[32][32];
+现在，
+如果线程配置是 dim3 blockDim(1, 32)
+这些线程的 threadIdx.x 都为 0，而 threadIdx.y 从 0 到 31，
+通过 int index = threadIdx.y &#43; blockIdx.x * blockDim.y = threadIdx.y; 得到线程id和其对应的tile元素索引:
+// tile[threadIdx.x][threadsIdx.y]
+Thread 0: tile[0][0]
+Thread 1: tile[0][1]
+Thread 2: tile[0][2]
+...
+Thread 31: tile[0][31]
+由于 tile 数组是按行存储的，并且每个 float 占用 4 bytes，根据行存储公式： Address = base_address &#43; (row * num_cols &#43; col) * element_size 得到这些线程访问的地址如下：">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "CUDA Notes",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/cuda-notes/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "Memory Shared 2",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/cuda-notes/memory-shared-2/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Memory Shared 2",
+  "name": "Memory Shared 2",
+  "description": "为什么会冲突 假设:\nTILE_DIM = 32 Shared Memory 有 32 个 Banks 每个 Bank 宽度为 4 字节 (float) 线程块维度为 (32, 32)，即每个线程块有 1024 个线程 我们声明一个共享内存数组：\n__shared__ float tile[TILE_DIM][TILE_DIM]; // __shared__ float tile[32][32]; 现在，\n如果线程配置是 dim3 blockDim(1, 32) 这些线程的 threadIdx.x 都为 0，而 threadIdx.y 从 0 到 31， 通过 int index = threadIdx.y + blockIdx.x * blockDim.y = threadIdx.y; 得到线程id和其对应的tile元素索引:\n// tile[threadIdx.x][threadsIdx.y] Thread 0: tile[0][0] Thread 1: tile[0][1] Thread 2: tile[0][2] ... Thread 31: tile[0][31] 由于 tile 数组是按行存储的，并且每个 float 占用 4 bytes，根据行存储公式： Address = base_address + (row * num_cols + col) * element_size 得到这些线程访问的地址如下：\n",
+  "keywords": [
+    "CUDA", "Shared Memory", "Bank"
+  ],
+  "articleBody": "为什么会冲突 假设:\nTILE_DIM = 32 Shared Memory 有 32 个 Banks 每个 Bank 宽度为 4 字节 (float) 线程块维度为 (32, 32)，即每个线程块有 1024 个线程 我们声明一个共享内存数组：\n__shared__ float tile[TILE_DIM][TILE_DIM]; // __shared__ float tile[32][32]; 现在，\n如果线程配置是 dim3 blockDim(1, 32) 这些线程的 threadIdx.x 都为 0，而 threadIdx.y 从 0 到 31， 通过 int index = threadIdx.y + blockIdx.x * blockDim.y = threadIdx.y; 得到线程id和其对应的tile元素索引:\n// tile[threadIdx.x][threadsIdx.y] Thread 0: tile[0][0] Thread 1: tile[0][1] Thread 2: tile[0][2] ... Thread 31: tile[0][31] 由于 tile 数组是按行存储的，并且每个 float 占用 4 bytes，根据行存储公式： Address = base_address + (row * num_cols + col) * element_size 得到这些线程访问的地址如下：\nThread id=0: Address = 0 + (threadIdx.x * 32 + threadIdx.y) * 4B =\u003e 0 + (0 * 32 + 0) * 4B = 0 Thread id=1: Address = 0 + (threadIdx.x * 32 + threadIdx.y) * 4B =\u003e 0 + (0 * 32 + 1) * 4B = 4 Thread id=2: Address = 0 + (threadIdx.x * 32 + threadIdx.y) * 4B =\u003e 0 + (0 * 32 + 2) * 4B = 8 ... Thread id=31: Address = 0 + (threadIdx.x * 32 + threadIdx.y) * 4B =\u003e 0 + (0 * 32 + 31) * 4B = 124 因为每个 Bank 的宽度是 4 字节，所以：\nThread id=0 访问 Bank 0 Thread id=1 访问 Bank 1 Thread id=2 访问 Bank 2 … Thread id=31 访问 Bank 31\n在这种情况下，没有 Bank Conflict，因为每个线程访问不同的 Bank。 DONE\n但是，\n如果线程配置是 dim3 blockDim(32, 1) 这些线程的 threadIdx.y 都为 0，而 threadIdx.x 从 0 到 31, 通过：或者 int index = threadIdx.x + blockIdx.x * blockDim.x = threadIdx.x; 得到线程id和其对应的tile元素索引：\n// tile[threadIdx.x][threadsIdx.y] Thread 0: tile[0][0] Thread 1: tile[1][0] Thread 2: tile[2][0] ... Thread 31: tile[31][0] 同理，得到，这些线程访问的地址如下：\nThread id=0: Address = 0 + (threadIdx.x * 32 + threadIdx.y) * 4B =\u003e 0 + (0 * 32 + 0) * 4B = 0 Thread id=1: Address = 0 + (threadIdx.x * 32 + threadIdx.y) * 4B =\u003e 0 + (1 * 32 + 0) * 4B = 128 Thread id=2: Address = 0 + (threadIdx.x * 32 + threadIdx.y) * 4B =\u003e 0 + (2 * 32 + 0) * 4B = 256 ... Thread id=31: Address = 0 + (threadIdx.x * 32 + threadIdx.y) * 4B =\u003e 0 + (31 * 32 + 0) * 4B = 3968 这些地址值都是 Bank0 的地址，所以会有严重的 Bank conflict。\n通过 Padding 避免 Bank Conflict 的情况 __shared__ float tile[TILE_DIM][TILE_DIM + 1]; // __shared__ float tile[32][33]; 既然上面 threadIdx.y 都为 0 时，严重的conflict。一个 warp (32 个线程) 中的线程访问 tile 数组，假设这些线程的 threadIdx.y 都为 0，而 threadIdx.x 从 0 到 31：\n// tile[threadIdx.x][threadsIdx.y] Thread 0: tile[0][0] Thread 1: tile[1][0] Thread 2: tile[2][0] ... Thread 31: tile[31][0] 同理，得到，这些线程访问的地址如下：注意此时 num_cols = 33， ***\nThread id=0: Address = 0 + (threadIdx.x * 33 + threadIdx.y) * 4B =\u003e 0 + (0 * 33 + 0) * 4B = 0 Thread id=1: Address = 0 + (threadIdx.x * 33 + threadIdx.y) * 4B =\u003e 0 + (1 * 33 + 0) * 4B = 132 Thread id=2: Address = 0 + (threadIdx.x * 33 + threadIdx.y) * 4B =\u003e 0 + (2 * 33 + 0) * 4B = 264 ... Thread id=31: Address = 0 + (threadIdx.x * 33 + threadIdx.y) * 4B =\u003e 0 + (31 * 33 + 0) * 4B = 4092 现在，计算每个线程访问的 Bank：\nBank = Address % (Number of Banks * Bank Width) / Bank Width\n即：\nBank = Address % (32 * 4) / 4 = Address % 128 / 4\nThread 0: Bank = 0 % 128 / 4 = 0 Thread 1: Bank = 132 % 128 / 4 = 4 / 4 = 1 Thread 2: Bank = 264 % 128 / 4 = 8 / 4 = 2 ... Thread 31: Bank = 4092 % 128 / 4 = 124 / 4 = 31 现在，每个线程访问不同的 Bank，因此避免了 Bank Conflict！\nextra 如果线程配置是 dim3 blockDim(32, 32) 在一个 Warp 中，线程的 threadIdx.x 是连续的，而 threadIdx.y 相同。例如，第一个 Warp 的线程的 threadIdx.x 从 0 到 31，threadIdx.y 都为 0。\n对于第一个 Warp 中的线程，其内存（内存访问模式）的地址和 上述 dim3 blockDim(32, 1) 情况一模一样。\n这才是实际的情况，一定会有 Bank conflict。\n",
+  "wordCount" : "649",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:45:52+08:00",
+  "dateModified": "2025-08-31T12:45:52+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/cuda-notes/memory-shared-2/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      Memory Shared 2
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:45:52 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><h2 id="为什么会冲突">为什么会冲突<a hidden class="anchor" aria-hidden="true" href="#为什么会冲突">#</a></h2>
+<p>假设:</p>
+<ul>
+<li>TILE_DIM = 32</li>
+<li>Shared Memory 有 32 个 Banks</li>
+<li>每个 Bank 宽度为 4 字节 (float)</li>
+<li>线程块维度为 (32, 32)，即每个线程块有 1024 个线程</li>
+</ul>
+<p>我们声明一个共享内存数组：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>__shared__ <span style="color:#66d9ef">float</span> tile[TILE_DIM][TILE_DIM]; <span style="color:#75715e">// __shared__ float tile[32][32];
+</span></span></span></code></pre></div><p>现在，</p>
+<h3 id="如果线程配置是-dim3-blockdim1-32">如果线程配置是 <code>dim3 blockDim(1, 32)</code><a hidden class="anchor" aria-hidden="true" href="#如果线程配置是-dim3-blockdim1-32">#</a></h3>
+<p>这些线程的 <code>threadIdx.x</code> 都为 0，而 <code>threadIdx.y</code> 从 0 到 31，
+通过 <code>int index = threadIdx.y + blockIdx.x * blockDim.y = threadIdx.y;</code> 得到线程id和其对应的tile元素索引:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// tile[threadIdx.x][threadsIdx.y]
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>Thread <span style="color:#ae81ff">0</span><span style="color:#f92672">:</span> tile[<span style="color:#ae81ff">0</span>][<span style="color:#ae81ff">0</span>]
+</span></span><span style="display:flex;"><span>Thread <span style="color:#ae81ff">1</span><span style="color:#f92672">:</span> tile[<span style="color:#ae81ff">0</span>][<span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>Thread <span style="color:#ae81ff">2</span><span style="color:#f92672">:</span> tile[<span style="color:#ae81ff">0</span>][<span style="color:#ae81ff">2</span>]
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>Thread <span style="color:#ae81ff">31</span><span style="color:#f92672">:</span> tile[<span style="color:#ae81ff">0</span>][<span style="color:#ae81ff">31</span>]
+</span></span></code></pre></div><p>由于 tile 数组是按行存储的，并且每个 float 占用 4 bytes，根据行存储公式： <code>Address = base_address + (row * num_cols + col) * element_size</code> 得到这些线程访问的地址如下：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>Thread id<span style="color:#f92672">=</span>0: Address <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> + <span style="color:#f92672">(</span>threadIdx.x * <span style="color:#ae81ff">32</span> + threadIdx.y<span style="color:#f92672">)</span> * 4B <span style="color:#f92672">=</span>&gt; <span style="color:#ae81ff">0</span> + <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span> * <span style="color:#ae81ff">32</span> + 0<span style="color:#f92672">)</span> * 4B <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>Thread id<span style="color:#f92672">=</span>1: Address <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> + <span style="color:#f92672">(</span>threadIdx.x * <span style="color:#ae81ff">32</span> + threadIdx.y<span style="color:#f92672">)</span> * 4B <span style="color:#f92672">=</span>&gt; <span style="color:#ae81ff">0</span> + <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span> * <span style="color:#ae81ff">32</span> + 1<span style="color:#f92672">)</span> * 4B <span style="color:#f92672">=</span> <span style="color:#ae81ff">4</span>
+</span></span><span style="display:flex;"><span>Thread id<span style="color:#f92672">=</span>2: Address <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> + <span style="color:#f92672">(</span>threadIdx.x * <span style="color:#ae81ff">32</span> + threadIdx.y<span style="color:#f92672">)</span> * 4B <span style="color:#f92672">=</span>&gt; <span style="color:#ae81ff">0</span> + <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span> * <span style="color:#ae81ff">32</span> + 2<span style="color:#f92672">)</span> * 4B <span style="color:#f92672">=</span> <span style="color:#ae81ff">8</span>
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>Thread id<span style="color:#f92672">=</span>31: Address <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> + <span style="color:#f92672">(</span>threadIdx.x * <span style="color:#ae81ff">32</span> + threadIdx.y<span style="color:#f92672">)</span> * 4B <span style="color:#f92672">=</span>&gt; <span style="color:#ae81ff">0</span> + <span style="color:#f92672">(</span><span style="color:#ae81ff">0</span> * <span style="color:#ae81ff">32</span> + 31<span style="color:#f92672">)</span> * 4B <span style="color:#f92672">=</span> <span style="color:#ae81ff">124</span>
+</span></span></code></pre></div><p>因为每个 Bank 的宽度是 4 字节，所以：</p>
+<p>Thread id=0 访问 Bank 0
+Thread id=1 访问 Bank 1
+Thread id=2 访问 Bank 2
+&hellip;
+Thread id=31 访问 Bank 31</p>
+<p>在这种情况下，<strong>没有 Bank Conflict</strong>，因为每个线程访问不同的 Bank。   DONE</p>
+<p>但是，</p>
+<h3 id="如果线程配置是-dim3-blockdim32-1">如果线程配置是 <code>dim3 blockDim(32, 1)</code><a hidden class="anchor" aria-hidden="true" href="#如果线程配置是-dim3-blockdim32-1">#</a></h3>
+<p>这些线程的 <code>threadIdx.y</code> 都为 0，而 <code>threadIdx.x</code> 从 0 到 31,
+通过：<code>或者 int index = threadIdx.x + blockIdx.x * blockDim.x = threadIdx.x;</code> 得到线程id和其对应的tile元素索引：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// tile[threadIdx.x][threadsIdx.y]
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>Thread <span style="color:#ae81ff">0</span><span style="color:#f92672">:</span> tile[<span style="color:#ae81ff">0</span>][<span style="color:#ae81ff">0</span>]
+</span></span><span style="display:flex;"><span>Thread <span style="color:#ae81ff">1</span><span style="color:#f92672">:</span> tile[<span style="color:#ae81ff">1</span>][<span style="color:#ae81ff">0</span>]
+</span></span><span style="display:flex;"><span>Thread <span style="color:#ae81ff">2</span><span style="color:#f92672">:</span> tile[<span style="color:#ae81ff">2</span>][<span style="color:#ae81ff">0</span>]
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>Thread <span style="color:#ae81ff">31</span><span style="color:#f92672">:</span> tile[<span style="color:#ae81ff">31</span>][<span style="color:#ae81ff">0</span>]
+</span></span></code></pre></div><p>同理，得到，这些线程访问的地址如下：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-s" data-lang="s"><span style="display:flex;"><span>Thread id<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span><span style="color:#f92672">:</span> Address <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (threadIdx.x <span style="color:#f92672">*</span> <span style="color:#ae81ff">32</span> <span style="color:#f92672">+</span> threadIdx.y) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=&gt;</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (<span style="color:#ae81ff">0</span> <span style="color:#f92672">*</span> <span style="color:#ae81ff">32</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">0</span>) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>Thread id<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span><span style="color:#f92672">:</span> Address <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (threadIdx.x <span style="color:#f92672">*</span> <span style="color:#ae81ff">32</span> <span style="color:#f92672">+</span> threadIdx.y) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=&gt;</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (<span style="color:#ae81ff">1</span> <span style="color:#f92672">*</span> <span style="color:#ae81ff">32</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">0</span>) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=</span> <span style="color:#ae81ff">128</span>
+</span></span><span style="display:flex;"><span>Thread id<span style="color:#f92672">=</span><span style="color:#ae81ff">2</span><span style="color:#f92672">:</span> Address <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (threadIdx.x <span style="color:#f92672">*</span> <span style="color:#ae81ff">32</span> <span style="color:#f92672">+</span> threadIdx.y) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=&gt;</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (<span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> <span style="color:#ae81ff">32</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">0</span>) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=</span> <span style="color:#ae81ff">256</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">...</span>
+</span></span><span style="display:flex;"><span>Thread id<span style="color:#f92672">=</span><span style="color:#ae81ff">31</span><span style="color:#f92672">:</span> Address <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (threadIdx.x <span style="color:#f92672">*</span> <span style="color:#ae81ff">32</span> <span style="color:#f92672">+</span> threadIdx.y) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=&gt;</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (<span style="color:#ae81ff">31</span> <span style="color:#f92672">*</span> <span style="color:#ae81ff">32</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">0</span>) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=</span> <span style="color:#ae81ff">3968</span>
+</span></span></code></pre></div><p>这些地址值<strong>都是 Bank0 的地址</strong>，所以会有严重的 Bank conflict。</p>
+<h3 id="通过-padding-避免-bank-conflict-的情况">通过 Padding 避免 Bank Conflict 的情况<a hidden class="anchor" aria-hidden="true" href="#通过-padding-避免-bank-conflict-的情况">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>__shared__ <span style="color:#66d9ef">float</span> tile[TILE_DIM][TILE_DIM <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>]; <span style="color:#75715e">// __shared__ float tile[32][33];
+</span></span></span></code></pre></div><p>既然上面 <code>threadIdx.y</code> 都为 0 时，严重的conflict。一个 warp (32 个线程) 中的线程访问 tile 数组，假设这些线程的 threadIdx.y 都为 0，而 threadIdx.x 从 0 到 31：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// tile[threadIdx.x][threadsIdx.y]
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>Thread <span style="color:#ae81ff">0</span><span style="color:#f92672">:</span> tile[<span style="color:#ae81ff">0</span>][<span style="color:#ae81ff">0</span>]
+</span></span><span style="display:flex;"><span>Thread <span style="color:#ae81ff">1</span><span style="color:#f92672">:</span> tile[<span style="color:#ae81ff">1</span>][<span style="color:#ae81ff">0</span>]
+</span></span><span style="display:flex;"><span>Thread <span style="color:#ae81ff">2</span><span style="color:#f92672">:</span> tile[<span style="color:#ae81ff">2</span>][<span style="color:#ae81ff">0</span>]
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>Thread <span style="color:#ae81ff">31</span><span style="color:#f92672">:</span> tile[<span style="color:#ae81ff">31</span>][<span style="color:#ae81ff">0</span>]
+</span></span></code></pre></div><p>同理，得到，这些线程访问的地址如下：注意此时 <code>num_cols = 33</code>，  ***</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-s" data-lang="s"><span style="display:flex;"><span>Thread id<span style="color:#f92672">=</span><span style="color:#ae81ff">0</span><span style="color:#f92672">:</span> Address <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (threadIdx.x <span style="color:#f92672">*</span> <span style="color:#ae81ff">33</span> <span style="color:#f92672">+</span> threadIdx.y) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=&gt;</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (<span style="color:#ae81ff">0</span> <span style="color:#f92672">*</span> <span style="color:#ae81ff">33</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">0</span>) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>Thread id<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span><span style="color:#f92672">:</span> Address <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (threadIdx.x <span style="color:#f92672">*</span> <span style="color:#ae81ff">33</span> <span style="color:#f92672">+</span> threadIdx.y) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=&gt;</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (<span style="color:#ae81ff">1</span> <span style="color:#f92672">*</span> <span style="color:#ae81ff">33</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">0</span>) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=</span> <span style="color:#ae81ff">132</span>
+</span></span><span style="display:flex;"><span>Thread id<span style="color:#f92672">=</span><span style="color:#ae81ff">2</span><span style="color:#f92672">:</span> Address <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (threadIdx.x <span style="color:#f92672">*</span> <span style="color:#ae81ff">33</span> <span style="color:#f92672">+</span> threadIdx.y) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=&gt;</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (<span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> <span style="color:#ae81ff">33</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">0</span>) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=</span> <span style="color:#ae81ff">264</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">...</span>
+</span></span><span style="display:flex;"><span>Thread id<span style="color:#f92672">=</span><span style="color:#ae81ff">31</span><span style="color:#f92672">:</span> Address <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (threadIdx.x <span style="color:#f92672">*</span> <span style="color:#ae81ff">33</span> <span style="color:#f92672">+</span> threadIdx.y) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=&gt;</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">+</span> (<span style="color:#ae81ff">31</span> <span style="color:#f92672">*</span> <span style="color:#ae81ff">33</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">0</span>) <span style="color:#f92672">*</span> <span style="color:#ae81ff">4</span>B <span style="color:#f92672">=</span> <span style="color:#ae81ff">4092</span>
+</span></span></code></pre></div><p>现在，计算每个线程访问的 Bank：</p>
+<p><code>Bank = Address % (Number of Banks * Bank Width) / Bank Width</code></p>
+<p>即：</p>
+<p><code>Bank = Address % (32 * 4) / 4 = Address % 128 / 4</code></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-s" data-lang="s"><span style="display:flex;"><span>Thread <span style="color:#ae81ff">0</span><span style="color:#f92672">:</span> Bank <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">% 128 / 4 = 0
+</span></span></span><span style="display:flex;"><span><span style="color:#f92672">Thread 1: Bank = 132 %</span> <span style="color:#ae81ff">128</span> <span style="color:#f92672">/</span> <span style="color:#ae81ff">4</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">4</span> <span style="color:#f92672">/</span> <span style="color:#ae81ff">4</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>Thread <span style="color:#ae81ff">2</span><span style="color:#f92672">:</span> Bank <span style="color:#f92672">=</span> <span style="color:#ae81ff">264</span> <span style="color:#f92672">% 128 / 4 = 8 / 4 = 2
+</span></span></span><span style="display:flex;"><span><span style="color:#f92672">...
+</span></span></span><span style="display:flex;"><span><span style="color:#f92672">Thread 31: Bank = 4092 %</span> <span style="color:#ae81ff">128</span> <span style="color:#f92672">/</span> <span style="color:#ae81ff">4</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">124</span> <span style="color:#f92672">/</span> <span style="color:#ae81ff">4</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">31</span>
+</span></span></code></pre></div><p>现在，每个线程访问不同的 Bank，因此避免了 Bank Conflict！</p>
+<h3 id="extra-如果线程配置是-dim3-blockdim32-32">extra 如果线程配置是 <code>dim3 blockDim(32, 32)</code><a hidden class="anchor" aria-hidden="true" href="#extra-如果线程配置是-dim3-blockdim32-32">#</a></h3>
+<p><strong>在一个 Warp 中，线程的 threadIdx.x 是连续的，而 threadIdx.y 相同</strong>。例如，第一个 Warp 的线程的 <code>threadIdx.x</code> 从 0 到 31，<code>threadIdx.y</code> 都为 0。</p>
+<p>对于第一个 Warp 中的线程，其内存（内存访问模式）的地址和 上述 <code>dim3 blockDim(32, 1)</code> 情况一模一样。</p>
+<p>这才是实际的情况，一定会有 Bank conflict。</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/cuda/">CUDA</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/shared-memory/">Shared Memory</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/bank/">Bank</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

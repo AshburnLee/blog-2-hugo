@@ -1,0 +1,411 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Reinforcement Learning on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/reinforcement-learning/</link>
+    <description>Recent content in Reinforcement Learning on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:52:05 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/reinforcement-learning/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>1.9.A2C</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/1-9.a2c/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:05 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/1-9.a2c/</guid>
+      <description>&lt;p&gt;回顾 ppo-from scratch 后，在总结这篇文章。&lt;/p&gt;
+&lt;p&gt;前面已经了解了 Policy-based 的方法的理论，这里学习 Policy-based 的一个算法：&lt;/p&gt;
+&lt;p&gt;1-7 中学习了 Reinforce 是 Policy-Based 方法的一个子类，称为 Policy-Gradient methods。这个子类通过估计最优策略的权重来直接优化策略，使用梯度上升的方法。&lt;/p&gt;
+&lt;p&gt;Policy-Based methods 直接参数化策略并优化策略，而不使用价值函数。&lt;/p&gt;
+&lt;h2 id=&#34;问题是蒙特卡洛采样的估计方差很大&#34;&gt;问题是蒙特卡洛采样的估计方差很大&lt;/h2&gt;
+&lt;p&gt;MC 的思想是使用完整的 episode 样本来估计回报，而这个过程就是一种采样。通过策略采样生成&lt;strong&gt;各个 Episode 的路径&lt;/strong&gt;（s,a,r的序列），然后使用 episode 中的实际奖励来计算回报，最后通过对多个 episode 的回报和策略梯度进行平均来估计整体的策略梯度。&lt;/p&gt;
+&lt;p&gt;这种方式的估计会导致 策略梯度估计的方差（variance）很大。&lt;/p&gt;
+&lt;h2 id=&#34;方差来源&#34;&gt;方差来源&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;随机性&lt;/strong&gt;：强化学习环境通常具有随机性。这意味着即使在相同的状态下采取相同的动作，也可能获得不同的奖励，并导致不同的后续状态。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;episode 长度&lt;/strong&gt;：episode 的长度可能会有很大的变化。有些 episode 可能很短，而有些 episode 可能很长。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;奖励的稀疏性&lt;/strong&gt;：在某些环境中，奖励可能非常稀疏。这意味着智能体可能需要运行很长时间才能获得一个正面的奖励。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;高方差的影响&#34;&gt;高方差的影响&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;不稳定的学习&lt;/strong&gt;：高方差会导致策略梯度估计不稳定，使得策略参数的更新方向波动很大。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;缓慢的收敛&lt;/strong&gt;：高方差会减慢算法的收敛速度，使得智能体需要更长的时间才能学习到最优策略。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;对学习率的敏感性&lt;/strong&gt;：高方差会使得算法对学习率的选择非常敏感。如果学习率太大，可能会导致策略参数的更新方向错误；如果学习率太小，可能会导致学习速度过慢。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;actor-critic-methods&#34;&gt;Actor-Critic methods&lt;/h2&gt;
+&lt;p&gt;Actor-Critic 方法，这是一种结合了价值方法和策略方法的混合架构，通过减小方差，来 Stablilize 训练过程。&lt;/p&gt;
+&lt;h2 id=&#34;理解-actor-critic&#34;&gt;理解 Actor-Critic&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;Actor（行动者）：负责控制智能体的行为方式（基于策略的方法）。&lt;/li&gt;
+&lt;li&gt;Critic（评论者）：负责评估所采取的行动的好坏（基于价值的方法）。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Actor 负责学习策略，决定在给定状态下应该采取什么动作；Critic 负责评估 Actor 的策略，告诉 Actor 它做得好不好。通过 Actor 和 Critic 的相互协作，可以更有效地学习到最优策略。&lt;/p&gt;
+&lt;p&gt;Actor 根据 Critic 的评价来调整自己的策略。如果 Critic 认为某个动作是好的，Actor 就会更倾向于采取这个动作；如果 Critic 认为某个动作是坏的，Actor 就会&lt;strong&gt;减少采取这个动作的概率&lt;/strong&gt;。通过不断地学习和调整，Actor 最终可以学会一套最优的游戏策略。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Concept</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/concept/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:05 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/concept/</guid>
+      <description>&lt;h2 id=&#34;环境包装器-environment-wrappers&#34;&gt;环境包装器 (environment wrappers)&lt;/h2&gt;
+&lt;p&gt;是一种修改现有环境而不直接更改其底层代码的便捷方法 . 包装器允许您避免大量重复代码，并使您的环境更模块化 . 重要的是，包装器可以链接起来以组合它们的效果，并且大多数通过 gym.make() 【python gymnasium 包】生成的环境默认情况下已经被包装。&lt;/p&gt;
+&lt;h3 id=&#34;环境包装器的作用&#34;&gt;环境包装器的作用:&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;转换 Actions (动作)：&lt;/li&gt;
+&lt;li&gt;转换 Observations (观测)：&lt;/li&gt;
+&lt;li&gt;转换 Rewards (奖励)：&lt;/li&gt;
+&lt;li&gt;自动重置环境：有些用户可能想要一个包装器，当其包装的环境达到完成状态时，该包装器将自动重置其包装的环境。这种环境的一个优点是，当超出完成状态时，它永远不会像标准 gym 环境那样产生未定义的行为。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;如何使用包装器&#34;&gt;如何使用包装器&lt;/h3&gt;
+&lt;p&gt;要包装一个环境，您必须首先初始化一个基本环境。 然后，您可以将此环境以及（可能可选的）参数传递给包装器的构造函数&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; gymnasium &lt;span style=&#34;color:#66d9ef&#34;&gt;as&lt;/span&gt; gym
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#f92672&#34;&gt;from&lt;/span&gt; gymnasium.wrappers &lt;span style=&#34;color:#f92672&#34;&gt;import&lt;/span&gt; RescaleAction
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 创建一个基本环境&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;base_env &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; gym&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;make(&lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;Hopper-v4&amp;#34;&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 使用 RescaleAction 包装器，将动作范围缩放到 [0, 1]&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;wrapped_env &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; RescaleAction(base_env, min_action&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;0&lt;/span&gt;, max_action&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;&lt;span style=&#34;color:#ae81ff&#34;&gt;1&lt;/span&gt;)
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h3 id=&#34;gymnasium-中的常见包装器&#34;&gt;Gymnasium 中的常见包装器&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;gymnasium.Wrapper: 所有包装器的基类&lt;/li&gt;
+&lt;li&gt;gymnasium.ActionWrapper: 用于转换动作的包装器&lt;/li&gt;
+&lt;li&gt;gymnasium.ObservationWrapper: 用于转换观测的包装器&lt;/li&gt;
+&lt;li&gt;gymnasium.RewardWrapper: 用于转换奖励的包装器&lt;/li&gt;
+&lt;li&gt;gym.wrappers.AutoResetWrapper: 用于自动重置环境的包装器&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;环境包装器是强化学习中一个强大的工具，可以帮助您修改和定制环境，以满足您的特定需求。它们提供了一种模块化和可重用的方式来转换动作、观测和奖励，并添加其他功能。&lt;/p&gt;
+&lt;h2 id=&#34;归一化&#34;&gt;归一化&lt;/h2&gt;
+&lt;p&gt;为什么RL 需要归一化？&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;提高训练稳定性：归一化可以使神经网络的输入或输出值接近正态分布，这有&lt;strong&gt;助于激活函数正常工作&lt;/strong&gt;，并避免随机初始化的参数需要被过度调整. 它可以减少模型对初始化的敏感性，使得训练过程更加稳定。&lt;/li&gt;
+&lt;li&gt;加速收敛：归一化消除了数据特征之间的&lt;strong&gt;量纲影响&lt;/strong&gt;，使得梯度下降算法更快地找到全局最优解，从而加速模型的收敛速度。&lt;/li&gt;
+&lt;li&gt;提高泛化能力：归一化可以减少&lt;strong&gt;特征之间的相关性&lt;/strong&gt;，从而提高模型的稳定性和精度，增强模型的泛化能力。&lt;/li&gt;
+&lt;li&gt;允许使用更高的学习率：归一化可以使&lt;strong&gt;参数空间更加平滑&lt;/strong&gt;，因此可以使用更高的学习率，而不会导致训练过程不稳定。&lt;/li&gt;
+&lt;li&gt;解决数据可比性问题：归一化可以将&lt;strong&gt;有量纲转化为无量纲&lt;/strong&gt;，同时将数据归一化至同一量级，解决数据间的可比性问题。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;bellman-方程&#34;&gt;Bellman 方程&lt;/h2&gt;
+&lt;p&gt;Value-based methods 通过迭代更新价值函数来学习。更新的依据是 贝尔曼方程 (Bellman Equation)，该方程描述了当前状态的价值与未来状态的价值之间的关系&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>1.4.DQN</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/1-4.dqn/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:04 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/1-4.dqn/</guid>
+      <description>&lt;h2 id=&#34;deep-q-learning-dqn&#34;&gt;Deep-Q-learning (DQN)&lt;/h2&gt;
+&lt;h3 id=&#34;环境&#34;&gt;环境&lt;/h3&gt;
+&lt;p&gt;与环境有关，简单的环境中，state的可选个数（state space）是有限的， (16 different states for FrozenLake-v1 and 500 for Taxi-v3)，但是对于大部分都环境，State space 非常大，比如 10^9 到 10^11 个可选state。如此以来，更新 Q-table 就会非常低效。&lt;/p&gt;
+&lt;p&gt;所以最好的方法是使用一个参数化的 Q-function（ Qθ​(s,a)，theta 是网络参数 ）来估计 Q-value。&lt;/p&gt;
+&lt;p&gt;Deep Q-learning，不适用 Q-table ，而是通过一个NN，这个NN 根据一个state，给出这个 state 时不同 Action 的Q-value。&lt;/p&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th style=&#34;text-align: center&#34;&gt;&lt;img alt=&#34;Q vs deep Q&#34; loading=&#34;lazy&#34; src=&#34;https://ashburnLee.github.io/blog-2-hugo/pics/deep.jpg&#34;&gt;&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td style=&#34;text-align: center&#34;&gt;&lt;em&gt;Q vs deep Q&lt;/em&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3 id=&#34;loss-function&#34;&gt;Loss function&lt;/h3&gt;
+&lt;p&gt;创建一个损失函数，比较 Q-value预测 和 Q-target，并使用梯度下降来更新深度 Q 网络的权重以更好地近似 Q-value。&lt;/p&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th style=&#34;text-align: center&#34;&gt;&lt;img alt=&#34;图片描述&#34; loading=&#34;lazy&#34; src=&#34;https://ashburnLee.github.io/blog-2-hugo/pics/Q-target.jpg&#34;&gt;&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td style=&#34;text-align: center&#34;&gt;&lt;em&gt;Q-loss 这样计算&lt;/em&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h2 id=&#34;相同与q-learning&#34;&gt;相同与Q-learning&lt;/h2&gt;
+&lt;p&gt;还是会用到 epsilon-greedy policy 确定在当前 state 执行哪个Action。&lt;/p&gt;
+&lt;h2 id=&#34;输入预处理&#34;&gt;输入预处理&lt;/h2&gt;
+&lt;p&gt;减少不必要的计算量，减少输入的不必要信息。通常，讲reduce frame 的尺寸，并且讲frame 灰度化（这个场景下，颜色并不会指导Agent的行为，反而增加不用计算量）。即将RGB 3通道改为1个通道。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>1.6.tools Find Parameters</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/1-6.tools-find-parameters/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:04 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/1-6.tools-find-parameters/</guid>
+      <description>&lt;p&gt;&lt;a href=&#34;https://www.youtube.com/watch?v=AidFTOdGNFQ&#34;&gt;来自&lt;/a&gt;&lt;/p&gt;
+&lt;h1 id=&#34;optuna&#34;&gt;Optuna&lt;/h1&gt;
+&lt;p&gt;Deep RL 中有一个重要的任务是找到好的训练超参数。库&lt;a href=&#34;https://optuna.org/&#34;&gt;Optuna&lt;/a&gt; 帮助自动化这个搜索。&lt;/p&gt;
+&lt;h1 id=&#34;自动化超参数微调&#34;&gt;自动化超参数微调&lt;/h1&gt;
+&lt;p&gt;什么是超参数：是需要手动设置参数，不会通过学习算法本身进行优化，不模型内部的参数不同，超参数是需要在模型开始训练前就设定好。&lt;/p&gt;
+&lt;p&gt;在强化学习中，常见的超参数包括：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;学习率 (Learning Rate)：控制 Q 网络或策略更新的幅度。&lt;/li&gt;
+&lt;li&gt;折扣因子 (Discount Factor)：决定未来奖励对当前决策的影响程度。&lt;/li&gt;
+&lt;li&gt;探索率 (Exploration Rate)：控制智能体探索环境的程度。&lt;/li&gt;
+&lt;li&gt;回放缓冲区大小 (Replay Buffer Size)：决定存储多少经验样本。&lt;/li&gt;
+&lt;li&gt;批量大小 (Batch Size)：每次更新网络时使用的样本数量。&lt;/li&gt;
+&lt;li&gt;神经网络结构 (Network Architecture)：例如，神经网络的层数和每层的神经元数量。&lt;/li&gt;
+&lt;li&gt;优化器 (Optimizer)：例如，Adam、RMSprop 等。&lt;/li&gt;
+&lt;li&gt;目标网络更新频率 (Target Network Update Frequency)：控制目标 Q 网络更新的频率。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;为什么要搜索超参数？超参数的选择对强化学习算法的性能有很大影响。不同的超参数值可能导致算法收敛速度、稳定性和最终性能的显著差异。&lt;/p&gt;
+&lt;p&gt;常见超参数搜索方法：Manual Search，Grid Search, Random Search, Bayesian Optimization，Evolutionary Algorithms, 模拟退火等随机性算法。&lt;/p&gt;
+&lt;p&gt;自动超参数微调的组件: Sampling &amp;amp;&amp;amp; Schedular，&lt;/p&gt;
+&lt;h2 id=&#34;1-sampler搜索算法如何选择采样点&#34;&gt;1. Sampler，搜索算法，如何选择采样点？&lt;/h2&gt;
+&lt;p&gt;在搜索空间中搜索最优解的问题。&lt;/p&gt;
+&lt;p&gt;给定一个搜索空间（也称为解空间或状态空间）和一个目标函数（也称为适应度函数或成本函数），目标是在搜索空间中找到使目标函数达到最大值（或最小值）的解。&lt;/p&gt;
+&lt;p&gt;本质上是一个优化问题 (Optimization Problem)。&lt;/p&gt;
+&lt;p&gt;优化问题可表示为：&lt;/p&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code&gt;maximize f(x)   或   minimize f(x)
+subject to x ∈ S
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;x属于搜索空间，找到一个x使得目标函数最大化或最小化。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>1.7.Policy Bases Methods</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/1-7.policy-bases-methods/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:04 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/1-7.policy-bases-methods/</guid>
+      <description>&lt;p&gt;RL 的目的是找到一个最优的 Policy，使得它可以找到 expected cumulative reward。&lt;/p&gt;
+&lt;p&gt;方法有：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&#34;https://ashburnLee.github.io/blog-2-hugo/rl/1-1.value-bases-methods/&#34;&gt;Value-Based&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;Policy-Based&lt;/li&gt;
+&lt;li&gt;Actor-Critic&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1 id=&#34;policy-based-方法&#34;&gt;Policy-based 方法&lt;/h1&gt;
+&lt;p&gt;Policy-based 方法直接学习一个策略，该策略将 State 映射到 Action 的概率分布。策略可以是确定性的 (deterministic)，即在给定状态下选择一个特定的行动；也可以是随机的 (stochastic)，即在给定状态下，对所有可能的行动给出一个概率分布。&lt;/p&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th style=&#34;text-align: center&#34;&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://ashburnLee.github.io/blog-2-hugo/pics/stochastic_policy.png&#34;&gt;&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td style=&#34;text-align: center&#34;&gt;&lt;em&gt;输入一个state，输出一个概率分布&lt;/em&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h1 id=&#34;policy-based-方法的核心&#34;&gt;Policy-based 方法的核心&lt;/h1&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;策略参数化&lt;/strong&gt; (Policy Parameterization)：使用一个参数化的函数来表示策略。例如，可以使用神经网络来表示策略，网络的输入是状态，输出是行动的概率分布。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;目标函数&lt;/strong&gt; (Objective Function)：定义一个目标函数，用于评估策略的性能。目标函数通常是期望累积奖励 (expected cumulative reward)。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;策略优化&lt;/strong&gt; (Policy Optimization)：使用优化算法来调整策略的参数，以最大化目标函数。常用的优化算法包括梯度上升 (gradient ascent) 和进化算法 (evolutionary algorithms)。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1 id=&#34;policy-gradient-方法及常见实现&#34;&gt;Policy-Gradient 方法及常见实现&lt;/h1&gt;
+&lt;p&gt;直接对 Policy 求梯度，然后更新参数。而非间接地寻找最优 Policy。&lt;/p&gt;
+&lt;p&gt;Policy-Gradient 方法是 Policy-based 方法中最常用的一类算法。它使用&lt;strong&gt;梯度上升&lt;/strong&gt;来优化策略参数。常见实现：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Trust Region Policy Optimization&lt;/strong&gt; (TRPO)：一种改进的 Policy-Gradient 方法，可以提高训练稳定性。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;&lt;strong&gt;Proximal Policy Optimization&lt;/strong&gt; (PPO)：一种更简单、更高效的 TRPO 变体。&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1 id=&#34;policy-based-方法的一般步骤是什么&#34;&gt;Policy-Based 方法的一般步骤是什么？&lt;/h1&gt;
+&lt;p&gt;&lt;a href=&#34;https://ashburnLee.github.io/blog-2-hugo/rl/1-13.ppo-from-scratch/&#34;&gt;见ppo&lt;/a&gt;&lt;/p&gt;
+&lt;h1 id=&#34;policy-gradient-policy-参数更新&#34;&gt;Policy-gradient policy 参数更新&lt;/h1&gt;
+&lt;p&gt;有个目标函数 &lt;code&gt;J(θ)&lt;/code&gt;,  通过更新参数 &lt;code&gt;θ&lt;/code&gt; 最大化这个目标函数，方法是梯度上升：&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>1.11.MARL</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/1-11.marl/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:03 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/1-11.marl/</guid>
+      <description>&lt;p&gt;之前的内容，我们的环境中的只有一个 Agent，现实中，一个人是会与环境和环境中的其他 Agent 交互的。&lt;/p&gt;
+&lt;p&gt;所以实际的需求是，我们希望可以在一个 Multi-agent system 中训练一个更加鲁棒的，可以适应并与其他 Agent 或人类合作。&lt;/p&gt;
+&lt;h2 id=&#34;marl&#34;&gt;MARL&lt;/h2&gt;
+&lt;p&gt;一个 Agent 只是与环境交互，多个 Agent 除了与环境交互，还要和其他 Agent 交互，所以Agent之间的交互可以分为以下：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;合作：Agents 需要最大化 common 收益。&lt;/li&gt;
+&lt;li&gt;竞争：Agents 需要最大化自己的收益，同时尽可能减少其他Agent的收益。&lt;/li&gt;
+&lt;li&gt;混合：Agent 需要最大化己方的收益，同时减少敌队的收益。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;在-multi-agent-中-如何训练我们的-agent&#34;&gt;在 Multi-Agent 中 如何训练我们的 Agent&lt;/h2&gt;
+&lt;p&gt;两种解决方法来设计 MARL&lt;/p&gt;
+&lt;h3 id=&#34;1-去中心化的&#34;&gt;1. 去中心化的&lt;/h3&gt;
+&lt;p&gt;每个 Agent 独立训练，就行之前的single agent一样，其他agent作为环境的一部分，只不过对于这个agent而言，这个环境变为动态的了。去中心化的设计，是 Non-Stationary 的， Markov decision process 一直在变化，导致agent永远不能学习到全局最优解。&lt;/p&gt;
+&lt;h3 id=&#34;2-中心化的&#34;&gt;2. 中心化的&lt;/h3&gt;
+&lt;p&gt;讲多个 Agents 视为一个 Entity ，他们共同学习一个相同的Policy。这时代 Reward 是全局的。&lt;/p&gt;
+&lt;h2 id=&#34;self-play&#34;&gt;Self-Play&lt;/h2&gt;
+&lt;p&gt;当对手太强时，你的Agent 总是会失败，是学习不到任何东西的。当对手它弱时，你的Agent总是胜利，总是 overlearn 一些没有用的行为。这两种情况，你的Agent都不能学习到好的Policy。&lt;/p&gt;
+&lt;p&gt;最好的解决方案是有一个对手，它的水平和你一样，并且随着你的水平的提升而升级。这就是 Self_play。&lt;/p&gt;
+&lt;p&gt;将自己拷贝一份作为自己的 对手，如此一来，你的Agent 的对手的水平就和你的水平是一样的（打败它会有挑战，但是不会太困难）。也就是，对手的Policy也是在逐渐变好（增强）的，你的Agent的policy也是逐渐增强的。&lt;/p&gt;
+&lt;p&gt;这种机制是很自然的。没啥新的东西。&lt;/p&gt;
+&lt;p&gt;Self_play 已经集成在了 Multi-Agent 库中，我们要关注的是超参数。这是个实例：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-yml&#34; data-lang=&#34;yml&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#f92672&#34;&gt;self_play&lt;/span&gt;:
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;save_steps&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;50000&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;team_change&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;200000&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;swap_steps&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;2000&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;window&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;10&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;play_against_latest_model_ratio&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;0.5&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;      &lt;span style=&#34;color:#f92672&#34;&gt;initial_elo&lt;/span&gt;: &lt;span style=&#34;color:#ae81ff&#34;&gt;1200.0&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;elo-score&#34;&gt;ELO Score&lt;/h2&gt;
+&lt;p&gt;在对抗游戏中，通常使用 ELO Score 来评估 Agent 的水平。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>1.12.PPO</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/1-12.ppo/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:03 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/1-12.ppo/</guid>
+      <description>&lt;p&gt;&lt;strong&gt;Proximal Policy Optimization&lt;/strong&gt; 是基于 Actor-Critic 的一种算法，它的核&lt;strong&gt;心是通过不让 Policy 更新的太快，进而稳定训练过程&lt;/strong&gt;（与 KL div 所用类似）。&lt;/p&gt;
+&lt;p&gt;为达成以上，使用使用一个比率来表示当前策略和旧策略之间的差异，并将此比率裁剪到特定的范围 $[1-\epsilon, 1+\epsilon]$ 中。&lt;/p&gt;
+&lt;h2 id=&#34;intuition&#34;&gt;Intuition&lt;/h2&gt;
+&lt;p&gt;当前策略（current policy）相对于之前策略（former policy）的变化程度 进行剪裁，这个范围通常是 $[1-\epsilon, 1+\epsilon]$ ，其中 $\epsilon$ 是一个小的超参数（例如0.2）。 如果比例小于 $1 - \epsilon$ ，则将其设置为 $1 - \epsilon$；如果比例大于 $1 + \epsilon$ ，则将其设置为 $1 + \epsilon$。&lt;/p&gt;
+&lt;p&gt;所以 PPO 算法不允许当前策略相对于之前策略发生过大的变化。较之前策略&lt;strong&gt;过大的偏离将会被移除&lt;/strong&gt;，通过上述的 Clip 区间。&lt;/p&gt;
+&lt;h2 id=&#34;举例说明&#34;&gt;举例说明&lt;/h2&gt;
+&lt;p&gt;假设 $\epsilon = 0.2$，当前策略和之前策略在状态 s 下采取动作 a 的概率如下：&lt;/p&gt;
+&lt;p&gt;$π_θ(a|s) = 0.8$（当前策略）, $π_θ^{old}(a|s) = 0.5$（之前策略）&lt;/p&gt;
+&lt;p&gt;则比例为：&lt;code&gt;ratio = 0.8 / 0.5 = 1.6&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;由于 $1.6 &amp;gt; (1 + \epsilon) = 1.2$，因此需要对比例进行裁剪，将其设置为 &lt;code&gt;1.2&lt;/code&gt;。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>1.13.PPO From Scratch</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/1-13.ppo-from-scratch/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:03 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/1-13.ppo-from-scratch/</guid>
+      <description>&lt;h1 id=&#34;工具&#34;&gt;工具&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;MuJoCo&lt;/strong&gt; environments 指的是使用 MuJoCo 物理引擎构建的模拟环境 . MuJoCo (Multi-Joint dynamics with Contact) 是一款用于机器人、生物力学、图形和动画等领域的研究和开发的物理引擎，它能够进行快速而精确的仿真。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;CartPole-v1&lt;/strong&gt; 环境主要存在于 Gymnasium 库中，它是 Gym 库的后继者 。Gym 库已经停止更新，所有开发工作都已转移到 Gymnasium。&lt;/p&gt;
+&lt;h2 id=&#34;cartpole-v1-环境信息&#34;&gt;CartPole-v1 环境信息&lt;/h2&gt;
+&lt;p&gt;首先要知道 CartPole-v1 环境的动作和观测空间：&lt;/p&gt;
+&lt;h3 id=&#34;1-动作空间-action-space&#34;&gt;1. 动作空间 (Action Space):&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;类型: Discrete(2)&lt;/li&gt;
+&lt;li&gt;动作数量: 2&lt;/li&gt;
+&lt;li&gt;取值：
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;0: 将车向左推&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;1: 将车向右推&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;2-观测空间-observation-space&#34;&gt;2. 观测空间 (Observation Space):&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;类型: Box(4,)&lt;/li&gt;
+&lt;li&gt;观测数量: 4&lt;/li&gt;
+&lt;li&gt;取值：
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;0: 车的位置（Cart Position）&lt;/strong&gt;，范围为 &lt;code&gt;[-4.8, 4.8]&lt;/code&gt;，但如果超出 &lt;code&gt;[-2.4, 2.4]&lt;/code&gt; 范围，则 episode 结束&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;1: 车的速度（Cart Velocity）&lt;/strong&gt;，范围为 &lt;code&gt;[-Inf, Inf]&lt;/code&gt;。&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;2: 杆的角度（Pole Angle）&lt;/strong&gt;，范围约为 &lt;code&gt;[-0.418 rad (-24°), 0.418 rad (24°)]&lt;/code&gt;，但如果超出 &lt;code&gt;[-0.2095, 0.2095]&lt;/code&gt; (±12°) 范围，则 episode 结束&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;3: 杆的角速度（Pole Angular Velocity）&lt;/strong&gt;，范围为 &lt;code&gt;[-Inf, Inf]&lt;/code&gt;。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;kaq-observation-和-state的区别&#34;&gt;KAQ: Observation 和 State的区别&lt;/h3&gt;
+&lt;p&gt;在完全可观测环境中（如CartPole），&lt;strong&gt;Agent 可以直接获取环境的真实状态，即 observation 等于 state&lt;/strong&gt;。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>1.2.Q Learning</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/1-2.q-learning/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:03 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/1-2.q-learning/</guid>
+      <description>&lt;h2 id=&#34;q-learning中的元素&#34;&gt;Q-learning中的元素&lt;/h2&gt;
+&lt;p&gt;Q-learning 算法中的 Q-function 就是 value-based 方法中的价值函数。Q-table 存储了 Q-function 的价值估计。&lt;/p&gt;
+&lt;p&gt;Q-table 是一种表示 Q-function 的一种具体实现方式。适用于状态空间和动作空间都是&lt;strong&gt;离散且有限&lt;/strong&gt;的情况。当状态空间或动作空间很大时，需要使用其他函数逼近方法 来表示Q-function。Q-learning 更新规则就是更新 Q-table，即 Q-Learning 的更新规则直接作用于 Q-table，用于更新 Q-table 中存储的价值估计。通过不断地更新 Q-table，Q-Learning 可以学习到最优的 Q-function，从而帮助 Agent 做出最优的决策。&lt;/p&gt;
+&lt;p&gt;Q-learning 是一种 TD approach 来训练Agent的 action-value function。使用全零初始化 Q-table，通过学习，将得到 optimal 的 Q-table 作为 Agent 的 cheat-sheet.&lt;/p&gt;
+&lt;h2 id=&#34;recap-cumulative-reward-vs-immediate-reward&#34;&gt;Recap: Cumulative Reward VS Immediate Reward&lt;/h2&gt;
+&lt;p&gt;一个 State 的 Value，或者 Q-table 中的 State-action 对儿，是 Agent 从当前 State 开始到结束的 Cumulative Reward&lt;/p&gt;
+&lt;p&gt;Reward 是 Agent 在某个状态下执行操作后，从当前 State 中得到的及时反馈。&lt;/p&gt;
+&lt;h2 id=&#34;q-learning-算法&#34;&gt;Q-learning 算法&lt;/h2&gt;
+&lt;p&gt;&lt;img alt=&#34;Q&#34; loading=&#34;lazy&#34; src=&#34;https://ashburnLee.github.io/blog-2-hugo/pics/Q-learning-2.png&#34;&gt;&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>0 1.学习路径 Source</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/0-1.%E5%AD%A6%E4%B9%A0%E8%B7%AF%E5%BE%84-source/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:02 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/0-1.%E5%AD%A6%E4%B9%A0%E8%B7%AF%E5%BE%84-source/</guid>
+      <description>&lt;p&gt;&lt;a href=&#34;https://stable-baselines3.readthedocs.io/en/master/guide/rl.html&#34;&gt;https://stable-baselines3.readthedocs.io/en/master/guide/rl.html&lt;/a&gt;&lt;/p&gt;
+&lt;h2 id=&#34;openai-spinning-up&#34;&gt;OpenAI Spinning Up&lt;/h2&gt;
+&lt;h2 id=&#34;the-deep-reinforcement-learning-course&#34;&gt;The Deep Reinforcement Learning Course&lt;/h2&gt;
+&lt;h2 id=&#34;david-silvers-course&#34;&gt;David Silver’s course&lt;/h2&gt;
+&lt;h2 id=&#34;lilian-wengs-blog&#34;&gt;Lilian Weng’s blog&lt;/h2&gt;
+&lt;h2 id=&#34;berkeleys-deep-rl-bootcamp&#34;&gt;Berkeley’s Deep RL Bootcamp&lt;/h2&gt;
+&lt;h2 id=&#34;berkeleys-deep-reinforcement-learning-course&#34;&gt;Berkeley’s Deep Reinforcement Learning course&lt;/h2&gt;
+&lt;h2 id=&#34;dqn-tutorial&#34;&gt;DQN tutorial&lt;/h2&gt;
+&lt;h2 id=&#34;decisions--dragons---faq-for-rl-foundations&#34;&gt;Decisions &amp;amp; Dragons - FAQ for RL foundations&lt;/h2&gt;
+&lt;h2 id=&#34;more-resources&#34;&gt;More resources&lt;/h2&gt;</description>
+    </item>
+    <item>
+      <title>1.0.RL框架</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/1-0.rl%E6%A1%86%E6%9E%B6/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:02 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/1-0.rl%E6%A1%86%E6%9E%B6/</guid>
+      <description>&lt;p&gt;note 来自 &lt;a href=&#34;https://huggingface.co/learn/deep-rl-course/unit0/introduction&#34;&gt;https://huggingface.co/learn/deep-rl-course/unit0/introduction&lt;/a&gt;&lt;/p&gt;
+&lt;h1 id=&#34;the-deep-reinforcement-learning-course&#34;&gt;The Deep Reinforcement Learning Course&lt;/h1&gt;
+&lt;h2 id=&#34;账号&#34;&gt;账号&lt;/h2&gt;
+&lt;p&gt;【done】创建 Hugging Face 账号
+【done】创建 Hugging Face 的 Discord server
+【done】使用 Discord&lt;/p&gt;
+&lt;h2 id=&#34;1-rl-基本理论&#34;&gt;1. RL 基本理论&lt;/h2&gt;
+&lt;p&gt;一个代理（AI）将从环境中通过与环境交互（试错），并接收奖励（正面或负面）作为反馈来学习。所以是无监督的学习。RL 仅仅是从行动中学习的计算方法。&lt;/p&gt;
+&lt;p&gt;RL 的流程是 State、Action、Reward 和下一个 State 的&lt;strong&gt;循环&lt;/strong&gt;。Agent 的目的是最大化累计 Reward。所以 RL 是基于 Reward Hypothesis 的。&lt;/p&gt;
+&lt;p&gt;Markov Decision Process (MDP) 简单讲：马尔可夫性质意味着我们的代理只需要当前状态来决定采取什么行动，而不需要它们之前所有状态的全部历史。&lt;/p&gt;
+&lt;p&gt;Markov Decision Process 有以下要素组成：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;状态空间 (State Space, $S$)：所有可能的状态的集合，$S = {s_1, s_2, \dots}$&lt;/li&gt;
+&lt;li&gt;动作空间 (Action Space, $A$)：所有可能的动作的集合，$A = {a_1, a_2, \dots}$&lt;/li&gt;
+&lt;li&gt;状态转移概率 (Transition Probability, $P(s&amp;rsquo;|s, a)$)：在状态 $s \in S$ 下执行动作 $a \in A$ 后，转移到状态 $s&amp;rsquo; \in S$ 的概率。&lt;/li&gt;
+&lt;li&gt;奖励函数 (Reward Function, $R(s, a)$)：在状态 $s \in S$ 下执行动作 $a \in A$ 后获得的奖励。&lt;/li&gt;
+&lt;li&gt;折扣因子 (Discount Factor, $\gamma$)：用于衡量未来奖励的重要性, $\gamma \in [0, 1)$&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;单 Agent 强化学习中，环境通常被认为是 Stationary 的，这意味着&lt;strong&gt;状态转移概率&lt;/strong&gt; $P$ 和&lt;strong&gt;奖励函数&lt;/strong&gt; $R$ &lt;strong&gt;不会随着时间变化&lt;/strong&gt;。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>1.1.Value Bases Methods</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/1-1.value-bases-methods/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:02 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/1-1.value-bases-methods/</guid>
+      <description>&lt;ol&gt;
+&lt;li&gt;Learn about value-based methods.&lt;/li&gt;
+&lt;li&gt;Learn about the differences between Monte Carlo and Temporal Difference Learning.&lt;/li&gt;
+&lt;li&gt;Study and implement our first RL algorithm: Q-Learning.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h1 id=&#34;value-based-methods&#34;&gt;Value-Based Methods&lt;/h1&gt;
+&lt;p&gt;先给出一个例子：假设你正在玩一个走迷宫的游戏。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;状态 (State): 你当前在迷宫中的位置。&lt;/li&gt;
+&lt;li&gt;策略 (Policy): 你决定如何走迷宫 (例如，总是选择离终点最近的方向)。&lt;/li&gt;
+&lt;li&gt;价值函数 (Value Function): 对于迷宫中的每个位置，价值函数会告诉你，如果你从这个位置开始，按照你的策略走，最终到达终点的可能性有多大 (或者说，你期望获得多少奖励，例如到达终点奖励 +1，每走一步奖励 -0.1)。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Value-based methods 的目标就是学习这个价值函数。一旦你学会了价值函数，你就可以根据价值函数来选择行动，从而更快地到达终点。例如，如果你发现某个位置的价值很高，那么你就应该尽量走到那个位置。&lt;/p&gt;
+&lt;p&gt;理解它的核心是理解 Value-based method 和 Policy-based method的区别。&lt;/p&gt;
+&lt;h2 id=&#34;你先要有一个-policy&#34;&gt;你先要有一个 Policy&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Value-based 是先给出一个 Policy，我们自己定义的（比如 Greedy Policy），来学习一个价值函数。实践中，通常会使用一个Epsilon-Greedy policy，它的另一个优势是处理 探索/利用的权衡。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Policy-based 是直接学习一个 Policy， $\pi(a | s) = P(a | s)$，它不需要一个价值函数。所以我们不会定义Policy 的行为，是训练的过程定义的这个 Policy。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>4.1.RL in LLMs</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/llm/4.1.rl-in-llms/</link>
+      <pubDate>Sun, 31 Aug 2025 12:49:37 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/llm/4.1.rl-in-llms/</guid>
+      <description>&lt;h1 id=&#34;why-rl-in-llms&#34;&gt;Why RL in LLMs&lt;/h1&gt;
+&lt;p&gt;LLMs 在生成任务中表现出色。然而，直到最近，它们在需要推理的复杂问题上一直存在困难。例如，它们难以处理需要多步推理的谜题或数学问题。强化学习可以鼓励 LLMs 进行“思考”和推理。&lt;/p&gt;
+&lt;p&gt;RL 革新了 LLMs 训练的方式。pure RL 详细内容见 &lt;a href=&#34;../RL/&#34;&gt;笔记RL&lt;/a&gt;。RL 中的 reward 对应在 LLMs 上是为了反映 LLM 在特定任务上的表现好坏。&lt;/p&gt;
+&lt;p&gt;我们希望 LLMs 不仅仅是擅长生成流畅的文本。我们希望它们能够&lt;strong&gt;提供与某些内容相关，且有帮助的信息。避免生成有害信息。&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;预训练 LLM 方法，主要依赖于从文本数据中预测下一个词。上述期望的方面会存在不足。微调后的模型也会生成流畅且结构化的文本，但在上述方面也会是不足的。&lt;/p&gt;
+&lt;p&gt;RL 为我们提供了一种方法，可以微调预训练的 LLMs，以更好地实现上述期望生成内容的特质。&lt;/p&gt;
+&lt;p&gt;如果将 LLMs 比喻成宠物狗，那么我们期望它成为一个&lt;strong&gt;行为良好且有用的伙伴&lt;/strong&gt;，而不仅仅是一只知道如何流利汪汪的狗。&lt;/p&gt;
+&lt;h1 id=&#34;但是&#34;&gt;但是&lt;/h1&gt;
+&lt;p&gt;不是所有大模型都应用 RLHF（Reinforcement Learning from Human Feedback） 方法。LLMs 训练过程是&lt;strong&gt;预训练&lt;/strong&gt;，然后&lt;strong&gt;监督微调&lt;/strong&gt;（SFT），只有部分模型使用 RLHF 方法，优化模型输出。&lt;/p&gt;
+&lt;p&gt;关于SFT，所有流行的 LLMs 都需要一些监督微调。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;RLHF 的劣势&lt;/strong&gt;：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;成本高，它需要大量的人类反馈，预训练和 SFT 已经满足大部分需求。&lt;/li&gt;
+&lt;li&gt;计算复杂性大，RLHF 使用强化学习算法（如 PPO），计算资源需求大。&lt;/li&gt;
+&lt;li&gt;一些模型使用 高质量 SFT 替代 RLHF。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1 id=&#34;rl-in-llms&#34;&gt;RL in LLMs&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;语言模型对齐&lt;/strong&gt;: 是指通过训练和优化，使 LLMs 的输出与人类价值观、意图或特定任务目标保持一致的过程。目标是确保模型生成安全、准确、符合伦理且对用户有用的内容。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;RLHF&lt;/strong&gt;: 是一种对齐语言模型的&lt;strong&gt;具体方法&lt;/strong&gt;，通过结合强化学习和人类反馈优化模型，使其输出更符合人类偏好。&lt;/p&gt;
+&lt;p&gt;在 RLHF 中使用人类反馈作为强化学习（RL）中&lt;strong&gt;奖励信号&lt;/strong&gt;的代理。原理大概如下：&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

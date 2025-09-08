@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Value-Based Methods on Junhui&#39;s Journal 2</title>
+    <link>https://ashburnLee.github.io/blog-2-hugo/tags/value-based-methods/</link>
+    <description>Recent content in Value-Based Methods on Junhui&#39;s Journal 2</description>
+    <generator>Hugo -- 0.149.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 31 Aug 2025 12:52:02 +0800</lastBuildDate>
+    <atom:link href="https://ashburnLee.github.io/blog-2-hugo/tags/value-based-methods/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>1.1.Value Bases Methods</title>
+      <link>https://ashburnLee.github.io/blog-2-hugo/rl/1-1.value-bases-methods/</link>
+      <pubDate>Sun, 31 Aug 2025 12:52:02 +0800</pubDate>
+      <guid>https://ashburnLee.github.io/blog-2-hugo/rl/1-1.value-bases-methods/</guid>
+      <description>&lt;ol&gt;
+&lt;li&gt;Learn about value-based methods.&lt;/li&gt;
+&lt;li&gt;Learn about the differences between Monte Carlo and Temporal Difference Learning.&lt;/li&gt;
+&lt;li&gt;Study and implement our first RL algorithm: Q-Learning.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h1 id=&#34;value-based-methods&#34;&gt;Value-Based Methods&lt;/h1&gt;
+&lt;p&gt;先给出一个例子：假设你正在玩一个走迷宫的游戏。&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;状态 (State): 你当前在迷宫中的位置。&lt;/li&gt;
+&lt;li&gt;策略 (Policy): 你决定如何走迷宫 (例如，总是选择离终点最近的方向)。&lt;/li&gt;
+&lt;li&gt;价值函数 (Value Function): 对于迷宫中的每个位置，价值函数会告诉你，如果你从这个位置开始，按照你的策略走，最终到达终点的可能性有多大 (或者说，你期望获得多少奖励，例如到达终点奖励 +1，每走一步奖励 -0.1)。&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Value-based methods 的目标就是学习这个价值函数。一旦你学会了价值函数，你就可以根据价值函数来选择行动，从而更快地到达终点。例如，如果你发现某个位置的价值很高，那么你就应该尽量走到那个位置。&lt;/p&gt;
+&lt;p&gt;理解它的核心是理解 Value-based method 和 Policy-based method的区别。&lt;/p&gt;
+&lt;h2 id=&#34;你先要有一个-policy&#34;&gt;你先要有一个 Policy&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;
+&lt;p&gt;Value-based 是先给出一个 Policy，我们自己定义的（比如 Greedy Policy），来学习一个价值函数。实践中，通常会使用一个Epsilon-Greedy policy，它的另一个优势是处理 探索/利用的权衡。&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Policy-based 是直接学习一个 Policy， $\pi(a | s) = P(a | s)$，它不需要一个价值函数。所以我们不会定义Policy 的行为，是训练的过程定义的这个 Policy。&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

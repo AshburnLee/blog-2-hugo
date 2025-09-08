@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>5.5.llama.cpp Cli Pipline | Junhui&#39;s Journal 2</title>
+<meta name="keywords" content="LLM, llama.cpp">
+<meta name="description" content="【设Q找A，避免陷入细节陷阱】
+llama-cli -m /home/junhui/workspace/llama.cpp/models/Qwen3-1.7B-Q4_K_M.gguf -no-cnv --prompt &quot;What is the result of 1 &#43; 1 in Math?&quot; --no-warmup
+从 meta Data 获取信息，llama_model_loader()
+llama_model_load_from_file_impl: using device CUDA0 (Orin) - 696 MiB free
+loaded meta data with 34 key-value pairs and 311 tensors from ../models/Qwen3-1.7B-Q4_K_M.gguf (version GGUF V3 (latest))
+Dumping metadata keys/values. Note: KV overrides do not apply in this output.
+- kv   0:                       general.architecture str              = qwen3
+- kv   1:                               general.type str              = model
+- kv   2:                               general.name str              = Qwen3 1.7B
+- kv   3:                           general.basename str              = Qwen3
+- kv   4:                         general.size_label str              = 1.7B
+- kv   5:                            general.license str              = apache-2.0
+- kv   6:                       general.license.link str              = https://huggingface.co/Qwen/Qwen3-1.7...
+- kv   7:                   general.base_model.count u32              = 1
+- kv   8:                  general.base_model.0.name str              = Qwen3 1.7B Base
+- kv   9:          general.base_model.0.organization str              = Qwen
+- kv  10:              general.base_model.0.repo_url str              = https://huggingface.co/Qwen/Qwen3-1.7...
+- kv  11:                               general.tags arr[str,1]       = [&#34;text-generation&#34;]
+- kv  12:                          qwen3.block_count u32              = 28
+- kv  13:                       qwen3.context_length u32              = 40960   # 模型元数据中定义的最大上下文长度，表示
+# 模型在训练或设计时支持的最大 token 数（包括输入 prompt 和生成输出）。 模型设计时的最大上下文长度，固定在 GGUF 元数据中，无法
+# 修改。要改必须重新训练
+- kv  14:                     qwen3.embedding_length u32              = 2048
+- kv  15:                  qwen3.feed_forward_length u32              = 6144
+- kv  16:                 qwen3.attention.head_count u32              = 16
+- kv  17:              qwen3.attention.head_count_kv u32              = 8
+- kv  18:                       qwen3.rope.freq_base f32              = 1000000.000000
+- kv  19:     qwen3.attention.layer_norm_rms_epsilon f32              = 0.000001
+- kv  20:                 qwen3.attention.key_length u32              = 128
+- kv  21:               qwen3.attention.value_length u32              = 128
+- kv  22:                       tokenizer.ggml.model str              = gpt2
+- kv  23:                         tokenizer.ggml.pre str              = qwen2
+- kv  24:                      tokenizer.ggml.tokens arr[str,151936]  = [&#34;!&#34;, &#34;\&#34;&#34;, &#34;#&#34;, &#34;$&#34;, &#34;%&#34;, &#34;&amp;&#34;, &#34;&#39;&#34;, ...
+- kv  25:                  tokenizer.ggml.token_type arr[i32,151936]  = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...
+- kv  26:                      tokenizer.ggml.merges arr[str,151387]  = [&#34;Ġ Ġ&#34;, &#34;ĠĠ ĠĠ&#34;, &#34;i n&#34;, &#34;Ġ t&#34;,...
+- kv  27:                tokenizer.ggml.eos_token_id u32              = 151645
+- kv  28:            tokenizer.ggml.padding_token_id u32              = 151643
+- kv  29:                tokenizer.ggml.bos_token_id u32              = 151643
+- kv  30:               tokenizer.ggml.add_bos_token bool             = false
+- kv  31:                    tokenizer.chat_template str              = {%- if tools %}\n    {{- &#39;&lt;|im_start|&gt;...
+- kv  32:               general.quantization_version u32              = 2
+- kv  33:                          general.file_type u32              = 15
+- type  f32:  113 tensors
+- type q4_K:  169 tensors
+- type q6_K:   29 tensors
+模型结构信息：">
+<meta name="author" content="">
+<link rel="canonical" href="https://ashburnLee.github.io/blog-2-hugo/llm/5.5.llama.cpp-cli-pipline/">
+<link crossorigin="anonymous" href="/blog-2-hugo/assets/css/stylesheet.bdaf5941cb3c05e36e857d9e2953ba0c4485ba7bc2da15db169d66a77cbc7a87.css" integrity="sha256-va9ZQcs8BeNuhX2eKVO6DESFunvC2hXbFp1mp3y8eoc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://ashburnLee.github.io/blog-2-hugo/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://ashburnLee.github.io/blog-2-hugo/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://ashburnLee.github.io/blog-2-hugo/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://ashburnLee.github.io/blog-2-hugo/apple-touch-icon.png">
+<link rel="mask-icon" href="https://ashburnLee.github.io/blog-2-hugo/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://ashburnLee.github.io/blog-2-hugo/llm/5.5.llama.cpp-cli-pipline/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    },
+    svg: {
+      fontCache: 'global'
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
+
+
+<meta property="og:url" content="https://ashburnLee.github.io/blog-2-hugo/llm/5.5.llama.cpp-cli-pipline/">
+  <meta property="og:site_name" content="Junhui&#39;s Journal 2">
+  <meta property="og:title" content="5.5.llama.cpp Cli Pipline">
+  <meta property="og:description" content="【设Q找A，避免陷入细节陷阱】
+llama-cli -m /home/junhui/workspace/llama.cpp/models/Qwen3-1.7B-Q4_K_M.gguf -no-cnv --prompt &#34;What is the result of 1 &#43; 1 in Math?&#34; --no-warmup
+从 meta Data 获取信息，llama_model_loader() llama_model_load_from_file_impl: using device CUDA0 (Orin) - 696 MiB free loaded meta data with 34 key-value pairs and 311 tensors from ../models/Qwen3-1.7B-Q4_K_M.gguf (version GGUF V3 (latest)) Dumping metadata keys/values. Note: KV overrides do not apply in this output. - kv 0: general.architecture str = qwen3 - kv 1: general.type str = model - kv 2: general.name str = Qwen3 1.7B - kv 3: general.basename str = Qwen3 - kv 4: general.size_label str = 1.7B - kv 5: general.license str = apache-2.0 - kv 6: general.license.link str = https://huggingface.co/Qwen/Qwen3-1.7... - kv 7: general.base_model.count u32 = 1 - kv 8: general.base_model.0.name str = Qwen3 1.7B Base - kv 9: general.base_model.0.organization str = Qwen - kv 10: general.base_model.0.repo_url str = https://huggingface.co/Qwen/Qwen3-1.7... - kv 11: general.tags arr[str,1] = [&#34;text-generation&#34;] - kv 12: qwen3.block_count u32 = 28 - kv 13: qwen3.context_length u32 = 40960 # 模型元数据中定义的最大上下文长度，表示 # 模型在训练或设计时支持的最大 token 数（包括输入 prompt 和生成输出）。 模型设计时的最大上下文长度，固定在 GGUF 元数据中，无法 # 修改。要改必须重新训练 - kv 14: qwen3.embedding_length u32 = 2048 - kv 15: qwen3.feed_forward_length u32 = 6144 - kv 16: qwen3.attention.head_count u32 = 16 - kv 17: qwen3.attention.head_count_kv u32 = 8 - kv 18: qwen3.rope.freq_base f32 = 1000000.000000 - kv 19: qwen3.attention.layer_norm_rms_epsilon f32 = 0.000001 - kv 20: qwen3.attention.key_length u32 = 128 - kv 21: qwen3.attention.value_length u32 = 128 - kv 22: tokenizer.ggml.model str = gpt2 - kv 23: tokenizer.ggml.pre str = qwen2 - kv 24: tokenizer.ggml.tokens arr[str,151936] = [&#34;!&#34;, &#34;\&#34;&#34;, &#34;#&#34;, &#34;$&#34;, &#34;%&#34;, &#34;&amp;&#34;, &#34;&#39;&#34;, ... - kv 25: tokenizer.ggml.token_type arr[i32,151936] = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ... - kv 26: tokenizer.ggml.merges arr[str,151387] = [&#34;Ġ Ġ&#34;, &#34;ĠĠ ĠĠ&#34;, &#34;i n&#34;, &#34;Ġ t&#34;,... - kv 27: tokenizer.ggml.eos_token_id u32 = 151645 - kv 28: tokenizer.ggml.padding_token_id u32 = 151643 - kv 29: tokenizer.ggml.bos_token_id u32 = 151643 - kv 30: tokenizer.ggml.add_bos_token bool = false - kv 31: tokenizer.chat_template str = {%- if tools %}\n {{- &#39;&lt;|im_start|&gt;... - kv 32: general.quantization_version u32 = 2 - kv 33: general.file_type u32 = 15 - type f32: 113 tensors - type q4_K: 169 tensors - type q6_K: 29 tensors 模型结构信息：">
+  <meta property="og:locale" content="en-us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="llm">
+    <meta property="article:published_time" content="2025-08-31T12:49:40+08:00">
+    <meta property="article:modified_time" content="2025-08-31T12:49:40+08:00">
+    <meta property="article:tag" content="LLM">
+    <meta property="article:tag" content="Llama.cpp">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="5.5.llama.cpp Cli Pipline">
+<meta name="twitter:description" content="【设Q找A，避免陷入细节陷阱】
+llama-cli -m /home/junhui/workspace/llama.cpp/models/Qwen3-1.7B-Q4_K_M.gguf -no-cnv --prompt &quot;What is the result of 1 &#43; 1 in Math?&quot; --no-warmup
+从 meta Data 获取信息，llama_model_loader()
+llama_model_load_from_file_impl: using device CUDA0 (Orin) - 696 MiB free
+loaded meta data with 34 key-value pairs and 311 tensors from ../models/Qwen3-1.7B-Q4_K_M.gguf (version GGUF V3 (latest))
+Dumping metadata keys/values. Note: KV overrides do not apply in this output.
+- kv   0:                       general.architecture str              = qwen3
+- kv   1:                               general.type str              = model
+- kv   2:                               general.name str              = Qwen3 1.7B
+- kv   3:                           general.basename str              = Qwen3
+- kv   4:                         general.size_label str              = 1.7B
+- kv   5:                            general.license str              = apache-2.0
+- kv   6:                       general.license.link str              = https://huggingface.co/Qwen/Qwen3-1.7...
+- kv   7:                   general.base_model.count u32              = 1
+- kv   8:                  general.base_model.0.name str              = Qwen3 1.7B Base
+- kv   9:          general.base_model.0.organization str              = Qwen
+- kv  10:              general.base_model.0.repo_url str              = https://huggingface.co/Qwen/Qwen3-1.7...
+- kv  11:                               general.tags arr[str,1]       = [&#34;text-generation&#34;]
+- kv  12:                          qwen3.block_count u32              = 28
+- kv  13:                       qwen3.context_length u32              = 40960   # 模型元数据中定义的最大上下文长度，表示
+# 模型在训练或设计时支持的最大 token 数（包括输入 prompt 和生成输出）。 模型设计时的最大上下文长度，固定在 GGUF 元数据中，无法
+# 修改。要改必须重新训练
+- kv  14:                     qwen3.embedding_length u32              = 2048
+- kv  15:                  qwen3.feed_forward_length u32              = 6144
+- kv  16:                 qwen3.attention.head_count u32              = 16
+- kv  17:              qwen3.attention.head_count_kv u32              = 8
+- kv  18:                       qwen3.rope.freq_base f32              = 1000000.000000
+- kv  19:     qwen3.attention.layer_norm_rms_epsilon f32              = 0.000001
+- kv  20:                 qwen3.attention.key_length u32              = 128
+- kv  21:               qwen3.attention.value_length u32              = 128
+- kv  22:                       tokenizer.ggml.model str              = gpt2
+- kv  23:                         tokenizer.ggml.pre str              = qwen2
+- kv  24:                      tokenizer.ggml.tokens arr[str,151936]  = [&#34;!&#34;, &#34;\&#34;&#34;, &#34;#&#34;, &#34;$&#34;, &#34;%&#34;, &#34;&amp;&#34;, &#34;&#39;&#34;, ...
+- kv  25:                  tokenizer.ggml.token_type arr[i32,151936]  = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...
+- kv  26:                      tokenizer.ggml.merges arr[str,151387]  = [&#34;Ġ Ġ&#34;, &#34;ĠĠ ĠĠ&#34;, &#34;i n&#34;, &#34;Ġ t&#34;,...
+- kv  27:                tokenizer.ggml.eos_token_id u32              = 151645
+- kv  28:            tokenizer.ggml.padding_token_id u32              = 151643
+- kv  29:                tokenizer.ggml.bos_token_id u32              = 151643
+- kv  30:               tokenizer.ggml.add_bos_token bool             = false
+- kv  31:                    tokenizer.chat_template str              = {%- if tools %}\n    {{- &#39;&lt;|im_start|&gt;...
+- kv  32:               general.quantization_version u32              = 2
+- kv  33:                          general.file_type u32              = 15
+- type  f32:  113 tensors
+- type q4_K:  169 tensors
+- type q6_K:   29 tensors
+模型结构信息：">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "LLM",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "5.5.llama.cpp Cli Pipline",
+      "item": "https://ashburnLee.github.io/blog-2-hugo/llm/5.5.llama.cpp-cli-pipline/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "5.5.llama.cpp Cli Pipline",
+  "name": "5.5.llama.cpp Cli Pipline",
+  "description": "【设Q找A，避免陷入细节陷阱】\nllama-cli -m /home/junhui/workspace/llama.cpp/models/Qwen3-1.7B-Q4_K_M.gguf -no-cnv --prompt \u0026quot;What is the result of 1 + 1 in Math?\u0026quot; --no-warmup\n从 meta Data 获取信息，llama_model_loader() llama_model_load_from_file_impl: using device CUDA0 (Orin) - 696 MiB free loaded meta data with 34 key-value pairs and 311 tensors from ../models/Qwen3-1.7B-Q4_K_M.gguf (version GGUF V3 (latest)) Dumping metadata keys/values. Note: KV overrides do not apply in this output. - kv 0: general.architecture str = qwen3 - kv 1: general.type str = model - kv 2: general.name str = Qwen3 1.7B - kv 3: general.basename str = Qwen3 - kv 4: general.size_label str = 1.7B - kv 5: general.license str = apache-2.0 - kv 6: general.license.link str = https://huggingface.co/Qwen/Qwen3-1.7... - kv 7: general.base_model.count u32 = 1 - kv 8: general.base_model.0.name str = Qwen3 1.7B Base - kv 9: general.base_model.0.organization str = Qwen - kv 10: general.base_model.0.repo_url str = https://huggingface.co/Qwen/Qwen3-1.7... - kv 11: general.tags arr[str,1] = [\u0026#34;text-generation\u0026#34;] - kv 12: qwen3.block_count u32 = 28 - kv 13: qwen3.context_length u32 = 40960 # 模型元数据中定义的最大上下文长度，表示 # 模型在训练或设计时支持的最大 token 数（包括输入 prompt 和生成输出）。 模型设计时的最大上下文长度，固定在 GGUF 元数据中，无法 # 修改。要改必须重新训练 - kv 14: qwen3.embedding_length u32 = 2048 - kv 15: qwen3.feed_forward_length u32 = 6144 - kv 16: qwen3.attention.head_count u32 = 16 - kv 17: qwen3.attention.head_count_kv u32 = 8 - kv 18: qwen3.rope.freq_base f32 = 1000000.000000 - kv 19: qwen3.attention.layer_norm_rms_epsilon f32 = 0.000001 - kv 20: qwen3.attention.key_length u32 = 128 - kv 21: qwen3.attention.value_length u32 = 128 - kv 22: tokenizer.ggml.model str = gpt2 - kv 23: tokenizer.ggml.pre str = qwen2 - kv 24: tokenizer.ggml.tokens arr[str,151936] = [\u0026#34;!\u0026#34;, \u0026#34;\\\u0026#34;\u0026#34;, \u0026#34;#\u0026#34;, \u0026#34;$\u0026#34;, \u0026#34;%\u0026#34;, \u0026#34;\u0026amp;\u0026#34;, \u0026#34;\u0026#39;\u0026#34;, ... - kv 25: tokenizer.ggml.token_type arr[i32,151936] = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ... - kv 26: tokenizer.ggml.merges arr[str,151387] = [\u0026#34;Ġ Ġ\u0026#34;, \u0026#34;ĠĠ ĠĠ\u0026#34;, \u0026#34;i n\u0026#34;, \u0026#34;Ġ t\u0026#34;,... - kv 27: tokenizer.ggml.eos_token_id u32 = 151645 - kv 28: tokenizer.ggml.padding_token_id u32 = 151643 - kv 29: tokenizer.ggml.bos_token_id u32 = 151643 - kv 30: tokenizer.ggml.add_bos_token bool = false - kv 31: tokenizer.chat_template str = {%- if tools %}\\n {{- \u0026#39;\u0026lt;|im_start|\u0026gt;... - kv 32: general.quantization_version u32 = 2 - kv 33: general.file_type u32 = 15 - type f32: 113 tensors - type q4_K: 169 tensors - type q6_K: 29 tensors 模型结构信息：\n",
+  "keywords": [
+    "LLM", "llama.cpp"
+  ],
+  "articleBody": "【设Q找A，避免陷入细节陷阱】\nllama-cli -m /home/junhui/workspace/llama.cpp/models/Qwen3-1.7B-Q4_K_M.gguf -no-cnv --prompt \"What is the result of 1 + 1 in Math?\" --no-warmup\n从 meta Data 获取信息，llama_model_loader() llama_model_load_from_file_impl: using device CUDA0 (Orin) - 696 MiB free loaded meta data with 34 key-value pairs and 311 tensors from ../models/Qwen3-1.7B-Q4_K_M.gguf (version GGUF V3 (latest)) Dumping metadata keys/values. Note: KV overrides do not apply in this output. - kv 0: general.architecture str = qwen3 - kv 1: general.type str = model - kv 2: general.name str = Qwen3 1.7B - kv 3: general.basename str = Qwen3 - kv 4: general.size_label str = 1.7B - kv 5: general.license str = apache-2.0 - kv 6: general.license.link str = https://huggingface.co/Qwen/Qwen3-1.7... - kv 7: general.base_model.count u32 = 1 - kv 8: general.base_model.0.name str = Qwen3 1.7B Base - kv 9: general.base_model.0.organization str = Qwen - kv 10: general.base_model.0.repo_url str = https://huggingface.co/Qwen/Qwen3-1.7... - kv 11: general.tags arr[str,1] = [\"text-generation\"] - kv 12: qwen3.block_count u32 = 28 - kv 13: qwen3.context_length u32 = 40960 # 模型元数据中定义的最大上下文长度，表示 # 模型在训练或设计时支持的最大 token 数（包括输入 prompt 和生成输出）。 模型设计时的最大上下文长度，固定在 GGUF 元数据中，无法 # 修改。要改必须重新训练 - kv 14: qwen3.embedding_length u32 = 2048 - kv 15: qwen3.feed_forward_length u32 = 6144 - kv 16: qwen3.attention.head_count u32 = 16 - kv 17: qwen3.attention.head_count_kv u32 = 8 - kv 18: qwen3.rope.freq_base f32 = 1000000.000000 - kv 19: qwen3.attention.layer_norm_rms_epsilon f32 = 0.000001 - kv 20: qwen3.attention.key_length u32 = 128 - kv 21: qwen3.attention.value_length u32 = 128 - kv 22: tokenizer.ggml.model str = gpt2 - kv 23: tokenizer.ggml.pre str = qwen2 - kv 24: tokenizer.ggml.tokens arr[str,151936] = [\"!\", \"\\\"\", \"#\", \"$\", \"%\", \"\u0026\", \"'\", ... - kv 25: tokenizer.ggml.token_type arr[i32,151936] = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ... - kv 26: tokenizer.ggml.merges arr[str,151387] = [\"Ġ Ġ\", \"ĠĠ ĠĠ\", \"i n\", \"Ġ t\",... - kv 27: tokenizer.ggml.eos_token_id u32 = 151645 - kv 28: tokenizer.ggml.padding_token_id u32 = 151643 - kv 29: tokenizer.ggml.bos_token_id u32 = 151643 - kv 30: tokenizer.ggml.add_bos_token bool = false - kv 31: tokenizer.chat_template str = {%- if tools %}\\n {{- '\u003c|im_start|\u003e... - kv 32: general.quantization_version u32 = 2 - kv 33: general.file_type u32 = 15 - type f32: 113 tensors - type q4_K: 169 tensors - type q6_K: 29 tensors 模型结构信息：\n模型基于 Qwen3 架构，Qwen3 系列，具体是 Qwen3 1.7B 含有 1.7 billion 的参数。 模型的用于 “text-generation”。 这个模型含有28 个Transformer层。表达了模型的深度和计算复杂度。 支持最长的上下文，即模型处理的输入长度 是 40K 个tokens。决定了模型可以处理的输入序列长度。 每个 token 表示为 2048维向量（embedding_length=2048）。表示了模型的表达能力 和 内存需求。它成为 hidden-size。 前馈网络的中间维度是 feed_forward_length=6144。表达了前向计算规模。 16 个注意力 head。用于捕获不同语义关系，影响模型表达能力和性能。 键值（Key-Value）注意力 head的数量，8 个。减少 KV 缓存内存，优化推理效率。 层归一化（RMSNorm）的 epsilon 值很小，0.0000001。越小表示推理越严格。 注意力机制中键（Key）\u0026 值（Value）向量的维度都是 128。影响注意力计算的精度和内存，影响 KV-Cache 的存储空间。 分词器信息：\n分词器模型类型，基于 GPT-2 的 BPE（type = LLAMA_VOCAB_TYPE_BPE）。算法，表示从文本到 token 的转换算法。\n分词器的预处理方式，是基于 Qwen2 （pre_type = LLAMA_VOCAB_PRE_TYPE_QWEN2） 的分词逻辑。\n分词器的词汇表，包含 151,936 个 token。作用是映射文本到 token ID，影响分词效率和覆盖率。\n分词得到的每个 token 对应一个 token 类型，共有151,936 个。它区分token的用途。完整的只有 0 或 1 。0 对应 GGML_TOKEN_NORMAL（普通 token），表示常规文本单元（如单词、子词），1 对应 GGML_TOKEN_CONTROL（控制 token），表示特殊标记（如 \u003c|im_start|\u003e, \u003c|eos|\u003e）。Qwen3 使用 GPT-2 风格的 BPE 分词器，所以只有 普通token 和 控制token。\n分词合并规则 是 GPT2 的 BPE，得到相应的结果：[\"Ġ Ġ\", \"ĠĠ ĠĠ\", ...]\n结束标记的token id 是 eos_token_id: u32 = 151645。表示序列生成的结束。\n填充（padding）标记的 token ID 是 151643。用于序列补齐，保持输入长度一致。\n开始标记（Beginning of Sequence）的 token ID 与 padding 相同。\n自动添加 BOS token 是 false。表示 Qwen3 不自动添加 BOS token。 表示？\n给出了聊天模板，引导模型处理对话，适合指令微调模型（如 Instruct）？\n向量化版本和向量化文件类型。15 表示 Q4_K_M（4-bit K-quant，Medium 级别）。\n最后这个模型有 311 个tensor (每一个 tensor 对应一个训练参数，113 个 f32, 169 个 q4_K, 29 个 q6_K，优化内存和性能)。\n从 llama_model_loader::print_info() 中得到 print_info: file format = GGUF V3 (latest) print_info: file type = Q4_K - Medium print_info: file size = 1.19 GiB (5.03 BPW) 从 llama_vocab::impl::load() 函数中获得 load: printing all EOG tokens: load: - 151643 ('\u003c|endoftext|\u003e') load: - 151645 ('\u003c|im_end|\u003e') load: - 151662 ('\u003c|fim_pad|\u003e') load: - 151663 ('\u003c|repo_name|\u003e') load: - 151664 ('\u003c|file_sep|\u003e') load: special tokens cache size = 26 # 一共有26个特殊tokens，包括了上面的5个 load: token to piece cache size = 0.9311 MB # token to piece 映射缓存的内存占用 在函数体中 tokenizer_model 有几种选择：no_vocab、none、llama、bert、gpt2、t5、rwkv、plamo2。tokenizer_pre 有更多的种类（70多种）：我的模型对应的是 Qwen2。GGUF 文件的 meta Data 中包含这些信息，code 中是根据不同的值，做了相应的处理。具体将：从 GGUF 文件的元数据（LLM_KV 结构体）中读取分词器相关信息。根据 tokenizer_model 和 tokenizer_pre 的不同，给特殊tokens 指定对应的ID。\n这个 llama_vocab::impl::load() 函数功能是加载分词器词汇表。解析特殊 tokens，并存储在内存中。\n作用：这些特殊 token 存储在内存中的一个专用数据结构（即 token to piece 映射），他们在推理中频繁被使用（如检查 \u003c|im_end|\u003e 停止生成），避免重复读取 GGUF 文件的词汇表。便于快速访问。具体讲，加速分词/解码时，即将输入文本转为 token ID（编码）或 token ID 转为文本（解码）时，缓存提供快速查找。\ntoken 应该指的是 token id；piece 应该是字符串形式的 token。实现在 llama_vocab::token_to_piece。\n输出的 5 个 映射都是表示 EOG（End Of Generation）的特殊tokens，属于控制 tokens，用于停止生成、标记对话边界。该函数是通用的函数，以支持各种模型，分词模型（分词算法），他们各不相同，各自有不同的分词规则和特殊 tokens。，他们与其他特殊 tokens 组成了数量为 26 的特殊 tokens。\n151643 ('\u003c|endoftext|\u003e')：结束token id，通常与 tokenizer.ggml.bos_token_id = 151643 和 padding_token_id = 151643 一致，表示序列开始或填充。 151645 ('\u003c|im_end|\u003e')：对话结束token id，与 tokenizer.ggml.eos_token_id = 151645 一致，用于结束生成（如 Qwen3 的聊天模板 \u003c|im_start|\u003e... \u003c|im_end|\u003e）。 151662 ('\u003c|fim_pad|\u003e')：文件补全（Fill-in-the-Middle）填充token id，用于代码补全任务（如 StarCoder 模型）。 151663 ('\u003c|repo_name|\u003e')：表示代码仓库名称的token id，可能用于多模态或代码生成任务。 151664 ('\u003c|file_sep|\u003e')：文件分隔符token id，区分多个文件或上下文。 llama_model_load() 中的 model.print_info(); 输出： 这些信息来自于 llama_model 对象的 hparams 成员。与load函数一样，print_info() 函数也是为了支持各种模型结构和分词模型，所以实现上也是许多路的分支判断。\nprint_info: arch = qwen3 print_info: vocab_only = 0 print_info: n_ctx_train = 40960 print_info: n_embd = 2048 print_info: n_layer = 28 print_info: n_head = 16 print_info: n_head_kv = 8 print_info: n_rot = 128 print_info: n_swa = 0 print_info: is_swa_any = 0 print_info: n_embd_head_k = 128 print_info: n_embd_head_v = 128 print_info: n_gqa = 2 print_info: n_embd_k_gqa = 1024 print_info: n_embd_v_gqa = 1024 print_info: f_norm_eps = 0.0e+00 print_info: f_norm_rms_eps = 1.0e-06 print_info: f_clamp_kqv = 0.0e+00 print_info: f_max_alibi_bias = 0.0e+00 print_info: f_logit_scale = 0.0e+00 print_info: f_attn_scale = 0.0e+00 print_info: n_ff = 6144 print_info: n_expert = 0 print_info: n_expert_used = 0 print_info: causal attn = 1 print_info: pooling type = -1 print_info: rope type = 2 print_info: rope scaling = linear print_info: freq_base_train = 1000000.0 print_info: freq_scale_train = 1 print_info: n_ctx_orig_yarn = 40960 print_info: rope_finetuned = unknown print_info: model type = 1.7B print_info: model params = 2.03 B print_info: general.name = Qwen3 1.7B print_info: vocab type = BPE print_info: n_vocab = 151936 print_info: n_merges = 151387 print_info: BOS token = 151643 '\u003c|endoftext|\u003e' print_info: EOS token = 151645 '\u003c|im_end|\u003e' print_info: EOT token = 151645 '\u003c|im_end|\u003e' print_info: PAD token = 151643 '\u003c|endoftext|\u003e' print_info: LF token = 198 'Ċ' print_info: FIM PRE token = 151659 '\u003c|fim_prefix|\u003e' print_info: FIM SUF token = 151661 '\u003c|fim_suffix|\u003e' print_info: FIM MID token = 151660 '\u003c|fim_middle|\u003e' print_info: FIM PAD token = 151662 '\u003c|fim_pad|\u003e' print_info: FIM REP token = 151663 '\u003c|repo_name|\u003e' print_info: FIM SEP token = 151664 '\u003c|file_sep|\u003e' print_info: EOG token = 151643 '\u003c|endoftext|\u003e' print_info: EOG token = 151645 '\u003c|im_end|\u003e' print_info: EOG token = 151662 '\u003c|fim_pad|\u003e' print_info: EOG token = 151663 '\u003c|repo_name|\u003e' print_info: EOG token = 151664 '\u003c|file_sep|\u003e' print_info: max token length = 256 load_tensors(ml) 加载 weight tensors llama_model 对象的另外一个成员是 params（不同于 hparams）。load_tensors() 函数 中的 创建 weight tensor部分，包含了几十种arch的 模型结构，每一种arch的层数，和每一层需要的 weight tensors。比如 Qwen3：\n关键代码位置：llama_model.cpp load_tensors 中位置 case LLM_ARCH_QWEN3:\ncase LLM_ARCH_QWEN3: { tok_embd = create_tensor(tn(LLM_TENSOR_TOKEN_EMBD, \"weight\"), {n_embd, n_vocab}, 0); // output output_norm = create_tensor(tn(LLM_TENSOR_OUTPUT_NORM, \"weight\"), {n_embd}, 0); output = create_tensor(tn(LLM_TENSOR_OUTPUT, \"weight\"), {n_embd, n_vocab}, TENSOR_NOT_REQUIRED); // if output is NULL, init from the input tok embed if (output == NULL) { output = create_tensor(tn(LLM_TENSOR_TOKEN_EMBD, \"weight\"), {n_embd, n_vocab}, TENSOR_DUPLICATED); } for (int i = 0; i \u003c n_layer; ++i) { auto \u0026 layer = layers[i]; layer.attn_norm = create_tensor(tn(LLM_TENSOR_ATTN_NORM, \"weight\", i), {n_embd}, 0); layer.wq = create_tensor(tn(LLM_TENSOR_ATTN_Q, \"weight\", i), {n_embd, n_embd_head_k * n_head}, 0); layer.wk = create_tensor(tn(LLM_TENSOR_ATTN_K, \"weight\", i), {n_embd, n_embd_gqa}, 0); layer.wv = create_tensor(tn(LLM_TENSOR_ATTN_V, \"weight\", i), {n_embd, n_embd_gqa}, 0); layer.wo = create_tensor(tn(LLM_TENSOR_ATTN_OUT, \"weight\", i), {n_embd_head_k * n_head, n_embd}, 0); layer.attn_k_norm = create_tensor(tn(LLM_TENSOR_ATTN_K_NORM, \"weight\", i), {n_embd_head_k}, 0); layer.attn_q_norm = create_tensor(tn(LLM_TENSOR_ATTN_Q_NORM, \"weight\", i), {n_embd_head_k}, 0); layer.ffn_norm = create_tensor(tn(LLM_TENSOR_FFN_NORM, \"weight\", i), {n_embd}, 0); layer.ffn_gate = create_tensor(tn(LLM_TENSOR_FFN_GATE, \"weight\", i), {n_embd, n_ff}, 0); layer.ffn_down = create_tensor(tn(LLM_TENSOR_FFN_DOWN, \"weight\", i), { n_ff, n_embd}, 0); layer.ffn_up = create_tensor(tn(LLM_TENSOR_FFN_UP, \"weight\", i), {n_embd, n_ff}, 0); } } break; 模型有311 个tensor，内部名类似：“blk.27.ffn_down.weight”，“blk.27.attn_v.weight” 等。信息在 llama_model 对象中的 pimpl 成员中，n_objects = 311。\nload_tensors: loading model tensors, this can take a while... (mmap = true) load_tensors: offloading 0 repeating layers to GPU load_tensors: offloaded 0/29 layers to GPU load_tensors: CPU_Mapped model buffer size = 1217.35 MiB 创建 llama_context 对象 关键代码位置：文件 llama-context.cpp 中函数 llama_init_from_model 中的 auto * ctx = new llama_context(*model, params);\nload model，load tensors，并将这些静态内容保存下来，避免每次推理都重新加载。load model，load tensors 之后，创建 context。context 用于管理推理运行时状态的核心数据结构。与静态的模型权重（llama_model）分开。\n模型加载是全局操作；llama_context 是轻量级的（KV 缓存约数百 MB）\nllama_model 是静态的，只包含架构和参数，无法处理动态输入或生成序列。需要 context 来执行实际推理任务（forward pass计算过程也在 context 类中： llama_context::decode）。context 功能包括：\n动态配置推理参数 cparams ，独立于模型架构的，比如配置 n_ctx = 40960：设置最大上下文长度。 初始化 output_ids（初始化为-1）。 context 初始化硬件资源，初始化 backends，ggml_backend_cuda_guid()::guild 和 ggml_backend_cpu_guid()::guid，并计算 cpu/gpu 缓冲区大小: CPU output buffer size = 0.58 MiB , CUDA0 compute buffer size = 544.18 MiB。 支持分词和序列生成。分词和生成需要动态状态（例如当前 token 位置、KV 缓存），但 llama_model 只能提供静态词汇表。 每个 llama_context 是一个独立的推理会话，拥有自己的 KV 缓存、缓冲区和配置（params.n_ctx, n_batch）。这允许多个推理会话共享模型。 定义 Transformer 层的计算路径， 调用栈：\nauto * ctx = new llama_context(*model, params); llama_context * lctx = llama_init_from_model(model, cparams); common_init_from_params(params); main(); log信息：\nllama_context: constructing llama_context llama_context: n_seq_max = 1 llama_context: n_ctx = 4096 # 推理时使用的实际上下文长度，由命令行参数 -c 或 --ctx-size 设置 llama_context: n_ctx_per_seq = 4096 llama_context: n_batch = 2048 llama_context: n_ubatch = 512 llama_context: causal_attn = 1 llama_context: flash_attn = 0 llama_context: kv_unified = false llama_context: freq_base = 1000000.0 llama_context: freq_scale = 1 llama_context: n_ctx_per_seq (4096) \u003c n_ctx_train (40960) -- the full capacity of the model will not be utilized llama_context: CPU output buffer size = 0.58 MiB llama_kv_cache_unified: CPU KV buffer size = 448.00 MiB llama_kv_cache_unified: size = 448.00 MiB ( 4096 cells, 28 layers, 1/1 seqs), K (f16): 224.00 MiB, V (f16): 224.00 MiB llama_context: CUDA0 compute buffer size = 544.18 MiB llama_context: CUDA_Host compute buffer size = 20.01 MiB llama_context: graph nodes = 1098 llama_context: graph splits = 367 (with bs=512), 1 (with bs=1) 所以为什么需要 context？\nllama_model 是静态的，包含权重（311 张量）和元数据（qwen3.context_length = 40960），但无法处理动态输入或生成过程。 llama_context 是动态的，管理推理状态（KV 缓存、token 序列）。 设置特殊 token 的 bias 在生成过程中，logit bias 调整 token 的生成概率。-inf 表示将这些 token 的生成概率设为 0，完全禁止生成这些 token\ncommon_init_from_params: added \u003c|endoftext|\u003e logit bias = -inf common_init_from_params: added \u003c|im_end|\u003e logit bias = -inf common_init_from_params: added \u003c|fim_pad|\u003e logit bias = -inf common_init_from_params: added \u003c|repo_name|\u003e logit bias = -inf common_init_from_params: added \u003c|file_sep|\u003e logit bias = -inf common_init_from_params: setting dry_penalty_last_n to ctx_size = 4096 common_init_from_params: warming up the model with an empty run - please wait ... (--no-warmup to disable) 系统信息和采样器参数 main() 中的 smpl = common_sampler_init(model, sparams); 通过 llama_sampler_chain_add 添加各个采样器。\nmain: llama threadpool init, n_threads = 6 system_info: n_threads = 6 (n_threads_batch = 6) / 6 | CUDA : ARCHS = 500,610,700,750,800,860,890 | USE_GRAPHS = 1 | PEER_MAX_BATCH_SIZE = 128 | CPU : NEON = 1 | ARM_FMA = 1 | FP16_VA = 1 | DOTPROD = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | sampler seed: 840489643 sampler params: repeat_last_n = 64, repeat_penalty = 1.000, frequency_penalty = 0.000, presence_penalty = 0.000 dry_multiplier = 0.000, dry_base = 1.750, dry_allowed_length = 2, dry_penalty_last_n = 4096 top_k = 40, top_p = 0.950, min_p = 0.050, xtc_probability = 0.000, xtc_threshold = 0.100, typical_p = 1.000, top_n_sigma = -1.000, temp = 0.800 mirostat = 0, mirostat_lr = 0.100, mirostat_ent = 5.000 sampler chain: logits -\u003e logit-bias -\u003e penalties -\u003e dry -\u003e top-n-sigma -\u003e top-k -\u003e typical -\u003e top-p -\u003e min-p -\u003e xtc -\u003e temp-ext -\u003e dist generate: n_ctx = 4096, n_batch = 2048, n_predict = -1, n_keep = 0 sampler chain 描述 llama.cpp 在生成 token 时应用的 sampler 顺序，即从原始模型输出 logits 到最终 token 选择的处理链。\nlogit-bias 是应用偏置（bias）调整特定 token 的 logits。增加或减少某些token的概率 penalties 是用惩罚机制（如频率惩罚、重复惩罚），降低重复 token 的概率 DRY 是Don’t Repeat Yourself 采样，减少重复模式 top-n-sigma 根据标准差（sigma）选择 top N 个 token，限制候选范围 top-K 采样 选择概率最高的 K 个 token typical 采样基于信息熵选择 token top-P 采样 选择累积概率达到 P 的 token 的集合 min-p 采样 即最小概率采样，过滤概率低于阈值的 token XTC Extreme Temperature Control temp-ext: 温度扩展（temperature extension），调整分布平滑度 dist 是最终概率分布，归一化为概率（softmax），从中采样 token 每个采样器逐步过滤或调整概率分布，影响生成文本的多样性、连贯性和质量。如果没有指定，采样器会使用默认值。\nsampler params: 是关于采样器的各个实际参数值。n_predict = -1 表示生成的token数量无限制。更多关于采样的参数，见 llama-cli --help。\nsampler 创建过程类似：\nllama_sampler * smpl = llama_sampler_chain_init(llama_sampler_chain_default_params()); llama_sampler_chain_add(smpl, llama_sampler_init_min_p(0.05f, 1)); llama_sampler_chain_add(smpl, llama_sampler_init_temp(0.8f)); llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED)); token generate 关键位置 每一个单词是通过 while 循环，一个一个生成的。\nwhile ((n_remain != 0 \u0026\u0026 !is_antiprompt) || params.interactive) {} KAQ @ CPU_Mapped model buffer size 是什么意思？ 关键代码位置：llama-model.cpp 文件中函数 load_tensors 中位置:\nLLAMA_LOG_INFO(\"%s: %12s model buffer size = %8.2f MiB\\n\", __func__, ggml_backend_buffer_name(buf.get()), ggml_backend_buffer_get_size(buf.get()) / 1024.0 / 1024.0); 表示的是 在加载 GGUF 文件的 tensors 时，分配的 CPU 映射缓冲区（CPU-mapped buffer）的总内存大小。这个缓冲区用于存储模型权重，并被映射到 CPU 地址空间。\n@ n_ctx 可以在运行时动态调整? n_ctx 表示推理时支持的最大上下文长度（以 token 计），即模型一次能处理的输入和输出 token 总数。它不能在运行时调整，但可以在启动时调整，如在 cli 中通过 --ctx-size ：\n./bin/llama-cli -m ../models/Qwen3-1.7B-Q4_K_M.gguf -no-cnv --prompt \"what is the result of 1 + 1 in Math?\" --ctx-size 2048 log 中 context 的 n_ctx = 2048，也就是 llama-context 可以在启动时调整参数。\n@ 用户 prompt 输入序列的长度？ @ hidden-size 用处是什么？ @ 注意力 head 和 KV 注意力头 的关系是？ @ LOG_DBG 如何 enable？ LOG_DBG： LOG_INF：默认开启 LOG_CNT：\n",
+  "wordCount" : "1859",
+  "inLanguage": "en",
+  "datePublished": "2025-08-31T12:49:40+08:00",
+  "dateModified": "2025-08-31T12:49:40+08:00",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://ashburnLee.github.io/blog-2-hugo/llm/5.5.llama.cpp-cli-pipline/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Junhui's Journal 2",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ashburnLee.github.io/blog-2-hugo/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="https://ashburnLee.github.io/blog-2-hugo/" accesskey="h" title="Junhui&#39;s Journal 2 (Alt + H)">Junhui&#39;s Journal 2</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://ashburnLee.github.io/blog-2-hugo/categories/" title="Categories">
+                    <span>Categories</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      5.5.llama.cpp Cli Pipline
+    </h1>
+    <div class="post-meta"><span title='2025-08-31 12:49:40 +0800 CST'>August 31, 2025</span>
+
+</div>
+  </header> 
+  <div class="post-content"><p>【设Q找A，避免陷入细节陷阱】</p>
+<p><code>llama-cli -m /home/junhui/workspace/llama.cpp/models/Qwen3-1.7B-Q4_K_M.gguf -no-cnv --prompt &quot;What is the result of 1 + 1 in Math?&quot; --no-warmup</code></p>
+<h2 id="从-meta-data-获取信息llama_model_loader">从 meta Data 获取信息，llama_model_loader()<a hidden class="anchor" aria-hidden="true" href="#从-meta-data-获取信息llama_model_loader">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>llama_model_load_from_file_impl: using device CUDA0 <span style="color:#f92672">(</span>Orin<span style="color:#f92672">)</span> - <span style="color:#ae81ff">696</span> MiB free
+</span></span><span style="display:flex;"><span>loaded meta data with <span style="color:#ae81ff">34</span> key-value pairs and <span style="color:#ae81ff">311</span> tensors from ../models/Qwen3-1.7B-Q4_K_M.gguf <span style="color:#f92672">(</span>version GGUF V3 <span style="color:#f92672">(</span>latest<span style="color:#f92672">))</span>
+</span></span><span style="display:flex;"><span>Dumping metadata keys/values. Note: KV overrides <span style="color:#66d9ef">do</span> not apply in this output.
+</span></span><span style="display:flex;"><span>- kv   0:                       general.architecture str              <span style="color:#f92672">=</span> qwen3
+</span></span><span style="display:flex;"><span>- kv   1:                               general.type str              <span style="color:#f92672">=</span> model
+</span></span><span style="display:flex;"><span>- kv   2:                               general.name str              <span style="color:#f92672">=</span> Qwen3 1.7B
+</span></span><span style="display:flex;"><span>- kv   3:                           general.basename str              <span style="color:#f92672">=</span> Qwen3
+</span></span><span style="display:flex;"><span>- kv   4:                         general.size_label str              <span style="color:#f92672">=</span> 1.7B
+</span></span><span style="display:flex;"><span>- kv   5:                            general.license str              <span style="color:#f92672">=</span> apache-2.0
+</span></span><span style="display:flex;"><span>- kv   6:                       general.license.link str              <span style="color:#f92672">=</span> https://huggingface.co/Qwen/Qwen3-1.7...
+</span></span><span style="display:flex;"><span>- kv   7:                   general.base_model.count u32              <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>- kv   8:                  general.base_model.0.name str              <span style="color:#f92672">=</span> Qwen3 1.7B Base
+</span></span><span style="display:flex;"><span>- kv   9:          general.base_model.0.organization str              <span style="color:#f92672">=</span> Qwen
+</span></span><span style="display:flex;"><span>- kv  10:              general.base_model.0.repo_url str              <span style="color:#f92672">=</span> https://huggingface.co/Qwen/Qwen3-1.7...
+</span></span><span style="display:flex;"><span>- kv  11:                               general.tags arr<span style="color:#f92672">[</span>str,1<span style="color:#f92672">]</span>       <span style="color:#f92672">=</span> <span style="color:#f92672">[</span><span style="color:#e6db74">&#34;text-generation&#34;</span><span style="color:#f92672">]</span>
+</span></span><span style="display:flex;"><span>- kv  12:                          qwen3.block_count u32              <span style="color:#f92672">=</span> <span style="color:#ae81ff">28</span>
+</span></span><span style="display:flex;"><span>- kv  13:                       qwen3.context_length u32              <span style="color:#f92672">=</span> <span style="color:#ae81ff">40960</span>   <span style="color:#75715e"># 模型元数据中定义的最大上下文长度，表示</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 模型在训练或设计时支持的最大 token 数（包括输入 prompt 和生成输出）。 模型设计时的最大上下文长度，固定在 GGUF 元数据中，无法</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 修改。要改必须重新训练</span>
+</span></span><span style="display:flex;"><span>- kv  14:                     qwen3.embedding_length u32              <span style="color:#f92672">=</span> <span style="color:#ae81ff">2048</span>
+</span></span><span style="display:flex;"><span>- kv  15:                  qwen3.feed_forward_length u32              <span style="color:#f92672">=</span> <span style="color:#ae81ff">6144</span>
+</span></span><span style="display:flex;"><span>- kv  16:                 qwen3.attention.head_count u32              <span style="color:#f92672">=</span> <span style="color:#ae81ff">16</span>
+</span></span><span style="display:flex;"><span>- kv  17:              qwen3.attention.head_count_kv u32              <span style="color:#f92672">=</span> <span style="color:#ae81ff">8</span>
+</span></span><span style="display:flex;"><span>- kv  18:                       qwen3.rope.freq_base f32              <span style="color:#f92672">=</span> 1000000.000000
+</span></span><span style="display:flex;"><span>- kv  19:     qwen3.attention.layer_norm_rms_epsilon f32              <span style="color:#f92672">=</span> 0.000001
+</span></span><span style="display:flex;"><span>- kv  20:                 qwen3.attention.key_length u32              <span style="color:#f92672">=</span> <span style="color:#ae81ff">128</span>
+</span></span><span style="display:flex;"><span>- kv  21:               qwen3.attention.value_length u32              <span style="color:#f92672">=</span> <span style="color:#ae81ff">128</span>
+</span></span><span style="display:flex;"><span>- kv  22:                       tokenizer.ggml.model str              <span style="color:#f92672">=</span> gpt2
+</span></span><span style="display:flex;"><span>- kv  23:                         tokenizer.ggml.pre str              <span style="color:#f92672">=</span> qwen2
+</span></span><span style="display:flex;"><span>- kv  24:                      tokenizer.ggml.tokens arr<span style="color:#f92672">[</span>str,151936<span style="color:#f92672">]</span>  <span style="color:#f92672">=</span> <span style="color:#f92672">[</span><span style="color:#e6db74">&#34;!&#34;</span>, <span style="color:#e6db74">&#34;\&#34;&#34;</span>, <span style="color:#e6db74">&#34;#&#34;</span>, <span style="color:#e6db74">&#34;</span>$<span style="color:#e6db74">&#34;</span>, <span style="color:#e6db74">&#34;%&#34;</span>, <span style="color:#e6db74">&#34;&amp;&#34;</span>, <span style="color:#e6db74">&#34;&#39;&#34;</span>, ...
+</span></span><span style="display:flex;"><span>- kv  25:                  tokenizer.ggml.token_type arr<span style="color:#f92672">[</span>i32,151936<span style="color:#f92672">]</span>  <span style="color:#f92672">=</span> <span style="color:#f92672">[</span>1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...
+</span></span><span style="display:flex;"><span>- kv  26:                      tokenizer.ggml.merges arr<span style="color:#f92672">[</span>str,151387<span style="color:#f92672">]</span>  <span style="color:#f92672">=</span> <span style="color:#f92672">[</span><span style="color:#e6db74">&#34;Ġ Ġ&#34;</span>, <span style="color:#e6db74">&#34;ĠĠ ĠĠ&#34;</span>, <span style="color:#e6db74">&#34;i n&#34;</span>, <span style="color:#e6db74">&#34;Ġ t&#34;</span>,...
+</span></span><span style="display:flex;"><span>- kv  27:                tokenizer.ggml.eos_token_id u32              <span style="color:#f92672">=</span> <span style="color:#ae81ff">151645</span>
+</span></span><span style="display:flex;"><span>- kv  28:            tokenizer.ggml.padding_token_id u32              <span style="color:#f92672">=</span> <span style="color:#ae81ff">151643</span>
+</span></span><span style="display:flex;"><span>- kv  29:                tokenizer.ggml.bos_token_id u32              <span style="color:#f92672">=</span> <span style="color:#ae81ff">151643</span>
+</span></span><span style="display:flex;"><span>- kv  30:               tokenizer.ggml.add_bos_token bool             <span style="color:#f92672">=</span> false
+</span></span><span style="display:flex;"><span>- kv  31:                    tokenizer.chat_template str              <span style="color:#f92672">=</span> <span style="color:#f92672">{</span>%- <span style="color:#66d9ef">if</span> tools %<span style="color:#f92672">}</span><span style="color:#ae81ff">\n</span>    <span style="color:#f92672">{{</span>- <span style="color:#960050;background-color:#1e0010">&#39;</span>&lt;|im_start|&gt;...
+</span></span><span style="display:flex;"><span>- kv  32:               general.quantization_version u32              <span style="color:#f92672">=</span> <span style="color:#ae81ff">2</span>
+</span></span><span style="display:flex;"><span>- kv  33:                          general.file_type u32              <span style="color:#f92672">=</span> <span style="color:#ae81ff">15</span>
+</span></span><span style="display:flex;"><span>- type  f32:  <span style="color:#ae81ff">113</span> tensors
+</span></span><span style="display:flex;"><span>- type q4_K:  <span style="color:#ae81ff">169</span> tensors
+</span></span><span style="display:flex;"><span>- type q6_K:   <span style="color:#ae81ff">29</span> tensors
+</span></span></code></pre></div><p>模型结构信息：</p>
+<ul>
+<li>模型基于 Qwen3 架构，Qwen3 系列，具体是 Qwen3 1.7B 含有 1.7 billion 的参数。</li>
+<li>模型的用于 &ldquo;text-generation&rdquo;。</li>
+<li>这个模型含有28 个Transformer层。表达了模型的深度和计算复杂度。</li>
+<li>支持最长的上下文，即模型处理的输入长度 是 40K 个tokens。决定了模型可以处理的输入序列长度。</li>
+<li>每个 token 表示为 2048维向量（embedding_length=2048）。表示了模型的表达能力 和 内存需求。它成为 <code>hidden-size</code>。</li>
+<li>前馈网络的中间维度是 feed_forward_length=6144。表达了前向计算规模。</li>
+<li>16 个<strong>注意力 head</strong>。用于捕获不同语义关系，影响模型表达能力和性能。</li>
+<li><strong>键值（Key-Value）注意力 head</strong>的数量，8 个。减少 KV 缓存内存，优化推理效率。</li>
+<li>层归一化（RMSNorm）的 epsilon 值很小，0.0000001。越小表示推理越严格。</li>
+<li>注意力机制中键（Key）&amp; 值（Value）向量的维度都是 128。影响注意力计算的精度和内存，影响 KV-Cache 的存储空间。</li>
+</ul>
+<p>分词器信息：</p>
+<ul>
+<li>
+<p><strong>分词器模型类型</strong>，基于 GPT-2 的 BPE（<code>type = LLAMA_VOCAB_TYPE_BPE</code>）。算法，表示从文本到 token 的转换算法。</p>
+</li>
+<li>
+<p>分词器的<strong>预处理方式</strong>，是基于 Qwen2 （<code>pre_type = LLAMA_VOCAB_PRE_TYPE_QWEN2</code>） 的分词逻辑。</p>
+</li>
+<li>
+<p>分词器的<strong>词汇表</strong>，包含 151,936 个 token。作用是映射文本到 token ID，影响分词效率和覆盖率。</p>
+</li>
+<li>
+<p>分词得到的每个 token 对应一个 <strong>token 类型</strong>，共有151,936 个。它区分token的用途。完整的只有 0 或 1 。0 对应 <code>GGML_TOKEN_NORMAL</code>（普通 token），表示常规文本单元（如单词、子词），1 对应 <code>GGML_TOKEN_CONTROL</code>（控制 token），表示特殊标记（如 <code>&lt;|im_start|&gt;</code>, <code>&lt;|eos|&gt;</code>）。Qwen3 使用 GPT-2 风格的 BPE 分词器，所以只有 普通token 和 控制token。</p>
+</li>
+<li>
+<p>分词<strong>合并规则</strong> 是 GPT2 的 BPE，得到相应的结果：<code>[&quot;Ġ Ġ&quot;, &quot;ĠĠ ĠĠ&quot;, ...]</code></p>
+</li>
+<li>
+<p>结束标记的token id 是 eos_token_id: u32 = 151645。表示序列生成的结束。</p>
+</li>
+<li>
+<p>填充（padding）标记的 token ID 是 151643。用于序列补齐，保持输入长度一致。</p>
+</li>
+<li>
+<p>开始标记（Beginning of Sequence）的 token ID 与 padding 相同。</p>
+</li>
+<li>
+<p>自动添加 BOS token 是 false。表示 Qwen3 不自动添加 BOS token。 表示？</p>
+</li>
+<li>
+<p>给出了聊天模板，引导模型处理对话，适合指令微调模型（如 Instruct）？</p>
+</li>
+<li>
+<p>向量化版本和向量化文件类型。15 表示 <code>Q4_K_M</code>（4-bit K-quant，Medium 级别）。</p>
+</li>
+<li>
+<p>最后这个模型有 311 个tensor (每一个 tensor 对应一个训练参数，113 个 f32, 169 个 q4_K, 29 个 q6_K，优化内存和性能)。</p>
+</li>
+</ul>
+<h2 id="从-llama_model_loaderprint_info-中得到">从 llama_model_loader::print_info() 中得到<a hidden class="anchor" aria-hidden="true" href="#从-llama_model_loaderprint_info-中得到">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>print_info: file format <span style="color:#f92672">=</span> GGUF V3 <span style="color:#f92672">(</span>latest<span style="color:#f92672">)</span>     
+</span></span><span style="display:flex;"><span>print_info: file type   <span style="color:#f92672">=</span> Q4_K - Medium
+</span></span><span style="display:flex;"><span>print_info: file size   <span style="color:#f92672">=</span> 1.19 GiB <span style="color:#f92672">(</span>5.03 BPW<span style="color:#f92672">)</span>
+</span></span></code></pre></div><h2 id="从-llama_vocabimplload-函数中获得">从 llama_vocab::impl::load() 函数中获得<a hidden class="anchor" aria-hidden="true" href="#从-llama_vocabimplload-函数中获得">#</a></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>load: printing all EOG tokens:
+</span></span><span style="display:flex;"><span>load:   - <span style="color:#ae81ff">151643</span> <span style="color:#f92672">(</span><span style="color:#e6db74">&#39;&lt;|endoftext|&gt;&#39;</span><span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>load:   - <span style="color:#ae81ff">151645</span> <span style="color:#f92672">(</span><span style="color:#e6db74">&#39;&lt;|im_end|&gt;&#39;</span><span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>load:   - <span style="color:#ae81ff">151662</span> <span style="color:#f92672">(</span><span style="color:#e6db74">&#39;&lt;|fim_pad|&gt;&#39;</span><span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>load:   - <span style="color:#ae81ff">151663</span> <span style="color:#f92672">(</span><span style="color:#e6db74">&#39;&lt;|repo_name|&gt;&#39;</span><span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>load:   - <span style="color:#ae81ff">151664</span> <span style="color:#f92672">(</span><span style="color:#e6db74">&#39;&lt;|file_sep|&gt;&#39;</span><span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>load: special tokens cache size <span style="color:#f92672">=</span> <span style="color:#ae81ff">26</span>   <span style="color:#75715e"># 一共有26个特殊tokens，包括了上面的5个</span>
+</span></span><span style="display:flex;"><span>load: token to piece cache size <span style="color:#f92672">=</span> 0.9311 MB  <span style="color:#75715e"># token to piece 映射缓存的内存占用</span>
+</span></span></code></pre></div><p>在函数体中 <strong>tokenizer_model</strong> 有几种选择：<code>no_vocab</code>、<code>none</code>、<code>llama</code>、<code>bert</code>、<code>gpt2</code>、<code>t5</code>、<code>rwkv</code>、<code>plamo2</code>。<strong>tokenizer_pre</strong> 有更多的种类（70多种）：我的模型对应的是 <code>Qwen2</code>。GGUF 文件的 meta Data 中包含这些信息，code 中是根据不同的值，做了相应的处理。具体将：从 GGUF 文件的元数据（LLM_KV 结构体）中读取分词器相关信息。根据 tokenizer_model 和 tokenizer_pre 的不同，给特殊tokens 指定对应的ID。</p>
+<p>这个 <code>llama_vocab::impl::load()</code> 函数功能是加载分词器词汇表。解析特殊 tokens，并存储在内存中。</p>
+<p>作用：这些特殊 token 存储在内存中的一个专用数据结构（即 token to piece 映射），他们在推理中频繁被使用（如检查 <code>&lt;|im_end|&gt;</code> 停止生成），<strong>避免重复读取</strong> GGUF 文件的词汇表。便于快速访问。具体讲，加速分词/解码时，即将输入文本转为 token ID（编码）或 token ID 转为文本（解码）时，缓存提供快速查找。</p>
+<p>token 应该指的是 token id；piece 应该是字符串形式的 token。实现在 <code>llama_vocab::token_to_piece</code>。</p>
+<p>输出的 5 个 映射都是表示 EOG（End Of Generation）的特殊tokens，属于控制 tokens，用于停止生成、标记对话边界。<strong>该函数是通用的函数，以支持各种模型，分词模型（分词算法），他们各不相同，各自有不同的分词规则和特殊 tokens。</strong>，他们与其他特殊 tokens 组成了数量为 26 的特殊 tokens。</p>
+<ul>
+<li><code>151643 ('&lt;|endoftext|&gt;')</code>：结束token id，通常与 <code>tokenizer.ggml.bos_token_id = 151643</code> 和 <code>padding_token_id = 151643</code> 一致，表示序列开始或填充。</li>
+<li><code>151645 ('&lt;|im_end|&gt;')</code>：对话结束token id，与 <code>tokenizer.ggml.eos_token_id = 151645</code> 一致，用于结束生成（如 Qwen3 的聊天模板 <code>&lt;|im_start|&gt;... &lt;|im_end|&gt;</code>）。</li>
+<li><code>151662 ('&lt;|fim_pad|&gt;')</code>：文件补全（Fill-in-the-Middle）填充token id，用于代码补全任务（如 StarCoder 模型）。</li>
+<li><code>151663 ('&lt;|repo_name|&gt;')</code>：表示代码仓库名称的token id，可能用于多模态或代码生成任务。</li>
+<li><code>151664 ('&lt;|file_sep|&gt;')</code>：文件分隔符token id，区分多个文件或上下文。</li>
+</ul>
+<h2 id="llama_model_load-中的-modelprint_info-输出">llama_model_load() 中的 model.print_info(); 输出：<a hidden class="anchor" aria-hidden="true" href="#llama_model_load-中的-modelprint_info-输出">#</a></h2>
+<p>这些信息来自于 <code>llama_model</code> 对象的 <code>hparams</code> 成员。与load函数一样，print_info() 函数也是为了支持各种模型结构和分词模型，所以实现上也是许多路的分支判断。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>print_info: arch             <span style="color:#f92672">=</span> qwen3
+</span></span><span style="display:flex;"><span>print_info: vocab_only       <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>print_info: n_ctx_train      <span style="color:#f92672">=</span> <span style="color:#ae81ff">40960</span>
+</span></span><span style="display:flex;"><span>print_info: n_embd           <span style="color:#f92672">=</span> <span style="color:#ae81ff">2048</span>
+</span></span><span style="display:flex;"><span>print_info: n_layer          <span style="color:#f92672">=</span> <span style="color:#ae81ff">28</span>
+</span></span><span style="display:flex;"><span>print_info: n_head           <span style="color:#f92672">=</span> <span style="color:#ae81ff">16</span>
+</span></span><span style="display:flex;"><span>print_info: n_head_kv        <span style="color:#f92672">=</span> <span style="color:#ae81ff">8</span>
+</span></span><span style="display:flex;"><span>print_info: n_rot            <span style="color:#f92672">=</span> <span style="color:#ae81ff">128</span>
+</span></span><span style="display:flex;"><span>print_info: n_swa            <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>print_info: is_swa_any       <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>print_info: n_embd_head_k    <span style="color:#f92672">=</span> <span style="color:#ae81ff">128</span>
+</span></span><span style="display:flex;"><span>print_info: n_embd_head_v    <span style="color:#f92672">=</span> <span style="color:#ae81ff">128</span>
+</span></span><span style="display:flex;"><span>print_info: n_gqa            <span style="color:#f92672">=</span> <span style="color:#ae81ff">2</span>
+</span></span><span style="display:flex;"><span>print_info: n_embd_k_gqa     <span style="color:#f92672">=</span> <span style="color:#ae81ff">1024</span>
+</span></span><span style="display:flex;"><span>print_info: n_embd_v_gqa     <span style="color:#f92672">=</span> <span style="color:#ae81ff">1024</span>
+</span></span><span style="display:flex;"><span>print_info: f_norm_eps       <span style="color:#f92672">=</span> 0.0e+00
+</span></span><span style="display:flex;"><span>print_info: f_norm_rms_eps   <span style="color:#f92672">=</span> 1.0e-06
+</span></span><span style="display:flex;"><span>print_info: f_clamp_kqv      <span style="color:#f92672">=</span> 0.0e+00
+</span></span><span style="display:flex;"><span>print_info: f_max_alibi_bias <span style="color:#f92672">=</span> 0.0e+00
+</span></span><span style="display:flex;"><span>print_info: f_logit_scale    <span style="color:#f92672">=</span> 0.0e+00
+</span></span><span style="display:flex;"><span>print_info: f_attn_scale     <span style="color:#f92672">=</span> 0.0e+00
+</span></span><span style="display:flex;"><span>print_info: n_ff             <span style="color:#f92672">=</span> <span style="color:#ae81ff">6144</span>
+</span></span><span style="display:flex;"><span>print_info: n_expert         <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>print_info: n_expert_used    <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>print_info: causal attn      <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>print_info: pooling type     <span style="color:#f92672">=</span> -1
+</span></span><span style="display:flex;"><span>print_info: rope type        <span style="color:#f92672">=</span> <span style="color:#ae81ff">2</span>
+</span></span><span style="display:flex;"><span>print_info: rope scaling     <span style="color:#f92672">=</span> linear
+</span></span><span style="display:flex;"><span>print_info: freq_base_train  <span style="color:#f92672">=</span> 1000000.0
+</span></span><span style="display:flex;"><span>print_info: freq_scale_train <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>print_info: n_ctx_orig_yarn  <span style="color:#f92672">=</span> <span style="color:#ae81ff">40960</span>
+</span></span><span style="display:flex;"><span>print_info: rope_finetuned   <span style="color:#f92672">=</span> unknown
+</span></span><span style="display:flex;"><span>print_info: model type       <span style="color:#f92672">=</span> 1.7B
+</span></span><span style="display:flex;"><span>print_info: model params     <span style="color:#f92672">=</span> 2.03 B
+</span></span><span style="display:flex;"><span>print_info: general.name     <span style="color:#f92672">=</span> Qwen3 1.7B
+</span></span><span style="display:flex;"><span>print_info: vocab type       <span style="color:#f92672">=</span> BPE
+</span></span><span style="display:flex;"><span>print_info: n_vocab          <span style="color:#f92672">=</span> <span style="color:#ae81ff">151936</span>
+</span></span><span style="display:flex;"><span>print_info: n_merges         <span style="color:#f92672">=</span> <span style="color:#ae81ff">151387</span>
+</span></span><span style="display:flex;"><span>print_info: BOS token        <span style="color:#f92672">=</span> <span style="color:#ae81ff">151643</span> <span style="color:#e6db74">&#39;&lt;|endoftext|&gt;&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: EOS token        <span style="color:#f92672">=</span> <span style="color:#ae81ff">151645</span> <span style="color:#e6db74">&#39;&lt;|im_end|&gt;&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: EOT token        <span style="color:#f92672">=</span> <span style="color:#ae81ff">151645</span> <span style="color:#e6db74">&#39;&lt;|im_end|&gt;&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: PAD token        <span style="color:#f92672">=</span> <span style="color:#ae81ff">151643</span> <span style="color:#e6db74">&#39;&lt;|endoftext|&gt;&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: LF token         <span style="color:#f92672">=</span> <span style="color:#ae81ff">198</span> <span style="color:#e6db74">&#39;Ċ&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: FIM PRE token    <span style="color:#f92672">=</span> <span style="color:#ae81ff">151659</span> <span style="color:#e6db74">&#39;&lt;|fim_prefix|&gt;&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: FIM SUF token    <span style="color:#f92672">=</span> <span style="color:#ae81ff">151661</span> <span style="color:#e6db74">&#39;&lt;|fim_suffix|&gt;&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: FIM MID token    <span style="color:#f92672">=</span> <span style="color:#ae81ff">151660</span> <span style="color:#e6db74">&#39;&lt;|fim_middle|&gt;&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: FIM PAD token    <span style="color:#f92672">=</span> <span style="color:#ae81ff">151662</span> <span style="color:#e6db74">&#39;&lt;|fim_pad|&gt;&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: FIM REP token    <span style="color:#f92672">=</span> <span style="color:#ae81ff">151663</span> <span style="color:#e6db74">&#39;&lt;|repo_name|&gt;&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: FIM SEP token    <span style="color:#f92672">=</span> <span style="color:#ae81ff">151664</span> <span style="color:#e6db74">&#39;&lt;|file_sep|&gt;&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: EOG token        <span style="color:#f92672">=</span> <span style="color:#ae81ff">151643</span> <span style="color:#e6db74">&#39;&lt;|endoftext|&gt;&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: EOG token        <span style="color:#f92672">=</span> <span style="color:#ae81ff">151645</span> <span style="color:#e6db74">&#39;&lt;|im_end|&gt;&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: EOG token        <span style="color:#f92672">=</span> <span style="color:#ae81ff">151662</span> <span style="color:#e6db74">&#39;&lt;|fim_pad|&gt;&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: EOG token        <span style="color:#f92672">=</span> <span style="color:#ae81ff">151663</span> <span style="color:#e6db74">&#39;&lt;|repo_name|&gt;&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: EOG token        <span style="color:#f92672">=</span> <span style="color:#ae81ff">151664</span> <span style="color:#e6db74">&#39;&lt;|file_sep|&gt;&#39;</span>
+</span></span><span style="display:flex;"><span>print_info: max token length <span style="color:#f92672">=</span> <span style="color:#ae81ff">256</span>
+</span></span></code></pre></div><h2 id="load_tensorsml-加载-weight-tensors">load_tensors(ml) 加载 weight tensors<a hidden class="anchor" aria-hidden="true" href="#load_tensorsml-加载-weight-tensors">#</a></h2>
+<p><code>llama_model</code> 对象的另外一个成员是 <code>params</code>（不同于 hparams）。load_tensors() 函数 中的 创建 weight tensor部分，包含了几十种arch的 模型结构，每一种arch的层数，和每一层需要的 weight tensors。比如 Qwen3：</p>
+<p><strong>关键代码位置</strong>：<code>llama_model.cpp</code> <code>load_tensors</code> 中位置 <code>case LLM_ARCH_QWEN3:</code></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">case</span> LLM_ARCH_QWEN3:
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        tok_embd <span style="color:#f92672">=</span> create_tensor(tn(LLM_TENSOR_TOKEN_EMBD, <span style="color:#e6db74">&#34;weight&#34;</span>), {n_embd, n_vocab}, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// output
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        output_norm <span style="color:#f92672">=</span> create_tensor(tn(LLM_TENSOR_OUTPUT_NORM, <span style="color:#e6db74">&#34;weight&#34;</span>), {n_embd}, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>        output      <span style="color:#f92672">=</span> create_tensor(tn(LLM_TENSOR_OUTPUT,      <span style="color:#e6db74">&#34;weight&#34;</span>), {n_embd, n_vocab}, TENSOR_NOT_REQUIRED);
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// if output is NULL, init from the input tok embed
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#66d9ef">if</span> (output <span style="color:#f92672">==</span> NULL) {
+</span></span><span style="display:flex;"><span>            output <span style="color:#f92672">=</span> create_tensor(tn(LLM_TENSOR_TOKEN_EMBD, <span style="color:#e6db74">&#34;weight&#34;</span>), {n_embd, n_vocab}, TENSOR_DUPLICATED);
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; i <span style="color:#f92672">&lt;</span> n_layer; <span style="color:#f92672">++</span>i) {
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">auto</span> <span style="color:#f92672">&amp;</span> layer <span style="color:#f92672">=</span> layers[i];
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            layer.attn_norm <span style="color:#f92672">=</span> create_tensor(tn(LLM_TENSOR_ATTN_NORM, <span style="color:#e6db74">&#34;weight&#34;</span>, i), {n_embd}, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            layer.wq <span style="color:#f92672">=</span> create_tensor(tn(LLM_TENSOR_ATTN_Q,   <span style="color:#e6db74">&#34;weight&#34;</span>, i), {n_embd, n_embd_head_k <span style="color:#f92672">*</span> n_head}, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>            layer.wk <span style="color:#f92672">=</span> create_tensor(tn(LLM_TENSOR_ATTN_K,   <span style="color:#e6db74">&#34;weight&#34;</span>, i), {n_embd, n_embd_gqa}, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>            layer.wv <span style="color:#f92672">=</span> create_tensor(tn(LLM_TENSOR_ATTN_V,   <span style="color:#e6db74">&#34;weight&#34;</span>, i), {n_embd, n_embd_gqa}, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>            layer.wo <span style="color:#f92672">=</span> create_tensor(tn(LLM_TENSOR_ATTN_OUT, <span style="color:#e6db74">&#34;weight&#34;</span>, i), {n_embd_head_k <span style="color:#f92672">*</span> n_head, n_embd}, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            layer.attn_k_norm <span style="color:#f92672">=</span> create_tensor(tn(LLM_TENSOR_ATTN_K_NORM, <span style="color:#e6db74">&#34;weight&#34;</span>, i), {n_embd_head_k}, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>            layer.attn_q_norm <span style="color:#f92672">=</span> create_tensor(tn(LLM_TENSOR_ATTN_Q_NORM, <span style="color:#e6db74">&#34;weight&#34;</span>, i), {n_embd_head_k}, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            layer.ffn_norm <span style="color:#f92672">=</span> create_tensor(tn(LLM_TENSOR_FFN_NORM, <span style="color:#e6db74">&#34;weight&#34;</span>, i), {n_embd}, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>            layer.ffn_gate <span style="color:#f92672">=</span> create_tensor(tn(LLM_TENSOR_FFN_GATE, <span style="color:#e6db74">&#34;weight&#34;</span>, i), {n_embd,   n_ff}, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>            layer.ffn_down <span style="color:#f92672">=</span> create_tensor(tn(LLM_TENSOR_FFN_DOWN, <span style="color:#e6db74">&#34;weight&#34;</span>, i), {  n_ff, n_embd}, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>            layer.ffn_up   <span style="color:#f92672">=</span> create_tensor(tn(LLM_TENSOR_FFN_UP,   <span style="color:#e6db74">&#34;weight&#34;</span>, i), {n_embd,   n_ff}, <span style="color:#ae81ff">0</span>);
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    } <span style="color:#66d9ef">break</span>;
+</span></span></code></pre></div><p>模型有311 个tensor，内部名类似：&ldquo;blk.27.ffn_down.weight&rdquo;，&ldquo;blk.27.attn_v.weight&rdquo; 等。信息在 llama_model 对象中的 pimpl 成员中，n_objects = 311。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>load_tensors: loading model tensors, this can take a <span style="color:#66d9ef">while</span>... <span style="color:#f92672">(</span>mmap <span style="color:#f92672">=</span> true<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>load_tensors: offloading <span style="color:#ae81ff">0</span> repeating layers to GPU
+</span></span><span style="display:flex;"><span>load_tensors: offloaded 0/29 layers to GPU
+</span></span><span style="display:flex;"><span>load_tensors:   CPU_Mapped model buffer size <span style="color:#f92672">=</span>  1217.35 MiB
+</span></span></code></pre></div><h2 id="创建-llama_context-对象">创建 llama_context 对象<a hidden class="anchor" aria-hidden="true" href="#创建-llama_context-对象">#</a></h2>
+<p>关键代码位置：文件 <code>llama-context.cpp</code> 中函数 <code>llama_init_from_model</code> 中的 <code>auto * ctx = new llama_context(*model, params);</code></p>
+<p>load model，load tensors，并将这些静态内容保存下来，避免每次推理都重新加载。load model，load tensors 之后，创建 context。context 用于管理推理运行时状态的核心数据结构。与静态的模型权重（llama_model）分开。</p>
+<p>模型加载是全局操作；llama_context 是轻量级的（KV 缓存约数百 MB）</p>
+<p>llama_model 是静态的，只包含架构和参数，无法处理动态输入或生成序列。需要 context 来执行实际推理任务（forward pass计算过程也在 context 类中： <code>llama_context::decode</code>）。context 功能包括：</p>
+<ul>
+<li>动态配置推理参数 cparams ，独立于模型架构的，比如配置 n_ctx = 40960：设置最大上下文长度。</li>
+<li>初始化 output_ids（初始化为-1）。</li>
+<li>context 初始化硬件资源，初始化 backends，<code>ggml_backend_cuda_guid()::guild</code> 和 <code>ggml_backend_cpu_guid()::guid</code>，并计算 cpu/gpu 缓冲区大小: <code>CPU  output buffer size = 0.58 MiB</code> , <code>CUDA0 compute buffer size = 544.18 MiB</code>。</li>
+<li>支持分词和序列生成。分词和生成需要动态状态（例如当前 token 位置、KV 缓存），但 llama_model 只能提供静态词汇表。</li>
+<li>每个 llama_context 是一个独立的推理会话，拥有自己的 KV 缓存、缓冲区和配置（params.n_ctx, n_batch）。这允许多个推理会话共享模型。</li>
+<li>定义 Transformer 层的计算路径，</li>
+</ul>
+<p>调用栈：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> <span style="color:#f92672">*</span> ctx <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> llama_context(<span style="color:#f92672">*</span>model, params);
+</span></span><span style="display:flex;"><span>llama_context <span style="color:#f92672">*</span> lctx <span style="color:#f92672">=</span> llama_init_from_model(model, cparams);
+</span></span><span style="display:flex;"><span>common_init_from_params(params);
+</span></span><span style="display:flex;"><span>main();
+</span></span></code></pre></div><p>log信息：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>llama_context: constructing llama_context
+</span></span><span style="display:flex;"><span>llama_context: n_seq_max     <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>llama_context: n_ctx         <span style="color:#f92672">=</span> <span style="color:#ae81ff">4096</span>   <span style="color:#75715e"># 推理时使用的实际上下文长度，由命令行参数 -c 或 --ctx-size 设置</span>
+</span></span><span style="display:flex;"><span>llama_context: n_ctx_per_seq <span style="color:#f92672">=</span> <span style="color:#ae81ff">4096</span>
+</span></span><span style="display:flex;"><span>llama_context: n_batch       <span style="color:#f92672">=</span> <span style="color:#ae81ff">2048</span>
+</span></span><span style="display:flex;"><span>llama_context: n_ubatch      <span style="color:#f92672">=</span> <span style="color:#ae81ff">512</span>
+</span></span><span style="display:flex;"><span>llama_context: causal_attn   <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>llama_context: flash_attn    <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>llama_context: kv_unified    <span style="color:#f92672">=</span> false
+</span></span><span style="display:flex;"><span>llama_context: freq_base     <span style="color:#f92672">=</span> 1000000.0
+</span></span><span style="display:flex;"><span>llama_context: freq_scale    <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>llama_context: n_ctx_per_seq <span style="color:#f92672">(</span>4096<span style="color:#f92672">)</span> &lt; n_ctx_train <span style="color:#f92672">(</span>40960<span style="color:#f92672">)</span> -- the full capacity of the model will not be utilized
+</span></span><span style="display:flex;"><span>llama_context:        CPU  output buffer size <span style="color:#f92672">=</span>     0.58 MiB
+</span></span><span style="display:flex;"><span>llama_kv_cache_unified:        CPU KV buffer size <span style="color:#f92672">=</span>   448.00 MiB
+</span></span><span style="display:flex;"><span>llama_kv_cache_unified: size <span style="color:#f92672">=</span>  448.00 MiB <span style="color:#f92672">(</span>  <span style="color:#ae81ff">4096</span> cells,  <span style="color:#ae81ff">28</span> layers,  1/1 seqs<span style="color:#f92672">)</span>, K <span style="color:#f92672">(</span>f16<span style="color:#f92672">)</span>:  224.00 MiB, V <span style="color:#f92672">(</span>f16<span style="color:#f92672">)</span>:  224.00 MiB
+</span></span><span style="display:flex;"><span>llama_context:      CUDA0 compute buffer size <span style="color:#f92672">=</span>   544.18 MiB
+</span></span><span style="display:flex;"><span>llama_context:  CUDA_Host compute buffer size <span style="color:#f92672">=</span>    20.01 MiB
+</span></span><span style="display:flex;"><span>llama_context: graph nodes  <span style="color:#f92672">=</span> <span style="color:#ae81ff">1098</span>
+</span></span><span style="display:flex;"><span>llama_context: graph splits <span style="color:#f92672">=</span> <span style="color:#ae81ff">367</span> <span style="color:#f92672">(</span>with bs<span style="color:#f92672">=</span>512<span style="color:#f92672">)</span>, <span style="color:#ae81ff">1</span> <span style="color:#f92672">(</span>with bs<span style="color:#f92672">=</span>1<span style="color:#f92672">)</span>
+</span></span></code></pre></div><p>所以为什么需要 context？</p>
+<ul>
+<li>llama_model 是静态的，包含权重（311 张量）和元数据（qwen3.context_length = 40960），但无法处理动态输入或生成过程。</li>
+<li>llama_context 是动态的，管理推理状态（KV 缓存、token 序列）。</li>
+</ul>
+<h2 id="设置特殊-token-的-bias">设置特殊 token 的 bias<a hidden class="anchor" aria-hidden="true" href="#设置特殊-token-的-bias">#</a></h2>
+<p>在生成过程中，logit bias 调整 token 的生成概率。<code>-inf</code> 表示将这些 token 的生成概率设为 0，完全禁止生成这些 token</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>common_init_from_params: added &lt;|endoftext|&gt; logit bias <span style="color:#f92672">=</span> -inf
+</span></span><span style="display:flex;"><span>common_init_from_params: added &lt;|im_end|&gt; logit bias <span style="color:#f92672">=</span> -inf
+</span></span><span style="display:flex;"><span>common_init_from_params: added &lt;|fim_pad|&gt; logit bias <span style="color:#f92672">=</span> -inf
+</span></span><span style="display:flex;"><span>common_init_from_params: added &lt;|repo_name|&gt; logit bias <span style="color:#f92672">=</span> -inf
+</span></span><span style="display:flex;"><span>common_init_from_params: added &lt;|file_sep|&gt; logit bias <span style="color:#f92672">=</span> -inf
+</span></span><span style="display:flex;"><span>common_init_from_params: setting dry_penalty_last_n to ctx_size <span style="color:#f92672">=</span> <span style="color:#ae81ff">4096</span>
+</span></span><span style="display:flex;"><span>common_init_from_params: warming up the model with an empty run - please wait ... <span style="color:#f92672">(</span>--no-warmup to disable<span style="color:#f92672">)</span>
+</span></span></code></pre></div><h2 id="系统信息和采样器参数">系统信息和采样器参数<a hidden class="anchor" aria-hidden="true" href="#系统信息和采样器参数">#</a></h2>
+<p><code>main()</code> 中的 <code>smpl = common_sampler_init(model, sparams);</code> 通过 <code>llama_sampler_chain_add </code>添加各个采样器。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>main: llama threadpool init, n_threads <span style="color:#f92672">=</span> <span style="color:#ae81ff">6</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>system_info: n_threads <span style="color:#f92672">=</span> <span style="color:#ae81ff">6</span> <span style="color:#f92672">(</span>n_threads_batch <span style="color:#f92672">=</span> 6<span style="color:#f92672">)</span> / <span style="color:#ae81ff">6</span> | CUDA : ARCHS <span style="color:#f92672">=</span> 500,610,700,750,800,860,890 | USE_GRAPHS <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> | PEER_MAX_BATCH_SIZE <span style="color:#f92672">=</span> <span style="color:#ae81ff">128</span> | CPU : NEON <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> | ARM_FMA <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> | FP16_VA <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> | DOTPROD <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> | LLAMAFILE <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> | OPENMP <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> | REPACK <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> | 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>sampler seed: <span style="color:#ae81ff">840489643</span>
+</span></span><span style="display:flex;"><span>sampler params: 
+</span></span><span style="display:flex;"><span>	repeat_last_n <span style="color:#f92672">=</span> 64, repeat_penalty <span style="color:#f92672">=</span> 1.000, frequency_penalty <span style="color:#f92672">=</span> 0.000, presence_penalty <span style="color:#f92672">=</span> 0.000
+</span></span><span style="display:flex;"><span>	dry_multiplier <span style="color:#f92672">=</span> 0.000, dry_base <span style="color:#f92672">=</span> 1.750, dry_allowed_length <span style="color:#f92672">=</span> 2, dry_penalty_last_n <span style="color:#f92672">=</span> <span style="color:#ae81ff">4096</span>
+</span></span><span style="display:flex;"><span>	top_k <span style="color:#f92672">=</span> 40, top_p <span style="color:#f92672">=</span> 0.950, min_p <span style="color:#f92672">=</span> 0.050, xtc_probability <span style="color:#f92672">=</span> 0.000, xtc_threshold <span style="color:#f92672">=</span> 0.100, typical_p <span style="color:#f92672">=</span> 1.000, top_n_sigma <span style="color:#f92672">=</span> -1.000, temp <span style="color:#f92672">=</span> 0.800
+</span></span><span style="display:flex;"><span>	mirostat <span style="color:#f92672">=</span> 0, mirostat_lr <span style="color:#f92672">=</span> 0.100, mirostat_ent <span style="color:#f92672">=</span> 5.000
+</span></span><span style="display:flex;"><span>sampler chain: logits -&gt; logit-bias -&gt; penalties -&gt; dry -&gt; top-n-sigma -&gt; top-k -&gt; typical -&gt; top-p -&gt; min-p -&gt; xtc -&gt; temp-ext -&gt; dist 
+</span></span><span style="display:flex;"><span>generate: n_ctx <span style="color:#f92672">=</span> 4096, n_batch <span style="color:#f92672">=</span> 2048, n_predict <span style="color:#f92672">=</span> -1, n_keep <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>
+</span></span></code></pre></div><p><strong>sampler chain</strong> 描述 llama.cpp 在生成 token 时应用的 sampler 顺序，即从原始模型输出 logits 到最终 token 选择的处理链。</p>
+<ul>
+<li>logit-bias 是应用偏置（bias）调整特定 token 的 logits。增加或减少某些token的概率</li>
+<li>penalties 是用惩罚机制（如频率惩罚、重复惩罚），降低重复 token 的概率</li>
+<li>DRY 是Don&rsquo;t Repeat Yourself 采样，减少重复模式</li>
+<li>top-n-sigma 根据标准差（sigma）选择 top N 个 token，限制候选范围</li>
+<li>top-K 采样 选择概率最高的 K 个 token</li>
+<li>typical 采样基于信息熵选择 token</li>
+<li>top-P 采样 选择累积概率达到 P 的 token 的集合</li>
+<li>min-p 采样 即最小概率采样，过滤概率低于阈值的 token</li>
+<li>XTC Extreme Temperature Control</li>
+<li>temp-ext: 温度扩展（temperature extension），调整分布平滑度</li>
+<li>dist 是最终概率分布，归一化为概率（softmax），从中采样 token</li>
+</ul>
+<p>每个采样器逐步过滤或调整概率分布，影响生成文本的多样性、连贯性和质量。如果没有指定，采样器会使用默认值。</p>
+<p>sampler params: 是关于采样器的各个实际参数值。<code>n_predict = -1</code> 表示生成的token数量无限制。更多关于采样的参数，见 <code>llama-cli --help</code>。</p>
+<p>sampler 创建过程类似：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>    llama_sampler <span style="color:#f92672">*</span> smpl <span style="color:#f92672">=</span> llama_sampler_chain_init(llama_sampler_chain_default_params());
+</span></span><span style="display:flex;"><span>    llama_sampler_chain_add(smpl, llama_sampler_init_min_p(<span style="color:#ae81ff">0.05f</span>, <span style="color:#ae81ff">1</span>));
+</span></span><span style="display:flex;"><span>    llama_sampler_chain_add(smpl, llama_sampler_init_temp(<span style="color:#ae81ff">0.8f</span>));
+</span></span><span style="display:flex;"><span>    llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+</span></span></code></pre></div><h2 id="token-generate-关键位置">token generate 关键位置<a hidden class="anchor" aria-hidden="true" href="#token-generate-关键位置">#</a></h2>
+<p>每一个单词是通过 while 循环，一个一个生成的。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">while</span> ((n_remain <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#f92672">!</span>is_antiprompt) <span style="color:#f92672">||</span> params.interactive) {}
+</span></span></code></pre></div><h1 id="kaq">KAQ<a hidden class="anchor" aria-hidden="true" href="#kaq">#</a></h1>
+<h2 id="-cpu_mapped-model-buffer-size-是什么意思">@ CPU_Mapped model buffer size 是什么意思？<a hidden class="anchor" aria-hidden="true" href="#-cpu_mapped-model-buffer-size-是什么意思">#</a></h2>
+<p>关键代码位置：<code>llama-model.cpp</code> 文件中函数 <code>load_tensors</code> 中位置:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>LLAMA_LOG_INFO(<span style="color:#e6db74">&#34;%s: %12s model buffer size = %8.2f MiB</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, __func__, ggml_backend_buffer_name(buf.get()), ggml_backend_buffer_get_size(buf.get()) <span style="color:#f92672">/</span> <span style="color:#ae81ff">1024.0</span> <span style="color:#f92672">/</span> <span style="color:#ae81ff">1024.0</span>);
+</span></span></code></pre></div><p>表示的是 在加载 GGUF 文件的 tensors 时，分配的 CPU 映射缓冲区（CPU-mapped buffer）的总内存大小。这个缓冲区用于存储模型权重，并被映射到 CPU 地址空间。</p>
+<h2 id="-n_ctx-可以在运行时动态调整">@ <code>n_ctx</code> 可以在运行时动态调整?<a hidden class="anchor" aria-hidden="true" href="#-n_ctx-可以在运行时动态调整">#</a></h2>
+<p>n_ctx 表示推理时支持的最大上下文长度（以 token 计），即模型一次能处理的输入和输出 token 总数。它<strong>不能在运行时调整</strong>，但可以<strong>在启动时调整</strong>，如在 cli 中通过 <code>--ctx-size</code> ：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>./bin/llama-cli -m ../models/Qwen3-1.7B-Q4_K_M.gguf -no-cnv --prompt <span style="color:#e6db74">&#34;what is the result of 1 + 1 in Math?&#34;</span> --ctx-size <span style="color:#ae81ff">2048</span>
+</span></span></code></pre></div><p>log 中 context 的 n_ctx = 2048，也就是 llama-context 可以在启动时调整参数。</p>
+<h2 id="-用户-prompt-输入序列的长度">@ 用户 prompt 输入序列的长度？<a hidden class="anchor" aria-hidden="true" href="#-用户-prompt-输入序列的长度">#</a></h2>
+<h2 id="-hidden-size-用处是什么">@ hidden-size 用处是什么？<a hidden class="anchor" aria-hidden="true" href="#-hidden-size-用处是什么">#</a></h2>
+<h2 id="-注意力-head-和-kv-注意力头-的关系是">@ 注意力 head 和 KV 注意力头 的关系是？<a hidden class="anchor" aria-hidden="true" href="#-注意力-head-和-kv-注意力头-的关系是">#</a></h2>
+<h2 id="-log_dbg-如何-enable">@ LOG_DBG 如何 enable？<a hidden class="anchor" aria-hidden="true" href="#-log_dbg-如何-enable">#</a></h2>
+<p>LOG_DBG：
+LOG_INF：默认开启
+LOG_CNT：</p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llm/">LLM</a></li>
+      <li><a href="https://ashburnLee.github.io/blog-2-hugo/tags/llama.cpp/">Llama.cpp</a></li>
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="https://ashburnLee.github.io/blog-2-hugo/">Junhui&#39;s Journal 2</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>
