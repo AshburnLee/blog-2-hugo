@@ -1,0 +1,34 @@
+baseURL = "https://ashburnLee.github.io/blog-2-hugo/"
+languageCode = 'en-us'
+title = "Junhui's Journal 2"
+theme = "PaperMod"
+
+[params]
+  math = "mathjax"
+  [params.homeInfoParams]
+    Content = ">> Keep Asking Questions \n> -- Adrian Newey"
+
+[taxonomies]
+  tag = "tags"
+  category = "categories"
+
+[[menu.main]]
+    name = "Home"
+    url = "/"
+    weight = 5
+
+[[menu.main]]
+    name = "Tags"
+    url = "/tags/"
+    weight = 10
+
+[[menu.main]]
+    name = "Categories"
+    url = "/categories/"
+    weight = 20
+
+[params.assets]
+  disableFingerprinting = false
+  disableHLJS = false
+[minify]
+  disableCSS = false
