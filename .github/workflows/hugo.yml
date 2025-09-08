@@ -2,6 +2,7 @@ name: Deploy Hugo site
 on:
   push:
     branches: [main]
+# 显式授予 GITHUB_TOKEN 所需的权限
 permissions:
   contents: read
   pages: write
