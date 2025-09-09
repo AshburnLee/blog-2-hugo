@@ -1,8 +1,9 @@
 name: Deploy Hugo site
 on:
+  # trigger this workflow when push to main
   push:
     branches: [main]
-# 显式授予 GITHUB_TOKEN 所需的权限
+# grand permisions for GITHUB_TOKEN
 permissions:
   contents: read
   pages: write
@@ -11,14 +12,18 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # checkout repo and submodules
       - uses: actions/checkout@v4
         with:
           submodules: true
+      # install latest hugo extension
       - uses: peaceiris/actions-hugo@v3
         with:
           hugo-version: 'latest'
           extended: true
+      # build site
       - run: hugo --minify
+      # upload ./public for deploymeng
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./public
@@ -26,4 +31,5 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      # deploy uploaded pages
       - uses: actions/deploy-pages@v4
