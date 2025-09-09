@@ -100,7 +100,7 @@
 &lt;table&gt;
   &lt;thead&gt;
       &lt;tr&gt;
-          &lt;th style=&#34;text-align: center&#34;&gt;&lt;img alt=&#34;Q vs deep Q&#34; loading=&#34;lazy&#34; src=&#34;https://ashburnLee.github.io/blog-2-hugo/pics/deep.jpg&#34;&gt;&lt;/th&gt;
+          &lt;th style=&#34;text-align: center&#34;&gt;&lt;img alt=&#34;Q vs deep Q&#34; loading=&#34;lazy&#34; src=&#34;../../pics/deep.jpg&#34;&gt;&lt;/th&gt;
       &lt;/tr&gt;
   &lt;/thead&gt;
   &lt;tbody&gt;
@@ -114,7 +114,7 @@
 &lt;table&gt;
   &lt;thead&gt;
       &lt;tr&gt;
-          &lt;th style=&#34;text-align: center&#34;&gt;&lt;img alt=&#34;图片描述&#34; loading=&#34;lazy&#34; src=&#34;https://ashburnLee.github.io/blog-2-hugo/pics/Q-target.jpg&#34;&gt;&lt;/th&gt;
+          &lt;th style=&#34;text-align: center&#34;&gt;&lt;img alt=&#34;图片描述&#34; loading=&#34;lazy&#34; src=&#34;../../pics/Q-target.jpg&#34;&gt;&lt;/th&gt;
       &lt;/tr&gt;
   &lt;/thead&gt;
   &lt;tbody&gt;
@@ -178,7 +178,7 @@ subject to x ∈ S
 &lt;table&gt;
   &lt;thead&gt;
       &lt;tr&gt;
-          &lt;th style=&#34;text-align: center&#34;&gt;&lt;img loading=&#34;lazy&#34; src=&#34;https://ashburnLee.github.io/blog-2-hugo/pics/stochastic_policy.png&#34;&gt;&lt;/th&gt;
+          &lt;th style=&#34;text-align: center&#34;&gt;&lt;img loading=&#34;lazy&#34; src=&#34;../../pics/stochastic_policy.png&#34;&gt;&lt;/th&gt;
       &lt;/tr&gt;
   &lt;/thead&gt;
   &lt;tbody&gt;

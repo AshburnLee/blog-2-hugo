@@ -728,7 +728,7 @@ $$p_i&amp;rsquo; = \frac{p_i}{\sum_{j \in \text{top-K}} p_j}, \quad p_i = 0 \tex
 &lt;table&gt;
   &lt;thead&gt;
       &lt;tr&gt;
-          &lt;th style=&#34;text-align: center&#34;&gt;&lt;img alt=&#34;图片描述&#34; loading=&#34;lazy&#34; src=&#34;https://ashburnLee.github.io/blog-2-hugo/pics/tokenization_pipeline-dark.svg&#34;&gt;&lt;/th&gt;
+          &lt;th style=&#34;text-align: center&#34;&gt;&lt;img alt=&#34;图片描述&#34; loading=&#34;lazy&#34; src=&#34;../../pics/tokenization_pipeline-dark.svg&#34;&gt;&lt;/th&gt;
       &lt;/tr&gt;
   &lt;/thead&gt;
   &lt;tbody&gt;
