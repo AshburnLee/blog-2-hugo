@@ -1,5 +1,5 @@
 +++
-date = '2025-08-31T12:52:05+08:00'
+date = '2025-05-31T12:52:05+08:00'
 draft = false
 title = 'Concept'
 tags = ["Reinforcement Learning","General"]
@@ -73,7 +73,7 @@ Value-based methods 通过迭代更新价值函数来学习。更新的依据是
 
 - Monte Carlo (MC) 方法：
 
-  - 原理：MC 方法通过完整 episode 的回报来估计价值函数。
+  - 原理：MC 方法通过**完整 episode 的回报来**估计价值函数。
 
   - Bias：MC 方法是无偏的 (unbiased)，因为它是通过实际的回报来计算的。
 
@@ -81,7 +81,7 @@ Value-based methods 通过迭代更新价值函数来学习。更新的依据是
 
 - Temporal Difference (TD) 方法：
 
-  - 原理：TD 方法通过当前状态的奖励和下一个状态的价值函数来估计价值函数。
+  - 原理：TD 方法通过**当前状态的奖励**和**下一个状态的价值函数**来估计价值函数。
 
   - Bias：TD 方法是有偏的 (biased)，因为它依赖于对下一个状态价值函数的估计。如果价值函数的估计不准确，TD 方法会引入偏差 
 

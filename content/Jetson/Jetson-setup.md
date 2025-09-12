@@ -1,5 +1,5 @@
 +++
-date = '2025-08-31T12:47:02+08:00'
+date = '2025-02-28T12:47:02+08:00'
 draft = false
 title = 'Jetson Setup'
 tags = ["Jetson"]

@@ -1,5 +1,5 @@
 +++
-date = '2025-08-31T12:45:51+08:00'
+date = '2025-01-31T12:45:51+08:00'
 draft = false
 title = 'Kernel 向量化 SIMT'
 tags = ["CUDA","SIMD","SIMT"]
