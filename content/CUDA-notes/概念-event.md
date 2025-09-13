@@ -1,5 +1,5 @@
 +++
-date = '2025-01-31T12:45:56+08:00'
+date = '2025-01-31T12:45:31+08:00'
 draft = false
 title = '概念 Event'
 tags = ["CUDA","Event"]

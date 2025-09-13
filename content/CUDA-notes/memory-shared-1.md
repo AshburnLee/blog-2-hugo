@@ -1,5 +1,5 @@
 +++
-date = '2025-01-31T12:45:52+08:00'
+date = '2025-01-31T12:45:12+08:00'
 draft = false
 title = 'Memory Shared 1'
 tags = ["CUDA","Shared Memory","Bank"]

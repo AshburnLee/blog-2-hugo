@@ -1,5 +1,5 @@
 +++
-date = '2025-01-31T12:45:53+08:00'
+date = '2025-01-31T12:45:18+08:00'
 draft = false
 title = 'Tensor Core Wmma'
 tags = ["CUDA","Tensor Core"]

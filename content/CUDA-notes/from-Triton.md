@@ -1,5 +1,5 @@
 +++
-date = '2025-01-31T12:45:50+08:00'
+date = '2025-01-31T12:45:03+08:00'
 draft = false
 title = 'From Triton'
 tags = ["CUDA","Triton"]
