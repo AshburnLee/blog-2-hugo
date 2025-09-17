@@ -2,7 +2,7 @@
 date = '2025-01-31T12:45:16+08:00'
 draft = false
 title = 'SM'
-tags = ["CUDA","Streaming Multiprocessor"]
+tags = ["CUDA","SM","SMSP"]
 categories = ["CUDA"]
 +++
 
@@ -65,3 +65,10 @@ Registers数量和每个block分配到的Shared Memory的大小，共同约束�
 - 每个 SM 最多同时驻留 64 个 warp，这 64 个 warp 并不是同时执行的，而是通过快速上下文切换来提高 GPU 的利用率和性能。  SM 内部有 warp 调度器，按照某种策略在不同的 Warp 间切换，达到隐藏延迟的目的。
 
 所以 最大驻扎线程数，即SM 能够同时容纳的线程数量是有限的，这个限制是由 SM 的硬件资源决定的。因为驻扎是已经分配好了资源，资源优先，所以最大驻扎数也是有限的。
+
+
+## SMSP 
+
+Streaming Multiprocessor Sub-Partition  一个 SM 内部进一步划分成若干个子分区,每个 SMSP 具有自己**独立的计算资源**（如寄存器文件、CUDA核心、调度器等），相当于SM内部的更细粒度的执行单元。线程束（warp）在SM内部会被分配到某个SMSP上执行，一旦分配完成，资源也会长期属于该SMSP直到warp执行完毕。
+
+SMSP 这种进一步的划分有利于资源调度和管理，提升GPU的执行效率和并行度。

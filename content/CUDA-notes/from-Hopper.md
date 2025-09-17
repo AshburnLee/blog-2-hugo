@@ -21,8 +21,6 @@ NVIDIA Hopper GPU 架构保留了并扩展了之前 NVIDIA GPU 架构（如 NVID
 - 尽可能减少对全局内存的冗余访问。
 - 尽量量避免同一warp中线程执行路径出现长时间的分歧(sequences of diverged execution)。
 
-TODO：这个文档中还有更多的关于 Hopper 的参数。
-
 
 ## NVIDIA Hopper 流式多处理器（SM）在 Turing 和 NVIDIA Ampere GPU 架构的基础上提供了以下改进。
 

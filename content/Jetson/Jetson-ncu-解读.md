@@ -7,26 +7,6 @@ categories = ["Jetson"]
 +++
 
 
-
-
-## 常用命令
-
-~~~sh
---mode=launch-and-attach：启动程序并附加分析。
---kernel <kernel_name>：指定要分析的 CUDA 内核（可选，正则表达式匹配）。
---set <set_name>：指定指标集（例如，full、detailed 或自定义集）。
-  - full: 收集所有可用指标，适合全面分析，但耗时较长。
-  - detailed: 收集详细指标，覆盖计算、内存、调度等，适合深入优化。
-  - speed-of-light: 聚焦高层次吞吐量指标（如你的 Speed Of Light Throughput 报告）。
-  - occupancy: 聚焦占用率指标（如你的 Occupancy 报告）。
-  - scheduler: 分析线程束调度状态。
-  - memory: 分析内存访问和缓存性能。
---metric dram__cycles_active.avg
-
-sudo $(which ncu) --query-metrics  # 输出所有支持的指标和描述
-sudo $(which ncu) --mode=launch-and-attach --kernel-name ComputeLogSoftmaxForwardInWarp --metric sm__warps_launched ./obj/softmax
-~~~
-
 ~~~sh
 rm -f ./ncu/softmax-last.ncu-rep && sudo $(which ncu) --mode=launch-and-attach  -o ./ncu/softmax-last.ncu-rep ./obj/softmax && sudo $(which ncu) --import ./ncu/softmax-last.ncu-rep > ./ncu/softmax-last.txt
 ~~~
