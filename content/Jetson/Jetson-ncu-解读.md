@@ -25,7 +25,7 @@ rm -f ./ncu/softmax-last.ncu-rep && sudo $(which ncu) --mode=launch-and-attach  
     Duration                         us       106.46  # kernel 执行的总时间（微秒）： 32,515 cycles ÷ 305.41 MHz
     L1/TEX Cache Throughput           %        29.40  # L1 缓存和纹理缓存的带宽利用率：低于 60%，即缓存利用率低。数据访问模式不佳，未充分利用 L1 缓存。缓存命中率低（需要检查 NCU 的缓存命中率统计）。
     L2 Cache Throughput               %        22.36  # 远低于预期，表明 L2 缓存未被有效利用。检查 L2 缓存的命中率（NCU 的缓存统计部分）。
-    SM Active Cycles              cycle    28,654.75  # SM 在执行计算任务时的活跃周期数：活跃周期占总周期的比例为 28,654.75 ÷ 32,515 ≈ 88.1% 挺好，但是。查看 NCU 的 Scheduler Statistics，检查线程束调度效率。否存在指令依赖或分支发散。
+    SM Active Cycles              cycle    28,654.75  # SM 在执行计算任务时的活跃周期数：活跃周期占总周期的比例为 28,654.75 ÷ 32,515 ≈ 88.1% 挺好，但是。查看 NCU 的 Scheduler Statistics，检查warp 调度效率。否存在指令依赖或分支发散。
     Compute (SM) Throughput           %        57.48  # SM 的计算吞吐量：57.48% 低于 60%，计算资源未被充分利用。可能线程块（Block）或网格（Grid）配置不足，导致 SM 未满载。
     ----------------------- ----------- ------------
 
@@ -81,7 +81,7 @@ rm -f ./ncu/softmax-last.ncu-rep && sudo $(which ncu) --mode=launch-and-attach  
 
 
 ~~~sh 
-    ## 占用率是衡量 SM 上同时活跃的线程束（Warps）占硬件最大 Warps 数的比例，是评估 GPU 并行效率的核心指标。
+    ## 占用率是衡量 SM 上同时活跃的warp （Warps）占硬件最大 Warps 数的比例，是评估 GPU 并行效率的核心指标。
     Section: Occupancy
     ------------------------------- ----------- ------------
     Metric Name                     Metric Unit Metric Value
@@ -130,10 +130,10 @@ rm -f ./ncu/softmax-last.ncu-rep && sudo $(which ncu) --mode=launch-and-attach  
     Average L2 Active Cycles         cycle    26,799.25  # L2 活跃比例 ≈ 26,799.25 ÷ 32,515 ≈ 82.41%。 结论：82.41% 表明 L2 缓存在大部分时间都在处理请求，存在较多 L1 缓存未命中的请求（L1 Misses）到达 L2。 *** L2 Cache Throughput = 22.36%（Speed Of Light Throughput）表明 L2 缓存带宽利用率极低，浪费 L2 带宽。 结论：1. L2 缓存命中率低，导致请求频繁到达 DRAM。2. 非合并内存访问或数据局部性性 ***
     Total L2 Elapsed Cycles          cycle      130,060  # 每个 SM 的总周期 = 130,060 ÷ 4 = 32,515。
 
-    Average SM Active Cycles         cycle    28,654.75  # 28,654.75 ÷ (123,328 ÷ 4) ≈ 92.94%，与 L1 活跃比例一致。92.94% 表明 SM 大部分时间都在工作，但 Compute (SM) Throughput = 57.48%（Speed Of Light Throughput）表明计算效率低。*** 原因：1. 线程束因内存延迟或指令依赖频繁暂停。2. 低 SM 频率 (305.41 MHz) 限制了计算能力。
+    Average SM Active Cycles         cycle    28,654.75  # 28,654.75 ÷ (123,328 ÷ 4) ≈ 92.94%，与 L1 活跃比例一致。92.94% 表明 SM 大部分时间都在工作，但 Compute (SM) Throughput = 57.48%（Speed Of Light Throughput）表明计算效率低。*** 原因：1. warp 因内存延迟或指令依赖频繁暂停。2. 低 SM 频率 (305.41 MHz) 限制了计算能力。
     Total SM Elapsed Cycles          cycle      123,328
 
-    # SMSP 是 SM 内的更细粒度执行单元，负责调度和执行线程束（Warps）
+    # SMSP 是 SM 内的更细粒度执行单元，负责调度和执行 warp
     Average SMSP Active Cycles       cycle    28,558.69  # 与SM 活跃比例一致
     Total SMSP Elapsed Cycles        cycle      493,312  # 每个SM有 4 个 SMSP
     -------------------------- ----------- ------------
@@ -144,7 +144,7 @@ rm -f ./ncu/softmax-last.ncu-rep && sudo $(which ncu) --mode=launch-and-attach  
 
 结论：
  - L1 (92.94%) 和 L2 (82.41%) 高活跃比例表明内存子系统忙碌，但低吞吐量提示非合并访问或低缓存命中率，导致 Warps 暂停，降低占用率。
- - SM 和 SMSP 高活跃度 (92.94%) 表明 SM 大部分时间在工作，但低计算吞吐量 (57.48%) 提示线程束因延迟暂停，减少活跃 Warps。
+ - SM 和 SMSP 高活跃度 (92.94%) 表明 SM 大部分时间在工作，但低计算吞吐量 (57.48%) 提示war 因延迟暂停，减少活跃 Warps。
  - 低内存吞吐量 (27.33%) 和低缓存效率提示内核位于 Roofline 模型的内存受限区域，Warps 因内存延迟暂停，降低占用率。
 
 

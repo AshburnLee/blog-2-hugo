@@ -163,3 +163,10 @@ gh run download --repo xxx --name yyy #下载Action中的artifact
 ~~~
 
 在自动化中使用，在shell中使用，自动提PR，等
+
+
+## 当终端不支持Unicode显示时
+
+`git config --global core.quotepath false`
+
+这样就可以显示中文了。

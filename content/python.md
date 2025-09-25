@@ -6,6 +6,18 @@ tags = ["python"]
 categories = ["tools"]
 +++
 
+## numpy datatype 的坑
+
+~~~py
+input_np = input_tensor.numpy()
+print(input_np.dtype)  # float32
+input_np = input_np.reshape(dims)
+output_np = np.zeros(input_np.shape)
+print(output_np.dtype)  # float64
+~~~
+
+前后的类型差，导致后续的数值出问题，从正常值变为 0 值。原因是是，NumPy中创建新数组时默认的数据类型是float64，创建数组时显式指定数据类型dtype为float32：`output_np = np.zeros(input_np.shape, dtype=input_np.dtype)`
+
 
 ##  pyenv && poetry
 

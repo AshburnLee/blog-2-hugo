@@ -50,7 +50,7 @@ Active block 的数量直接影响 GPU 的占用率 (occupancy)。 较高的 act
 2. Ready：准备好了指令，等待 Warp 调度器分配资源。
 3. Blocked：等待其他某件事情发生。
 
-**驻留线程的数量影响 GPU 的占用率 (occupancy)**。 **活跃线程的数量影响 GPU 的利用率 (utilization)**。 优化 CUDA 程序的目标之一是最大化占用率和利用率。
+**驻留线程的数量影响 GPU 的占用率 (Occupancy)**。 **活跃线程的数量影响 GPU 的利用率 (Utilization)**。 优化 CUDA 程序的目标之一是最大化占用率和利用率。
 
 
 ## 有了配置如何执行 kernel，`grid-stride-loop`
@@ -178,3 +178,29 @@ CUDA kernel 函数的编写主要取决于你的算法，而线程配置则决�
 
 - 优点：更低的寄存器压力，可能提高占用率。
 - 缺点：需要更多线程块，增加调度开销。
+
+
+## 向上取整 ceil
+
+ceil 的计算公式是 `ceil(x) = (x + n - 1) // n` (整数除法) 是标准的向上取整。保证了即使 x 可以被 n 整除时的正确性。
+
+意义是 x 需要多少个 n 才能被完全覆盖。
+
+
+## 线程索引与数据索引的关系
+
+- `row_id = blockIdx.y * blockDim.y + threadIdx.y` : thread 在 grid 垂直方向的行偏移，加上 block 内线程的行偏移。thread 行全局id。（分别用 x，y 索引全局2D tid）
+- `tid_in_block = threadIdx.y * blockDim.x + threadIdx.x` : 2D 线程索引转换为 1D 的情况。是其中 block 内线程的一维 id。（用 x，y 的线性组合表示 block 内1D tid）
+- `idx = (blockIdx.y * gridDim.x + blockIdx.x) * (blockDim.x * blockDim.y) + (threadIdx.y * blockDim.x + threadIdx.x)` : 2D 线程索引转换为 1D 的情况。这个是全局的1D tid。
+
+
+## 2D block 和 2D grid
+###  一维局限：仅用 x 可能导致非合并访问或复杂索引，降低效率。
+
+一维 tid 连续，但在二维数据中可能跨行（例如，tid=7 到 8，从 row=1 到 row=2），地址跳跃（7 到 8），导致非合并访问（7 到 8 数据地址不连续）。一维索引没有分割索引的边界。而二维情况，col（threadIdx.x）连续，Warp 访问同一行内地址（例如，0-31），合并高效。对于地址 32，会从 row=1 开始访问，从第二行开始。另起一行就是这个边界。
+
+如果一个 Warp 的线程访问的是有 stride 的或者分散的地址，那么 Non-coalesced access 就会发生。一维 tid 中不总是有 non-coalesced access。
+
+
+### 二维 block 布局可减少 bank 冲突。例如，block(64, 2, 1) 的 x 维度访问连续，降低冲突概率。【？】
+

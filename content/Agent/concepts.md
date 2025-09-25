@@ -46,7 +46,6 @@ results = bm25_retriever.invoke(query)
 RAG 模式的 AI Agent 适用于需要**结合外部知识**生成准确回答的场景，如知识库问答、搜索整合、客服、法律分析、医疗支持和教育。
 
 
-
 ## SGLang （Structured Generation Language） 与 vLLM（Vectorized Large Language Model Inference）
 
 - SGLang：是复杂多轮交互及结构化生成的语言模型服务框架。适用于需要**多步骤**任务、**多GPU协作**、**大规模**模型复杂应用。需要**多轮复杂任务**支持场景。

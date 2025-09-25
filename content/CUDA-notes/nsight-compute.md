@@ -6,6 +6,8 @@ tags = ["CUDA", "Nsight Compute"]
 categories = ["CUDA"]
 +++
 
+设备Code name：GA10B
+
 ## Jetson 上可用工具
 
 - ncu
@@ -19,6 +21,11 @@ categories = ["CUDA"]
 ## 常用命令
 
 ~~~sh
+# 直接出处 badic 结果
+## --launch-skip 0: 不跳过任何内核启动（从第 0 个启动开始收集数据）。
+## --launch-count 1: 只收集 1 次内核启动的性能数据。
+sudo $(which ncu) --kernel-name softmax_kernel --launch-skip 0 --launch-count 1 ./softmax
+
 --mode=launch-and-attach：启动程序并附加分析。
 --kernel <kernel_name>：指定要分析的 CUDA 内核（可选，正则表达式匹配）。
 --set <set_name>：指定指标集（通过 `ncu --list-sets`）。
@@ -117,67 +124,50 @@ cuda-gdb /home/user/miniconda3/envs/your_env/bin/python
 
 重点分析的指标，【原来我的设备是： Device Orin (GA10B)】
 
-1. SM 利用率：
+1. SM 利用率：衡量 SM 的活跃程度，低值可能表示线程块不足或发散问题。**值越大越好**
 
    - 指标：
-      - `sm__cycles_elapsed.avg`（SM 时钟周期） # of cycles elapsed on SM 即SM 运行的时钟周期总数
-      - `sm__inst_executed.avg`（执行指令数）。  # of warp instructions executed 即每个warp执行的指令数
-   - 意义：衡量 SM 的活跃程度，低值可能表示线程块不足或发散问题。**值越大越好**
-   - 优化：调整线程块大小、网格配置，减少线程发散。
+      - `sm__cycles_elapsed.avg`（SM 时钟周期）# of cycles elapsed on SM 即SM 运行的时钟周期总数
+      - `sm__inst_executed.avg`（执行指令数）# of warp instructions executed 即每个warp执行的指令数
+   - 意义：
+   - 优化：调整线程块大小、网格配置，减少线程发散
 
 
-2. 内存带宽和访问效率：
+2. 内存带宽和访问效率：识别内存瓶颈，**高 DRAM 访问**或**低缓存命中率**表明内存访问模式低效。
 
    - mcc：mcc是 Memory Controller Channel（内存控制通道），负责管理访问显存（DRAM）的请求
    - 指标：
-     - `mcc__dram_throughput_op_read.sum`      DRAM 读吞吐量     越大越好
-     - `mcc__dram_throughput_op_write.sum`     DRAM 写吞吐量     越大越好
-     - `l1tex__t_bytes.avg`                    L1 缓存命中率     越大越好
-     - `lts__t_request_hit_rate`               L2 缓存命中率     越大越好
-     - `sm__sass_data_bytes_mem_global_op_ld`  sm 级别的全局内存加载字节数总和   本身没有绝对好坏
-     - `sm__sass_data_bytes_mem_global_op_st`  sm 级别的全局内存存储字节数总和   本身没有绝对好坏
+     - `mcc__dram_throughput_op_read.sum`      DRAM 读吞吐量
+     - `mcc__dram_throughput_op_write.sum`     DRAM 写吞吐量
+     - `l1tex__t_bytes.avg`                    L1 缓存命中率
+     - `lts__t_request_hit_rate`               L2 缓存命中率
+     - `sm__sass_data_bytes_mem_global_op_ld`  sm 级别的全局内存加载字节数总和
+     - `sm__sass_data_bytes_mem_global_op_st`  sm 级别的全局内存存储字节数总和
+     - 通过 basic report 可以初步分析
 
-   - 意义：识别内存瓶颈，高 DRAM 访问或低缓存命中率表明内存访问模式低效。
+   - 意义：
    - 优化：优化内存合并访问、使用共享内存、调整数据布局。
 
 
-3. 指令吞吐量：
+3. 指令吞吐量：检查指令执行效率，低吞吐量可能因寄存器压力或指令依赖。
 
-   - 指标：
-      - sm__inst_issued.avg（每周期发出指令数）、
-      - sm__inst_executed_pipe_*.avg（特定流水线吞吐，如 pipe_tensor 或 pipe_fma）。
-   - 意义：检查指令执行效率，低吞吐量可能因寄存器压力或指令依赖。
+   - 指标：暂时没有找到关键指标，应该是与特定流水线吞吐，如 pipe_tensor 或 pipe_fma 有关的 `*issued*`
    - 优化：减少复杂指令、优化寄存器分配。
 
 
 4. 占用率（Occupancy）：
 
-   - 指标：`sm__warps_active.avg`  active 的warp数，越多表示GPU利用率越高，有利于隐藏内存及指令延迟
+   - 指标：`sm__warps_active.avg.pct_of_peak_sustained_active`，`sm__ctas_launched`,`sm__warps_launched` 越多表示GPU利用率越高，有利于隐藏内存及指令延迟。初步观察，可以通过 basic 的report。
    - 意义：高占用率表明 SM 资源利用充分；低值可能因寄存器或共享内存过高。
-   - 优化：调整线程数、减少寄存器使用（-maxrregcount）。
+   - 优化方式：调整线程数、减少寄存器使用（-maxrregcount）。
 
-    Theoretical Active Warps per SM        warp           48
-    Theoretical Occupancy                     %          100
-    Achieved Occupancy                        %        17.34
-    Achieved Active Warps Per SM           warp         8.32
-
-
-5. 延迟原因：
-
-   - 指标：【没找到】
-      - sm__cycles_stalled.avg（SM 停顿周期）、
-      - sm__warps_stalled_*.avg（具体停顿原因，如 memory_dependency 或 execution_dependency）。
-   - 意义：识别内核停顿的主因（如内存延迟或指令依赖）。
-   - 优化：减少全局内存访问、优化分支逻辑。
-
+5. 延迟原因：识别内核停顿的主因（如内存延迟或指令依赖）。对应指标：暂没有找到，应该与`*stall*` 的指令相关
 
 
 ## KAQ：我的 kernel 有关键指标的数值，但是我如很判断这个值是好是坏呢？是否应该有一个基线 baseline？
 
 
-# KAQ：对于我的cuda kernel，如何有效利用 ncu/ncu-ui 和 nsys/nsys-ui 完全分析明白？给出一步一步的指导
-
-【根据我的 kernel 干起来】
+# KAQ：分析 kernel 指标太多，如何筛选
 
 ~~~sh
 sudo $(which ncu) --target-processes all --set detailed --export profile_report.ncu-rep /home/junhui/miniforge3/envs/cuda-ops/bin/python test_softmax.py
@@ -188,35 +178,27 @@ ncu --import profile_report.ncu-rep --csv > profile_report.ncu.csv
 
 占用率：
 
-~~~sh
-sudo $(which ncu) --metrics sm__warps_active.avg.pct_of_peak_sustained_active --target-processes all --export profile_report.warp-active.ncu-rep /home/junhui/miniforge3/envs/cuda-ops/bin/python ../tests/test_softmax.py
-ncu --import profile_report.warp-active.ncu-rep > profile_report.warp-active.ncu.txt
-~~~
+`sudo $(which ncu) --metrics sm__warps_active.avg.pct_of_peak_sustained_active --target-processes all --export profile_report.warp-active.ncu-rep /home/junhui/miniforge3/envs/cuda-ops/bin/python ../tests/test_softmax.py && ncu --import profile_report.warp-active.ncu-rep > profile_report.warp-active.ncu.txt`
 
 结果：
 
 ~~~txt
-    ------------------------------------------------- ----------- ------------
-    Metric Name                                       Metric Unit Metric Value
-    ------------------------------------------------- ----------- ------------
-    sm__warps_active.avg.pct_of_peak_sustained_active           %        16.66
-    ------------------------------------------------- ----------- ------------
+------------------------------------------------- ----------- ------------
+Metric Name                                       Metric Unit Metric Value
+------------------------------------------------- ----------- ------------
+sm__warps_active.avg.pct_of_peak_sustained_active           %        16.66
+------------------------------------------------- ----------- ------------
 ~~~
 
 
 ## KAQ: 有哪些 --set 可选
 
-~~~sh
-ncu --list-sets
 
-sudo $(which ncu) --target-processes all --set full --export profile_report.full.ncu-rep /home/junhui/miniforge3/envs/cuda-ops/bin/python ../tests-v3/test_softmax.py && ncu --import profile_report.full.ncu-rep > profile_report.full.ncu.txt
+`ncu --list-sets`
 
+`sudo $(which ncu) --target-processes all --set basic --export profile_report.basic.ncu-rep /home/junhui/miniforge3/envs/cuda-ops/bin/python ../tests/test_softmax.py && ncu --import profile_report.basic.ncu-rep > profile_report.basic.ncu.txt`
 
-sudo $(which ncu) --target-processes all --set basic --export profile_report.basic.ncu-rep /home/junhui/miniforge3/envs/cuda-ops/bin/python ../tests-v5/test_softmax.py && ncu --import profile_report.basic.ncu-rep > profile_report.basic.ncu.txt
-
-
-sudo $(which ncu) --target-processes all --set roofline --export profile_report.roofline.ncu-rep /home/junhui/miniforge3/envs/cuda-ops/bin/python ../tests-v3/test_softmax.py && ncu --import profile_report.roofline.ncu-rep > profile_report.roofline.ncu.txt
-~~~
+`sudo $(which ncu) --target-processes all --set full --export profile_report.full.ncu-rep /home/junhui/miniforge3/envs/cuda-ops/bin/python ../tests/test_softmax.py && ncu --import profile_report.full.ncu-rep > profile_report.full.ncu.txt`
 
 
 ## KAQ：report 信息很多，如何解读？
@@ -237,11 +219,10 @@ sudo $(which ncu) --target-processes all --set roofline --export profile_report.
 - 尽可能减少对**全局内存**的冗余访问。
 - 尽量量避免同一 Warp 中线程执行路径出现长时间的**分支**(sequences of diverged execution)。
 
-应该优先解决主要矛盾, 我的case 内存访问时瓶颈，优化 reduce 计算。
+应该优先解决主要矛盾, 我的case 内存访问时瓶颈，优化 reduce 计算。当前主要瓶颈有两个：
 
-1. 需要改变 kernel 启动配置：多个 SM 没有活动，Achieved Active Warps Per SM = 7.99 （理论是48），占用率（Achieved Occupancy）只有 16.66。，这是 workload 不平衡的结果。
-
-2. 内存访问是瓶颈：（Memory Throughput = 4.89%，L1/TEX Cache Throughput = 5.44%，高全局内存访问
+- 内存访问是瓶颈：（Memory Throughput = 4.89%，L1/TEX Cache Throughput = 5.44%，高全局内存访问
+- 需要改变 kernel 启动配置：多个 SM 没有活动，Achieved Active Warps Per SM = 7.99 （理论是48），占用率（Achieved Occupancy）只有 16.66。，这是 workload 不平衡的结果。
 
 
 ### 1. 版本1中的线程配置：【目的是调整内核启动配置以最大化设备利用率】
@@ -249,17 +230,17 @@ sudo $(which ncu) --target-processes all --set roofline --export profile_report.
 (1,1,1),(256,1,1) => (4,1,1),(64,1,1)
 
 ~~~cpp
-    // 配置CUDA核参数 block数 (1,1,1), thread数 (256,1,1)
-    int threadsPerBlock = 256;
-    int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+// 配置CUDA核参数 block数 (1,1,1), thread数 (256,1,1)
+int threadsPerBlock = 256;
+int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
 ~~~
 
-优化：减小 thread 的大小，将线程分配给其他 block。
+优化：减小 block 的大小，将线程分配给其他 block。
 
 ~~~cpp
-    // 配置CUDA核参数 block数 (4,1,1), thread数 (64,1,1)
-    int threadsPerBlock = 64;
-    int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+// 配置CUDA核参数 block数 (4,1,1), thread数 (64,1,1)
+int threadsPerBlock = 64;
+int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
 ~~~
 
 > 负载平和和资源利用率：
@@ -297,11 +278,13 @@ Achieved Active Warps Per SM = 2.00   # 8warps 除以 2 = 4 个 SM，表示8个w
 `smsp__warps_launched` SMSP 是 SM 的子单元，负责线程调度, warp launched 个数
 `smsp__average_threads_launched_per_warp` 每个 warp 平均有多少个线程
 
+获取kernel launch 配置的关键信息：
+
 ~~~sh
-sudo $(which ncu) --metrics sm__warps_launched,sm__ctas_launched,sm__warps_active.avg.pct_of_peak_sustained_active --target-processes all --export profile_report.cts.ncu-rep /home/junhui/miniforge3/envs/cuda-ops/bin/python ../tests-v5/test_softmax.py  && ncu --import profile_report.cts.ncu-rep > profile_report.cts.ncu.txt
+sudo $(which ncu) --metrics sm__warps_launched,sm__ctas_launched,sm__warps_active.avg.pct_of_peak_sustained_active --target-processes all --export profile_report.cts.ncu-rep /home/junhui/miniforge3/envs/cuda-ops/bin/python ../tests/test_softmax.py  && ncu --import profile_report.cts.ncu-rep > profile_report.cts.ncu.txt
 ~~~
 
-结果：1个SM 只运行了1个block，一个SM运行了2个warps。所以数据如何映射的？**4 block 分摊给 4 个 SM，每个 SM 一个 block 即 2 个 Warp**
+结果：1个SM 只运行了1个block，一个SM运行了2个warps。数据如何映射的？**4 block 分摊给 4 个 SM，每个 SM 一个 block 即 2 个 Warp**
 
 
 ### 2. 使用标准的reduce计算，kernel启动配置不变
@@ -313,6 +296,7 @@ Launch 配置没有变化，故 `Launch statistics` 和 `Occupancy` 没有变化
 - Duration (80.06us -> 22.82us)
 
 > 负载平和和资源利用率：
+
 - SM Active Cycles  （5,334 -> 952）
 - Waves Per SM 变化（0.04 -> 0.04）
 - Compute (SM) Throughput (8.81 -> 2.58): 可能是同步开销 ?
@@ -320,43 +304,50 @@ Launch 配置没有变化，故 `Launch statistics` 和 `Occupancy` 没有变化
 - Theoretical Active Warps per SM (32 -> 32)：
 
 > 内存吞吐量：
-- Memory Throughput（4.48% -> 2.29%）： size=256 数据量太小，不足以体现共享内存优势， __syncthreads() 的延迟被放大
+
+- Memory Throughput（4.48% -> 2.29%）： size=256 数据量太小，不足以体现共享内存优势
 - L1/TEX Cache Throughput（19.31% -> 13.39%）: 可能因共享内存访问取代部分 L1 缓存访问
 - L2 Cache Throughput (0.49% -> 1.29%)
 
-- Average SM Active Cycles（5,334.50 → 952.25）：SM 和 L1 缓存活跃时间大幅减少，表明内核执行时间缩短。
+- Average SM Active Cycles（5,334.50 → 952.25）：SM 和 L1 缓存活跃时间大幅减少，表明内核执行时间缩短
 - Total SM Elapsed Cycles（91,900 → 22,268）：总执行周期大幅减少，表明内核运行更快
 - Total L2 Elapsed Cycles （97,796 → 27,704）：L2 总周期减少，确认全局内存访问减少
 - Total SMSP Elapsed Cycles（367,600 → 89,072）：SMSP 总周期减少，反映整体执行效率提高
-- 计算得 SM 资源利用率：952.25 x 4 / 22,268 = 38.09%，远小于100%。
+- 计算得 SM 资源利用率：952.25 x 4 / 22,268 = 38.09%，远小于 100%
 
 `__syncthreads()`，增加同步开销，抵消部分内存效率提升。
 
-16*26=
 
 ### 3. 优化 kernel 逻辑、kernel Launch 配置
 
 ~~~cpp
-    int threads_per_block = 64;
-    int blocks_per_grid = (size + threads_per_block - 1) / threads_per_block;
+int threads_per_block = 64;
+int blocks_per_grid = (size + threads_per_block - 1) / threads_per_block;
 ~~~
 
 Active Cycles 和  Elapsed Cycles 都显著减小，反应了kernel整体执行时间减少，对全局内存访问减少。
 
-> 应该使用尽量大的数据量，才能明显反应出各个指标随优化进行的变化
-> kernel 中对global的访问不是连续的
-> kernel中对shared memory 访问是否有conflict
+- 应该使用尽量大的数据量，才能明显反应出各个指标随优化进行的变化
+- kernel 中对 global 的访问不是连续的 ?
+- kernel 中对 shared memory 访问是否有 bank conflict ?
+
 
 ### 4. size = 4096
+
+~~~cpp
+int threads_per_block = 128; // size = 4096
+int blocks_per_grid = (size + threads_per_block - 1) / threads_per_block;
+size_t shared_mem_size = threads_per_block * sizeof(float); // 共享内存共享于block中的thread之间
+~~~
 
 (32, 1, 1)x(128, 1, 1)
 
 数据量大后，占用率增加，
 ~~~sh
-    Theoretical Active Warps per SM        warp           48
-    Theoretical Occupancy                     %          100
-    Achieved Occupancy                        %        61.19
-    Achieved Active Warps Per SM           warp        29.37
+Theoretical Active Warps per SM        warp           48
+Theoretical Occupancy                     %          100
+Achieved Occupancy                        %        61.19
+Achieved Active Warps Per SM           warp        29.37
 ~~~
 
 数据到 SM 的映射是均匀的：
@@ -378,7 +369,7 @@ sm__warps_launched.avg  32 ：每个 SM 运行了 32 个warps
 
 - Total SM Active Cycles =26,624.75 × 4 SM = 106,499
 - 而 Total SM Elapsed Cycles = 114,080。
-- 106,499 / 114,080 = 93.35% 的周期 SM 处于活跃状态，表明 SM 利用率很高
+- 106,499 / 114,080 = **93.35%** 的周期 SM 处于活跃状态，表明 SM 利用率很高
 
-这是个好的**资源利用率**的指标。
+这是个好的**资源利用率（Utilization）**的指标。
 
