@@ -71,7 +71,7 @@ stable-diffusion.cpp 是用于生成图像的 Stable Diffusion 模型的 C++ 实
 
 # GGUF 模型
 
-GGUF（Generalized Unified Format）是一种新型模型格式，旨在支持多种机器学习框架和工具。Ollama允许用户轻松运行来自Hugging Face等平台的GGUF格式模型。
+GGUF（Generalized Unified Format）是一种新型模型格式，旨在支持多种机器学习框架和工具。Ollama允许用户轻松运行来自 Hugging Face 等平台的GGUF格式模型。
 
 最佳实践
 

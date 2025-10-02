@@ -7,7 +7,7 @@ categories = ["CUDA"]
 +++
 
 
-## 读代码
+## Code
 
 ~~~cpp
 // 有 Bank Conflict 的 Kernel
@@ -45,12 +45,11 @@ int main() {
 }
 ~~~
 
-
-`input[x * TILE_DIM + y];` : x，y 表示每个线程自己的全局索引，`x * TILE_DIM` 表示目标位置所在的行，`+ y` 表示目标位置所在的列，所以行偏移后，列偏移，就得到了目标位置index。
+`input[x * TILE_DIM + y];` : x，y 表示每个线程自己的全局索引，`x * TILE_DIM` 表示目标位置所在的行，`+ y` 表示目标位置所在的列，所以行偏移后，列偏移，就得到了目标位置 index。
 
 ## 既然在同一个 GPU 上共享内存的 Bank 宽度是 4 字节，那么处理 float (4 字节) 和 double (8 字节) 数据类型时，需要考虑如何有效地访问共享内存，以减少 Bank conflict
 
-通过padding 构建新的数据类型：
+通过 padding 构建新的数据类型：
 
 ~~~cpp
 struct DoubleData {
@@ -64,18 +63,16 @@ struct DoubleData {
 上述，Bank 宽 4 bytes的组织方式，如果double数据不 padding，会导致 Bank conflict 如下：
 
 ~~~sh
-线程 0 访问 shared_double[0].value (地址 0) -> Bank 0
-线程 1 访问 shared_double[1].value (地址 8) -> Bank 2
-线程 2 访问 shared_double[2].value (地址 16) -> Bank 4
+Thread 0 访问 shared_double[0].value (Addr 0) -> Bank 0
+Thread 1 访问 shared_double[1].value (Addr 8) -> Bank 2
+Thread 2 访问 shared_double[2].value (Addr 16) -> Bank 4
 ...
-线程 7 访问 shared_double[7].value (地址 56) -> Bank 14
-线程 8 访问 shared_double[8].value (地址 64) -> Bank 16
+Thread 7 访问 shared_double[7].value (Addr 56) -> Bank 14
+Thread 8 访问 shared_double[8].value (Addr 64) -> Bank 16
 ...
-线程 15 访问 shared_double[15].value (地址 120) -> Bank 30
-线程 16 访问 shared_double[16].value (地址 128) -> Bank 0 <-- 与线程 0 冲突  ***
+Thread 15 访问 shared_double[15].value (Addr 120) -> Bank 30
+Thread 16 访问 shared_double[16].value (Addr 128) -> Bank 0
 ~~~
 
 
-padding padding 的主要作用是改变线程访问共享内存时，数据到 Bank 的映射关系。
-
-padding之后，？？存疑，实际上会怎么做？？
+padding 的主要作用是改变线程访问共享内存时，数据到 Bank 的映射关系。
