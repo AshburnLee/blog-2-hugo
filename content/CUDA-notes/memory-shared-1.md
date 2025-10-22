@@ -1,7 +1,7 @@
 +++
 date = '2025-01-31T12:45:12+08:00'
 draft = false
-title = 'Memory Shared：字节地址与Bank ID'
+title = 'Memory Shared：字节地址与 Bank ID'
 tags = ["CUDA","Shared Memory","Bank"]
 categories = ["CUDA"]
 +++

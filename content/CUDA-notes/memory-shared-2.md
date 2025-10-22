@@ -1,7 +1,7 @@
 +++
 date = '2025-01-31T12:45:13+08:00'
 draft = false
-title = 'Memory Shared：分析Bank conflict 与 Padding'
+title = 'Memory Shared：分析 Bank conflict 与 Padding'
 tags = ["CUDA","Shared Memory","Bank"]
 categories = ["CUDA"]
 +++
