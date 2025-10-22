@@ -7,6 +7,11 @@ categories = ["Reinforcement Learning"]
 +++
 
 
+## On policy 方法
+
+On policy 方法要求在生成训练时所需的数据时，必须使用当前Policy（将要优化还没优化的Policy）与环境交互进行采样，得到稍后训练所需数据。然后在Policy优化（更新）后，使用这个新的Policy，用于下一次的采样和优化（不适用旧的Policy）。
+
+
 ## 环境包装器 (environment wrappers) 
 是一种修改现有环境而不直接更改其底层代码的便捷方法 . 包装器允许您避免大量重复代码，并使您的环境更模块化 . 重要的是，包装器可以链接起来以组合它们的效果，并且大多数通过 gym.make() 【python gymnasium 包】生成的环境默认情况下已经被包装。
 
