@@ -121,6 +121,47 @@ KL 散度（Kullback-Leibler Divergence）是一种衡量两个概率分布差�
 
 LoRA（Low-Rank Adaptation）微调技术，用于在大型语言模型（LLM）上进行**参数高效微调**（Parameter-Efficient Fine-Tuning, PEFT）。LoRA 通过在**预训练模型的权重**矩阵上**添加低秩分解的更新矩阵，减少需要训练的参数数量，同时保持模型性能**。LoRA 配置是指在微调过程中设置的参数，用于定义 LoRA 的行为和特性。
 
+比如：
+~~~py
+lora_config = LoraConfig(
+    r=8,
+    lora_alpha=16,
+    target_modules=["q_proj", "v_proj", "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+    lora_dropout=0.1
+)
+~~~
+
+### r 
+
+r 是 LoRA 适配器的低秩矩阵的秩（rank）。LoRA 将权重更新分解为两个低秩矩阵 $ A $ 和 $ B $，使得权重更新 $ \Delta W = A \cdot B $，其中 $ A \in \mathbb{R}^{d \times r} $，$ B \in \mathbb{R}^{r \times k} $，$ r $ 远小于原始权重矩阵的维度 $ d $ 和 $ k $。
+
+控制 LoRA 适配器的参数量。较低的 r 意味着更少的参数（更高效），但可能限制模型的表达能力；较高的 r 增加参数量，增强表达能力但计算成本更高。r=8 通常足够捕捉任务特定的模式，同时保持高效。
+
+### lora_alpha
+
+是 LoRA 适配器输出缩放因子，用于调整低秩更新的幅度。它的作用是控制 LoRA 适配器对模型输出的影响强度。较大的 lora_alpha 使适配器更新的影响更显著，较小的值则使更新更保守。
+
+### target_modules
+
+指定应用 LoRA 适配器的 Transformer 模型模块。这些模块是**模型权重矩阵的名称**，LoRA 只更新这些模块的权重，而其他部分保持冻结。
+
+- `q_proj`：查询（Query）投影矩阵，计算 $ W_Q $。
+- `k_proj`：键（Key）投影矩阵，计算 $ W_K $。
+- `v_proj`：值（Value）投影矩阵，计算 $ W_V $。
+- `o_proj`：注意力输出投影矩阵，计算 $ W_O $。
+
+- `gate_proj`：FFN 中 gating 层的权重，通常用于控制信息流（如在 LLaMA 或 Qwen 模型中）。
+- `up_proj`：FFN 中上投影层（扩展维度）的权重。
+- `down_proj`：FFN 中下投影层（恢复维度）的权重。
+
+上述覆盖了 Transformer 核心组件。
+
+
+### lora_dropout
+
+以 lora_dropout=0.1 的概率随机将 LoRA 适配器的部分输出置为 0，增强模型的泛化能力。
+
+
 
 ## KV 缓存（Key-Value Cache）存储注意力机制的中间结果
 
