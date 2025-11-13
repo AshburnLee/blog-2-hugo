@@ -94,7 +94,7 @@ print(dst)
 ~~~
 
 input:
-- src0: float （2048,13,1,1）  (head_dim, num_head, num_token, batch)
+- src0: float （2048,13,1,1）  , llm 中的意义是什么，各个维度在llm中的意义是什么？
 - src1: int32  (1,1,1,1)
 - dst:  float  (2048,1,1,1)
 
@@ -114,6 +114,7 @@ template<typename src0_t, typename dst_t>
 static __global__ void k_get_rows_float(
     const src0_t * __restrict__ src0, const int32_t * __restrict__ src1, dst_t * __restrict__ dst,
     const int64_t ne00,
+    const int64_t ne12, 
     const size_t s1,      // 2048 dst 第一维 元素stride
     const size_t s2,      // 2048 dst 第二维 元素stride
     const size_t s3,      // 2048 dst 第三维 元素stride
@@ -135,7 +136,6 @@ static __global__ void k_get_rows_float(
         return;
     }
 
-    // src1 可能不是连续的，所以 s10 不一定是1. 
     const int i01 = src1[i10*s10 + i11*s11 + i12*s12];
 
     const src0_t * src0_row = (const src0_t *)((const char *) src0 + i01*nb01 + i11*nb02 + i12*nb03);
@@ -185,6 +185,11 @@ ggml_tensor view = ggml_view_2d(ctx, &src0, 2048, 13,
 ## KAQ：为什么 dst 不用 字节级跳转？
 
 因为dst存储是连续的，不存在非连续访问。并且dst类型确定，**指针算术天然按元素跳，因为你在定义一个指针时实惠声明类型的**。
+
+
+## KAQ：从实际输入输出看，该op的功能是get columns
+
+dst 的shape是什么样的？为什么，Qwen 中的case 是个特例。无法确定输出shape
 
 
 ## KAQ：如何并行？
