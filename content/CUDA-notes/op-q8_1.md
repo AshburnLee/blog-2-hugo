@@ -1,3 +1,11 @@
++++
+date = '2025-11-11T12:45:35+08:00'
+draft = true
+title = 'op q8_1'
+tags = ["CUDA"]
+categories = ["CUDA"]
++++
+
 
 ## KAQ：为什么需要定义量化结构体？
 

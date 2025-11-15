@@ -1,3 +1,13 @@
++++
+date = '2025-11-10T12:45:35+08:00'
+draft = true
+title = 'op get_rows'
+tags = ["CUDA"]
+categories = ["CUDA"]
++++
+
+
+
 【hold】llama.cpp 中 get_rows 的输入输出么有理解，故code不能分析
 
 ## Why

@@ -1,3 +1,12 @@
++++
+date = '2025-11-13T12:45:35+08:00'
+draft = true
+title = 'op RoPE'
+tags = ["CUDA"]
+categories = ["CUDA"]
++++
+
+
 ## Why RoPE
 
 RoPE 的意义：给 Transformer 注入“相对位置信息”，让 Attention 天然感知 token 与 token 之间的距离。在实现中，这个“位置”通过“旋转角度”编码体现。

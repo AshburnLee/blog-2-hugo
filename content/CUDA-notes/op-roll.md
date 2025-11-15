@@ -1,3 +1,12 @@
++++
+date = '2025-11-12T12:45:35+08:00'
+draft = true
+title = 'op roll'
+tags = ["CUDA"]
+categories = ["CUDA"]
++++
+
+
 ## Why
 
 Qwen （Qwen3-1.7B-Q4_K_M.gguf）中没有这个 kernel 的调用。

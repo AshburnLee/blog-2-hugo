@@ -1,3 +1,12 @@
++++
+date = '2025-11-14T12:45:35+08:00'
+draft = true
+title = 'op set_rows'
+tags = ["CUDA"]
+categories = ["CUDA"]
++++
+
+
 ## Why
 
 在 llama.cpp 中，这个 kernel 用于 embedding lookup、MoE 专家路由、量化权重选择等场景，PyTorch 版本可用于验证逻辑或调试。
