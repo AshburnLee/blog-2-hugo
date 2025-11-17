@@ -17,7 +17,7 @@ categories = ["CUDA"]
 ## Shared Memory
 
 - 片上内存，极低延迟。与L1在一起，
-- 是每个线程块 (Thread Block) 独有的；
+- 是每个 Thread Block 独有的；
 - 生命周期与创建它的线程块相同；当线程块执行完毕后，共享内存中的数据也会被释放。
 - 用于实现高性能的协作并行算法，例如并行归约。
 - 用于手动管理的数据缓存，减少对全局内存的访问。比如通过 Shared Mem 实现 reverse 一个数组。
@@ -26,7 +26,7 @@ categories = ["CUDA"]
 - 注意 Bank conflict，当同一 warp 中多个线程访问**同一个 Bank 的不同地址**时。
 - 在共享内存中进行读写操作时，通常需要使用 `__syncthreads()` 函数进block内线程程同步。
 - 每个线程块可用的共享内存量是有限的。可以使用 `cudaGetDeviceProperties` 函数来查询设备的共享内存大小。
-
+- 物理上时一维的。
 
 ## 分配 Shared Memory
 
@@ -92,7 +92,7 @@ CUDA 共享内存被划分为多个内存 Bank，**每个 Bank 在一时钟周�
 - Bank 的**宽度（Bank Width）**（每一个 Bank 内访问的数据位宽）是硬件决定的（4 Bytes），这表示每个 Bank 每次只能服务 4Byte 的访问请求（即一个 float）。
 - 同一个 Bank 中的相邻地址是**不连续的**。
 - Shared memory 被划分为 **32 个 Bank**。Bank 编号是0~31，在0~31之间的循环。
-- 同一个 Bank 中的相邻地址之间相差 32（个） * 宽（4 Byte）= 128 Byte
+- 同一个 Bank 中的相邻地址之间相差 32（个）*宽（4 Byte）= 128 Byte
 - **共享内存地址的编号**：在共享内存中，每个字节都有一个唯一的地址编号。这些地址编号从 0 开始，依次递增。
 - **字节编号**：Shared Memory 的地址编号是从 0 开始的，每个字节都有一个唯一的编号（**字节编号**）。比如，ID是 0 的 Bank 包含的字节编号是 0,1,2,3, 128,129,130,131，256,257,258,259, 384,385,386,387，。。。表示当前字节是“第几个字节”
 - **字节地址**（byte address）：shared memory 中该字节相对于 Base address 的偏移地址。
@@ -167,7 +167,7 @@ Thread 7: Address 224   属于 Bank 224//4%32=24
 Thread 8: Address 256   属于 Bank 256//4%32=0
 Thread 9: Address 288   属于 Bank 288//4%32=8
 Thread 10: Address 320  属于 Bank 320//4%32=16
-
+...
 Thread 31: Address 992  属于 Bank 992//4%32=24
 ~~~
 
@@ -218,7 +218,13 @@ a[num_rows-1][0], a[num_rows-1][1], a[num_rows-1][2], ..., a[num_rows-1][num_col
 
 ## 注意 Bank Conflict 只发生在同一个 Warp 中的32个线程中
 
-Shared Memory 的 Bank 是 每个 Warp 独立争用 的资源，不同的 Warp 之间不会 Bank Conflict。
+Shared Memory 的 Bank 是 每个 Warp 独立争用 的资源，~~不同的 Warp 之间访问 Shared memory 不会 Bank Conflict~~。如果不同的 Warp 尝试访问共享内存，并且它们的目标 Bank 相同，SM 调度器会**串行化**这些 Warp 的执行，而不是发生 Warp 内部的 Bank Conflict。
 
-Warp Scheduling 是当一个 Warp 因 Shared Memory 访问延迟而停顿时，Warp 调度器会切换到另一个 Warp 执行。所以不同的Warp 在访问Shared Memory时，在时间上是交错的。或说它们分时复用 shared memory banks。
+多个warp 访问同一个 bank时的冲突是 inter-warp conflict。
+
+- `intra-warp` bank conflict：1 warp 内多线程争同一 bank
+- `inter-warp` conflict：不同 warp 争 bank, SM 串行化整个 warp
+
+
+### KAQ：这两种Conflict 那种更慢？
 

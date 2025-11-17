@@ -96,7 +96,7 @@ src[imat * ne00 * ne01 + (y + j) * ne00 + x]
 - 首先，从 src 到 tile 是一行 src 写入一行 tile，
 - 然后，tile 是 row major 的，写入 tile，计算其 flatten id 时，就应该是 x + y * num_col。
 
-故有理由推测 ne01 表示 num_col，所以 转之前的 shape 是 `[ne00, ne01, ne02]`,转之后 shape `[ne01, ne00, ne02]`
+故有理由推测 ne01 表示 num_col，所以 转之前的 shape 是 `[ne00, ne01, ne02]`, 转置后 shape `[ne01, ne00, ne02]`
 
 
 ## KAQ：以下写法正确吗？
@@ -111,21 +111,36 @@ tile2[raw][col] = src[imat * ne00 * ne01 + (y + j) * ne01 + x];
 错，因为 `T*` 不能 `[][]`，只能是一维索引。
 
 
-## KAQ: 转之后的 索引对应的是什么意义？对角索引?
+## KAQ: 转之后的 索引对应的是什么意义？对角索引？ 即 tx ty 为什么这样写？
 
-转之后的 tx ty 表示dst的写入索引。
+一图胜千言，画出**读写示意图**就明了了
 
-什么是对角索引？
+转之后的 tx ty 表示 dst 的写入索引
 
-
-## KAQ: x,y,tx,ty 的含义是什么? 
-
-其实 x 表示 src 列索引，y 表示 src 行索引；tx 是 dst 列索引，ty 是 dst 的行索引
+什么是对角索引？**读写示意图**给出答案
 
 
-    ## KAQ: tx ty 为什么这样写？
+## KAQ: x,y,tx,ty 的含义是什么?
+
+- x 表示 src 列索引，y 表示 src 行索引
+- tx 是 dst 列索引，ty 是 dst 的行索引。
+- row & col 是 block 各自的行列索引。多个block 时，每个 block 有自己的 tile，只与 threadidx.x/y 有关，因为tile是block wise的。
+
 
 ## KAQ：使用 Shared memory 的优势并没有体现?
+## KAQ：`__shared__ float tile[32][32+1]` 写入数据时，位置不会出错吗？
+
+不会。事实上，最后一列不会写入元素。写入元素的只有32行和32列。这完全是由你的访问索引控制的。
+
+假如 src[32][32]，block(32,1), 我定义
+
+- 访问src的索引分别是 `x=threadIdx.x `（0~31）, `y=threadIdx.y` （0）
+- 定义block纵向循环 `j=0~31`
+- 访问tile的索引分别是 `col=threadIdx.x` (0~31) `row=threadIdx.y + j` (0 + j)
+
+那么 `tile[row][col] = src[x+(y+j)*32] ` 32 表示src列个数。32个数写入 tile **一行中的32个列，而非33个列**。
+
+故tile中最后一列是不会被访问到了。加一列只是 bank 中的 word 错位了。
 
 
 ## code
@@ -143,14 +158,14 @@ static __global__ void cpy_flt_transpose(const char * cx, char * cdst, const int
 
     const int64_t nmat = ne / (ne00 * ne01);
 
-    // 转置前 索引
+    // 转置前索引
     const int sx = blockIdx.x * CUDA_CPY_TILE_DIM_2D + threadIdx.x;
     const int sy = blockIdx.y * CUDA_CPY_TILE_DIM_2D + threadIdx.y;
-    // 转置之后的 索引
-    const int tx = blockIdx.y/*?*/ * CUDA_CPY_TILE_DIM_2D + threadIdx.x;
-    const int ty = blockIdx.x/*?*/ * CUDA_CPY_TILE_DIM_2D + threadIdx.y;
+    // 转置之后的索引 从读写示意图推导出
+    const int tx = blockIdx.y/*画出示意图就明了了*/ * CUDA_CPY_TILE_DIM_2D + threadIdx.x;
+    const int ty = blockIdx.x/*画出示意图就明了了*/ * CUDA_CPY_TILE_DIM_2D + threadIdx.y;
 
-    // [32][32+1]
+    // block wise 每一个block都有一个 [32][32+1] 的 tile
     __shared__ float tile[CUDA_CPY_TILE_DIM_2D][CUDA_CPY_TILE_DIM_2D+1];
 
 #pragma unroll
@@ -241,7 +256,8 @@ static void ggml_cpy_flt_cuda(
 
 
 ## 拆解
-
+- 有个具体case（最好的，若没有，对不不复杂的kernel 可以从 code 中推导出）
 - 无 mat 循环
 - 无 j 循环读入 tile
 - 无 j 循环写入 dst
+- 手写 kernel
